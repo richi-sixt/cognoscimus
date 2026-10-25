@@ -1,0 +1,65 @@
+import { NextRequest, NextResponse } from 'next/server';
+
+const allowedOrigins = [
+  'https://cognoscimus.sixt.services',
+  'http://localhost:3000',
+  'http://localhost:3001',
+];
+
+const corsOptions = {
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Max-Age': '86400',
+};
+
+export function proxy(request: NextRequest) {
+  const isApi = request.nextUrl.pathname.startsWith('/api/');
+
+  if (isApi) {
+    const origin = request.headers.get('origin') ?? '';
+    const isAllowedOrigin = allowedOrigins.includes(origin);
+
+    if (request.method === 'OPTIONS') {
+      // Echo the requested headers rather than answering `*`: the Fetch spec
+      // excludes `Authorization` from wildcard matching in the browser's
+      // preflight cache, so a wildcard answer forces a fresh OPTIONS round
+      // trip before every authenticated API call despite Max-Age.
+      const requestedHeaders = request.headers.get('access-control-request-headers');
+      const preflightHeaders = new Headers({
+        ...corsOptions,
+        'Access-Control-Allow-Headers': requestedHeaders || 'Authorization, Content-Type',
+        Vary: 'Origin, Access-Control-Request-Headers',
+        ...(isAllowedOrigin && { 'Access-Control-Allow-Origin': origin }),
+      });
+
+      return new NextResponse(null, {
+        status: 200,
+        headers: preflightHeaders,
+      });
+    }
+
+    const response = NextResponse.next();
+
+    if (isAllowedOrigin) {
+      response.headers.set('Access-Control-Allow-Origin', origin);
+    }
+
+    Object.entries(corsOptions).forEach(([key, value]) => {
+      response.headers.set(key, value);
+    });
+
+    return response;
+  }
+
+  // Cross-origin isolation enables SharedArrayBuffer, which the Turso WASM
+  // thread pool requires (initThreadPool hangs without it). Set on every
+  // document response, not just /api/* — `crossOriginIsolated` is a property
+  // of the top-level browsing context, determined by the document's headers.
+  const response = NextResponse.next();
+  response.headers.set('Cross-Origin-Opener-Policy', 'same-origin');
+  response.headers.set('Cross-Origin-Embedder-Policy', 'require-corp');
+  return response;
+}
+
+export const config = {
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|sw.js|manifest.json).*)'],
+};

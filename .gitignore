@@ -1,0 +1,31 @@
+# dependencies
+/node_modules
+
+# local env files (secrets live here, never commit)
+.env*.local
+
+# misc
+.DS_Store
+*.pem
+/certs
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# local one-off queries, seeds and scripts (never commit; see CLAUDE.md rules)
+/supabase/local/
+/scripts/local/
+
+# claude / editor local state
+.claude/worktrees
+.claude/settings.local.json
+.playwright-mcp/
+
+# git hooks (local only)
+.husky/
