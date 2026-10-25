@@ -19,6 +19,10 @@ const standaloneOutput = !exportOutput && process.env['BUILD_STANDALONE'] === 't
 const nextConfig = {
   // Do not let `next dev` write AGENTS.md / CLAUDE.md into the repo.
   agentRules: false,
+  // `next build` type-checks after compiling, which needs gigabytes on top of
+  // the compile step. `pnpm lint` (tsc) already runs before every push, so a
+  // small server can skip the second pass with SKIP_TYPECHECK=true.
+  typescript: { ignoreBuildErrors: process.env['SKIP_TYPECHECK'] === 'true' },
   // Lets a test build run beside a live `next dev`, which owns `.next`.
   distDir: process.env['NEXT_DIST_DIR'] || '.next',
   // Ensure Next.js uses SSG instead of SSR
