@@ -1,4 +1,3 @@
-import withSerwistInit from '@serwist/next';
 import withBundleAnalyzer from '@next/bundle-analyzer';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -156,22 +155,8 @@ const nextConfig = {
   },
 };
 
-const pwaDisabled = isDev || appPlatform !== 'web';
-
-const withPWA = pwaDisabled
-  ? (config) => config
-  : withSerwistInit({
-      swSrc: 'src/sw.ts',
-      swDest: 'public/sw.js',
-      cacheOnNavigation: true,
-      reloadOnOnline: true,
-      disable: false,
-      register: true,
-      scope: '/',
-    });
-
 const withAnalyzer = withBundleAnalyzer({
   enabled: process.env.ANALYZE === 'true',
 });
 
-export default withPWA(withAnalyzer(nextConfig));
+export default withAnalyzer(nextConfig);

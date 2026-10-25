@@ -247,10 +247,6 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets; gridInsets?:
   // path consumes the selection as it opens (see handleQuickAction). Dismissing
   // the lookup hands the selection back (#6213).
   const instantLookupDeselectedRef = useRef(false);
-  // Set when a Word Lens gloss tap synthesizes a selection so the
-  // selection-change effect opens the dictionary popup instead of the
-  // annotation toolbar. Cleared as soon as it's consumed.
-  const pendingWordLensDictRef = useRef(false);
 
   // The lookup surfaces read the selection they were opened on, but it can be
   // cleared without the dismiss that closes them: the instant highlight quick
@@ -988,47 +984,6 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets; gridInsets?:
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookKey, view]);
 
-  // Word Lens: open the dictionary popup for a tapped glossed word. The tap is
-  // detected in the iframe click handler (iframeEventHandlers.ts), which sends
-  // the gloss <ruby> element here. We synthesize a selection over the base word
-  // (excluding the <rt> hint) so the existing dictionary popup positions itself.
-  useEffect(() => {
-    const handleWordLensDictionary = (event: CustomEvent) => {
-      const { element, word } = event.detail as { element: Element | null; word: string };
-      if (event.detail?.bookKey !== bookKey || !element || !word) return;
-      // Read the view fresh: this handler is registered once (deps [bookKey]) and
-      // the closed-over `view` may still be null from when the effect first ran.
-      const view = getView(bookKey);
-      const doc = element.ownerDocument;
-      const content = view?.renderer?.getContents().find((c) => c.doc === doc);
-      if (!content || content.index == null) return;
-      const index = content.index;
-      const rt = element.querySelector('rt');
-      const range = doc.createRange();
-      try {
-        range.selectNodeContents(element);
-        if (rt) range.setEndBefore(rt);
-      } catch {
-        return;
-      }
-      const text = range.toString().trim() || word;
-      pendingWordLensDictRef.current = true;
-      setSelection({
-        key: bookKey,
-        text,
-        range,
-        index,
-        cfi: view?.getCFI(index, range),
-        page: index + 1,
-      });
-    };
-    eventDispatcher.on('wordlens-dictionary', handleWordLensDictionary);
-    return () => {
-      eventDispatcher.off('wordlens-dictionary', handleWordLensDictionary);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bookKey]);
-
   useEffect(() => {
     handleShowPopup(showingPopup);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1294,11 +1249,6 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets; gridInsets?:
     // creates the record when none exists at the CFI yet).
     setHighlightOptionsVisible(highlightOptionsAvailable);
     if (selection && selection.text.trim().length > 0) {
-      // Read-and-reset the Word Lens dictionary flag up front so it can never
-      // stick to a later selection if an early return below fires (e.g. a gloss
-      // tap whose synthesized range yields an off-frame/zero position).
-      const wantWordLensDict = pendingWordLensDictRef.current;
-      pendingWordLensDictRef.current = false;
       const gridFrame = document.querySelector(`#gridcell-${bookKey}`);
       if (!gridFrame) return;
       // On iPhone Duo clamp to the safe region, not the physical cell (its
@@ -1359,12 +1309,7 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets; gridInsets?:
       if (showDictionaryPopup || showDeepLPopup || showProofreadPopup) return;
 
       const { enableAnnotationQuickActions, annotationQuickAction } = viewSettings;
-      if (wantWordLensDict) {
-        // Route through handleDictionary so a Word Lens gloss tap honours the
-        // dictionary settings (system dictionary vs the in-app popup) — same
-        // as the selection-toolbar and instant-quick-action dictionary paths.
-        handleDictionary();
-      } else if (
+      if (
         enableAnnotationQuickActions &&
         annotationQuickAction &&
         isTextSelected.current &&
@@ -2662,7 +2607,7 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets; gridInsets?:
   // handleProofread only flip popup flags), so a genuine selection is still
   // live when one closes — return to its toolbar instead of discarding it
   // (#5213). The instant dictionary is the one exception, and the block below
-  // puts its selection back so it lands on the same footing. Word Lens gloss taps and taps on an existing highlight
+  // puts its selection back so it lands on the same footing. Taps on an existing highlight
   // synthesize their selection with isTextSelected left false, and an empty
   // toolbar has nothing to return to: those keep the full dismiss. The
   // consuming actions are a different class by design — copy, share, search,

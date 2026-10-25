@@ -19,7 +19,6 @@ import {
   DEFAULT_TTS_CONFIG,
   DEFAULT_ANNOTATOR_CONFIG,
   DEFAULT_SCREEN_CONFIG,
-  DEFAULT_WORD_LENS_CONFIG,
   DEFAULT_VIEW_SETTINGS_CONFIG,
 } from '@/services/constants';
 
@@ -33,7 +32,6 @@ const makeViewSettings = (overrides: Partial<ViewSettings> = {}): ViewSettings =
     ...DEFAULT_TTS_CONFIG,
     ...DEFAULT_SCREEN_CONFIG,
     ...DEFAULT_ANNOTATOR_CONFIG,
-    ...DEFAULT_WORD_LENS_CONFIG,
     ...DEFAULT_VIEW_SETTINGS_CONFIG,
     ...overrides,
   }) as ViewSettings;

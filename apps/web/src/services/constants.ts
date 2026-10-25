@@ -15,7 +15,6 @@ import {
   ViewConfig,
   ViewSettings,
   ViewSettingsConfig,
-  WordLensConfig,
 } from '@/types/book';
 import {
   LibraryGroupByType,
@@ -175,7 +174,6 @@ export const DEFAULT_READSETTINGS: ReadSettings = {
   notebookActiveTab: 'notes',
   translationProvider: 'google',
   translateTargetLang: 'EN',
-  wordLensAutoDownload: true,
 
   customThemes: [],
   handwritingColor: DEFAULT_HANDWRITING_COLOR,
@@ -426,14 +424,6 @@ export const DEFAULT_ANNOTATOR_CONFIG: AnnotatorConfig = {
   annotationToolbarItems: DEFAULT_ANNOTATION_TOOLBAR_ITEMS,
   copyToNotebook: false,
   noteExportConfig: DEFAULT_NOTE_EXPORT_CONFIG,
-};
-
-export const DEFAULT_WORD_LENS_CONFIG: WordLensConfig = {
-  wordLensEnabled: false,
-  wordLensLevel: 3,
-  wordLensHintLang: '',
-  wordLensGlossFontSize: 0.5,
-  wordLensGlossColor: '',
 };
 
 export const DEFAULT_SCREEN_CONFIG: ScreenConfig = {

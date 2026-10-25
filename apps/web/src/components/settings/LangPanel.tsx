@@ -35,9 +35,7 @@ import {
 } from './primitives';
 import CustomDictionaries from './CustomDictionaries';
 import CustomTranslators from './CustomTranslators';
-import WordLensPanel from './WordLensPanel';
 import ColorInput from './theme/ColorInput';
-import { PiTranslate } from 'react-icons/pi';
 
 const LangPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegisterReset }) => {
   const _ = useTranslation();
@@ -83,7 +81,6 @@ const LangPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegisterReset 
   );
   const [showCustomDictionaries, setShowCustomDictionaries] = useState(false);
   const [showCustomTranslators, setShowCustomTranslators] = useState(false);
-  const [showWordLens, setShowWordLens] = useState(false);
 
   // Translation is unavailable for PDFs and for books already in the target
   // language (issue #5600). The reader toolbar's toggler has always refused
@@ -106,10 +103,6 @@ const LangPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegisterReset 
   useKeyDownActions({
     enabled: showCustomTranslators,
     onCancel: () => setShowCustomTranslators(false),
-  });
-  useKeyDownActions({
-    enabled: showWordLens,
-    onCancel: () => setShowWordLens(false),
   });
 
   // Deep-link: callers (e.g. the dictionary popup's manage icon) can set
@@ -433,10 +426,6 @@ const LangPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegisterReset 
     );
   }
 
-  if (showWordLens) {
-    return <WordLensPanel bookKey={bookKey} onBack={() => setShowWordLens(false)} />;
-  }
-
   return (
     <div className={clsx('my-4 w-full space-y-6')}>
       <BoxedList title={_('Language')} data-setting-id='settings.language.interfaceLanguage'>
@@ -459,19 +448,6 @@ const LangPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegisterReset 
           title={_('Manage Dictionaries')}
           onClick={() => setShowCustomDictionaries(true)}
           className='h-14'
-        />
-      </BoxedList>
-
-      <BoxedList
-        title={_('Word Lens')}
-        data-setting-id='settings.language.wordlens'
-        cardClassName='overflow-hidden'
-      >
-        <NavigationRow
-          icon={PiTranslate}
-          title={_('Word Lens')}
-          status={_('Show a short native-language hint above difficult words.')}
-          onClick={() => setShowWordLens(true)}
         />
       </BoxedList>
 

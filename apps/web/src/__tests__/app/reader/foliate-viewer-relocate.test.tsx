@@ -38,7 +38,6 @@ vi.mock('@/types/view', () => ({
 }));
 vi.mock('@/services/constants', () => ({ BOOK_IDS_SEPARATOR: ',' }));
 vi.mock('@/services/transformService', () => ({}));
-vi.mock('@/app/reader/utils/wordlensSection', () => ({}));
 vi.mock('@/app/reader/hooks/useFoliateEvents', () => ({ useFoliateEvents: vi.fn() }));
 vi.mock('@/app/reader/hooks/useBrightnessGesture', () => ({ useBrightnessGesture: () => ({}) }));
 vi.mock('@/app/reader/hooks/useAutoScroll', () => ({ useAutoScroll: () => ({}) }));

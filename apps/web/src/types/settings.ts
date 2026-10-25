@@ -62,12 +62,6 @@ export interface ReadSettings {
   notebookActiveTab: NotebookTab;
   translationProvider: string;
   translateTargetLang: string;
-  /**
-   * Global Word Lens toggle: auto-download a gloss pack on demand when the
-   * pair isn't cached locally. When off, the reader never fetches packs
-   * silently; users download them explicitly from the Word Lens sub-page.
-   */
-  wordLensAutoDownload: boolean;
   highlightStyle: HighlightStyle;
   highlightStyles: Record<HighlightStyle, HighlightColor>;
 

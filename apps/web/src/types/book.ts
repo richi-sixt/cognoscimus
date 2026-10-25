@@ -498,18 +498,6 @@ export interface AnnotatorConfig {
   noteExportConfig: NoteExportConfig;
 }
 
-export interface WordLensConfig {
-  wordLensEnabled: boolean;
-  /** Difficulty slider, 1 (fewest hints) .. 5 (most hints). */
-  wordLensLevel: number;
-  /** Hint (target) language; '' = auto (app UI language). */
-  wordLensHintLang: string;
-  /** Gloss (<rt>) font size relative to the word, in em (default 0.5). */
-  wordLensGlossFontSize: number;
-  /** Gloss (<rt>) color as a hex string; '' = default (muted, theme-adaptive). */
-  wordLensGlossColor: string;
-}
-
 export interface ScreenConfig {
   screenOrientation: 'auto' | 'portrait' | 'landscape';
 }
@@ -557,7 +545,6 @@ export interface ViewSettings
     ScreenConfig,
     ProofreadRulesConfig,
     AnnotatorConfig,
-    WordLensConfig,
     ViewSettingsConfig {}
 
 export interface BookProgress {
