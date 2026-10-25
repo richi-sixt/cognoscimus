@@ -1,6 +1,4 @@
-<<<<<<< HEAD
-# cognoscimus
-=======
+
 # cognoscimus
 
 A private, self-hosted e-book reader for the web. Sign in, read your EPUB, PDF, MOBI, CBZ and other books in the browser, and share individual books with other users for a limited time.
