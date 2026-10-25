@@ -3,7 +3,7 @@ import { cleanup, render, screen } from '@testing-library/react';
 
 const state = vi.hoisted(() => ({ user: null as { id: string } | null, replace: vi.fn() }));
 
-vi.mock('next/navigation', () => ({ useRouter: () => ({ replace: state.replace }) }));
+vi.mock('@/utils/hardNavigate', () => ({ hardNavigate: (url: string) => state.replace(url) }));
 vi.mock('@/context/AuthContext', () => ({ useAuth: () => ({ user: state.user }) }));
 
 import AuthGate from '@/components/AuthGate';

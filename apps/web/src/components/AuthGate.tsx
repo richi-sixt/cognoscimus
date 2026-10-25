@@ -1,8 +1,8 @@
 'use client';
 
 import { ReactNode, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { hardNavigate } from '@/utils/hardNavigate';
 
 // cognoscimus is private: everything except the sign-in routes needs a session.
 // The session is read from localStorage on the first client render, so a signed-in
@@ -11,7 +11,6 @@ const isPublicPath = (pathname: string) => pathname === '/auth' || pathname.star
 
 const AuthGate = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
-  const router = useRouter();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => setMounted(true), []);
@@ -21,8 +20,8 @@ const AuthGate = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (!blocked) return;
     const target = window.location.pathname + window.location.search;
-    router.replace(`/auth?redirect=${encodeURIComponent(target)}`);
-  }, [blocked, router]);
+    hardNavigate(`/auth?redirect=${encodeURIComponent(target)}`);
+  }, [blocked]);
 
   if (blocked) return null;
   return <>{children}</>;
