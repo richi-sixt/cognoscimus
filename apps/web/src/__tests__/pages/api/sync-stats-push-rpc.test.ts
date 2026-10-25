@@ -15,6 +15,10 @@ const rpcMock = vi.fn<(fn: string, args: unknown) => Promise<RpcResult>>();
 
 vi.mock('@/utils/supabase', () => ({
   createSupabaseClient: () => ({ from: fromMock, rpc: rpcMock }),
+  createSupabaseAdminClient: () => ({}),
+}));
+vi.mock('@/libs/grantsServer', () => ({
+  foreignGrantedHashes: async () => new Set<string>(),
 }));
 vi.mock('@/utils/access', () => ({
   validateUserAndToken: async () => ({ user: { id: 'u1' }, token: 'tok' }),

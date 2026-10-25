@@ -50,3 +50,34 @@ export const findBookFile = async (
   if (error) throw error;
   return (data ?? []).find((f) => !IMAGE_RE.test(f.file_key)) ?? null;
 };
+
+/**
+ * Book hashes the user holds only through someone else's grant (current or
+ * past) and does not own a file for. Their rows must never reach the user's own
+ * cloud records: the book is the owner's, and a grant ends.
+ */
+export const foreignGrantedHashes = async (
+  supabase: SupabaseClient,
+  userId: string,
+  hashes: string[],
+): Promise<Set<string>> => {
+  if (hashes.length === 0) return new Set();
+  const { data: grants, error: grantError } = await supabase
+    .from('book_grants')
+    .select('book_hash')
+    .eq('grantee_id', userId)
+    .in('book_hash', hashes);
+  if (grantError) throw grantError;
+  const granted = [...new Set((grants ?? []).map((g) => g.book_hash as string))];
+  if (granted.length === 0) return new Set();
+
+  const { data: owned, error: ownedError } = await supabase
+    .from('files')
+    .select('book_hash')
+    .eq('user_id', userId)
+    .in('book_hash', granted)
+    .is('deleted_at', null);
+  if (ownedError) throw ownedError;
+  const ownedHashes = new Set((owned ?? []).map((f) => f.book_hash as string));
+  return new Set(granted.filter((hash) => !ownedHashes.has(hash)));
+};

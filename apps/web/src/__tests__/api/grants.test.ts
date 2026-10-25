@@ -69,6 +69,10 @@ const table = (name: string) => {
       filters.push((r) => (r[c] ?? null) === v);
       return b;
     },
+    in: (c: string, values: unknown[]) => {
+      filters.push((r) => values.includes(r[c]));
+      return b;
+    },
     gt: (c: string, v: string) => {
       filters.push((r) => String(r[c]) > v);
       return b;

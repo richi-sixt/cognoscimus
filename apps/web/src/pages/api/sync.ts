@@ -1,7 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { NextRequest, NextResponse } from 'next/server';
 import { PostgrestError } from '@supabase/supabase-js';
-import { createSupabaseClient } from '@/utils/supabase';
+import { createSupabaseAdminClient, createSupabaseClient } from '@/utils/supabase';
+import { foreignGrantedHashes } from '@/libs/grantsServer';
 import { BookDataRecord } from '@/types/book';
 import { transformBookConfigToDB } from '@/utils/transform';
 import { transformBookNoteToDB } from '@/utils/transform';
@@ -671,7 +672,35 @@ export async function POST(req: NextRequest) {
   }
   const supabase = createSupabaseClient(token);
   const body = await req.json();
-  const { books = [], configs = [], notes = [], statBooks = [], statPages = [] } = body as SyncData;
+  const {
+    books: incomingBooks = [],
+    configs: incomingConfigs = [],
+    notes: incomingNotes = [],
+    statBooks = [],
+    statPages = [],
+  } = body as SyncData;
+
+  // Books shared with this user belong to their owner. Drop their rows, so a
+  // client that tags a shared book wrongly (or an older one) cannot leave its
+  // title and progress behind in this account's cloud records.
+  let foreignHashes: Set<string>;
+  try {
+    foreignHashes = await foreignGrantedHashes(createSupabaseAdminClient(), user.id, [
+      ...new Set(
+        [
+          ...incomingBooks.map((b) => b.hash),
+          ...incomingConfigs.map((c) => c.bookHash),
+          ...incomingNotes.map((n) => n.bookHash),
+        ].filter((hash): hash is string => !!hash),
+      ),
+    ]);
+  } catch (error) {
+    console.error('grant check for sync failed:', error);
+    return NextResponse.json({ error: 'Could not check shared books' }, { status: 500 });
+  }
+  const books = incomingBooks.filter((b) => !b.hash || !foreignHashes.has(b.hash));
+  const configs = incomingConfigs.filter((c) => !c.bookHash || !foreignHashes.has(c.bookHash));
+  const notes = incomingNotes.filter((n) => !n.bookHash || !foreignHashes.has(n.bookHash));
 
   const BATCH_SIZE = 100;
   const upsertRecords = async (
