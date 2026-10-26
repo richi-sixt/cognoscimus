@@ -108,7 +108,8 @@ export const makeComicBook = async ({ entries, loadBlob, getSize, getComment }, 
     }
     const files = entries
         .map(entry => entry.filename)
-        .filter(name => exts.some(ext => name.endsWith(ext)))
+        // Case-insensitive: scans and some archivers name pages "001.JPG".
+        .filter(name => { const lower = name.toLowerCase(); return exts.some(ext => lower.endsWith(ext)) })
         .sort(comparePaths)
     if (!files.length) throw new Error('No supported image files in archive')
 

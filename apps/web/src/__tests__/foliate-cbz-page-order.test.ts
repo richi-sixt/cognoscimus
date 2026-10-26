@@ -47,4 +47,9 @@ describe('CBZ page order (#5745)', () => {
     const order = await pageOrder(['Chapter 0059/10.jpg', 'Chapter 0059/2.jpg']);
     expect(order).toEqual(['Chapter 0059/2.jpg', 'Chapter 0059/10.jpg']);
   });
+
+  it('accepts page files with upper-case extensions (scans named 001.JPG)', async () => {
+    const order = await pageOrder(['Asterix_07_02.JPG', 'Asterix_07_01.JPG', 'notes.TXT']);
+    expect(order).toEqual(['Asterix_07_01.JPG', 'Asterix_07_02.JPG']);
+  });
 });
