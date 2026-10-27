@@ -188,21 +188,18 @@ const indexedDBFileSystem: FileSystem = {
   },
   async removeDir(path: string, base: BaseDir) {
     const { fp } = this.resolvePath(path, base);
+    const prefix = fp.endsWith('/') ? fp : `${fp}/`;
     const db = await openIndexedDB();
 
     return new Promise<void>((resolve, reject) => {
       const transaction = db.transaction('files', 'readwrite');
       const store = transaction.objectStore('files');
-      const request = store.getAll();
-
-      request.onsuccess = () => {
-        const files = request.result as { path: string }[];
-        files.forEach((file) => {
-          if (file.path.startsWith(fp)) {
-            store.delete(file.path);
-          }
-        });
-      };
+      // Delete by key, never by reading: keys are file paths, and a getAll() here
+      // materialised every stored book blob at once (gigabytes in a large library),
+      // which crashed the tab whenever the reader cleaned up a cache folder.
+      // `createDir` stores an empty file at the directory path itself.
+      store.delete(fp);
+      store.delete(IDBKeyRange.bound(prefix, `${prefix}\uffff`));
 
       transaction.oncomplete = () => resolve();
       transaction.onerror = () => reject(transaction.error);
@@ -216,28 +213,34 @@ const indexedDBFileSystem: FileSystem = {
     return new Promise<FileItem[]>((resolve, reject) => {
       const transaction = db.transaction('files', 'readonly');
       const store = transaction.objectStore('files');
-      // Keys are file paths: constrain to the directory prefix instead of
-      // materializing the whole store (every book blob) per listing — an
-      // unbounded getAll() here cost seconds per call on large libraries.
-      const request = store.getAll(IDBKeyRange.bound(prefix, `${prefix}\uffff`, false, true));
+      // Keys are file paths: constrain to the directory prefix, and walk it with a
+      // cursor so only one file's content is alive at a time. getAll() would hold
+      // every blob under the prefix (a whole library for `Books/`) in memory
+      // just to read their sizes.
+      const request = store.openCursor(IDBKeyRange.bound(prefix, `${prefix}\uffff`, false, true));
+      const items: FileItem[] = [];
 
       request.onsuccess = () => {
-        const files = request.result as { path: string; content: string | ArrayBuffer | Blob }[];
-        resolve(
-          files
-            .filter((file) => file.path.startsWith(prefix))
-            .map((file) => ({
-              path: file.path.slice(prefix.length),
-              size:
-                file.content instanceof Blob
-                  ? file.content.size
-                  : typeof file.content === 'string'
-                    ? file.content.length
-                    : file.content instanceof ArrayBuffer
-                      ? file.content.byteLength
-                      : 0,
-            })),
-        );
+        const cursor = request.result;
+        if (!cursor) {
+          resolve(items);
+          return;
+        }
+        const file = cursor.value as { path: string; content: string | ArrayBuffer | Blob };
+        if (file.path.startsWith(prefix)) {
+          items.push({
+            path: file.path.slice(prefix.length),
+            size:
+              file.content instanceof Blob
+                ? file.content.size
+                : typeof file.content === 'string'
+                  ? file.content.length
+                  : file.content instanceof ArrayBuffer
+                    ? file.content.byteLength
+                    : 0,
+          });
+        }
+        cursor.continue();
       };
 
       request.onerror = () => reject(request.error);
