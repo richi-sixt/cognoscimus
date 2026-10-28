@@ -276,6 +276,81 @@ export const applyBookTagEdits = (
     return { ...book, tags: [...kept, ...added], metadataUpdatedAt: now };
   });
 
+const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const toIndex = (raw: string): number | undefined => {
+  const value = parseFloat(raw.replace(',', '.'));
+  // Years in a title ("Hellboy 1994") are not volume numbers.
+  if (!Number.isFinite(value) || (value >= 1900 && value <= 2100)) return undefined;
+  return value;
+};
+
+const NUM = '(\\d+(?:[.,]\\d+)?)';
+const MARKER_PATTERNS = [
+  new RegExp(`(?:band|bd\\.?|vol(?:ume)?\\.?|nr\\.?|no\\.?|teil|tome|book|part|#)\\s*${NUM}`, 'i'),
+];
+
+// Reads the volume number out of a title: an explicit marker ("Band 3", "Vol. 12",
+// "#2.5") wins, then a number right after the series name, then a trailing number.
+export const parseIndexFromTitle = (title: string, series?: string): number | undefined => {
+  const text = title.trim();
+  if (!text) return undefined;
+  for (const pattern of MARKER_PATTERNS) {
+    const match = text.match(pattern);
+    if (match) return toIndex(match[1]!);
+  }
+  const name = series?.trim();
+  if (name) {
+    const match = text.match(new RegExp(`^${escapeRegExp(name)}\\W*${NUM}(?!\\d)`, 'i'));
+    if (match) return toIndex(match[1]!);
+  }
+  const trailing = text.match(new RegExp(`${NUM}\\s*\\)?$`));
+  return trailing ? toIndex(trailing[1]!) : undefined;
+};
+
+export type SeriesIndexMode = 'keep' | 'fromTitle' | 'sequential';
+
+export interface BookSeriesEdits {
+  // Undefined leaves each book's series name as it is.
+  series?: string;
+  indexMode: SeriesIndexMode;
+}
+
+// Series name and index live in book.metadata, so a changed book stamps
+// metadataUpdatedAt (the metadata sync clock) and leaves updatedAt alone.
+// "sequential" numbers the selected books 1..n in library order, "fromTitle"
+// keeps the current index when the title has no number.
+export const applyBookSeriesEdits = (
+  books: Book[],
+  selectedHashes: string[],
+  edits: BookSeriesEdits,
+  now = Date.now(),
+): Book[] => {
+  let position = 0;
+  return books.map((book) => {
+    if (book.deletedAt || !selectedHashes.includes(book.hash)) return book;
+    position += 1;
+    const series = edits.series?.trim() || book.metadata?.series;
+    let seriesIndex = book.metadata?.seriesIndex;
+    if (edits.indexMode === 'fromTitle') {
+      seriesIndex = parseIndexFromTitle(book.title, series) ?? seriesIndex;
+    } else if (edits.indexMode === 'sequential') {
+      seriesIndex = position;
+    }
+    if (series === book.metadata?.series && seriesIndex === book.metadata?.seriesIndex) return book;
+    return {
+      ...book,
+      metadata: { ...book.metadata, series, seriesIndex } as Book['metadata'],
+      metadataUpdatedAt: now,
+    };
+  });
+};
+
+export const getLibrarySeries = (books: Book[]): string[] =>
+  normalizeValues(
+    books.filter((book) => !book.deletedAt).map((book) => book.metadata?.series ?? ''),
+  ).sort((a, b) => a.localeCompare(b));
+
 const getBookValuesText = (book: Book): string =>
   [...getBookTags(book), ...getBookSubjects(book)].join(' ');
 

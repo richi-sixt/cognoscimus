@@ -8,6 +8,7 @@ import {
   MdCheckCircleOutline,
   MdOutlineCloudDownload,
   MdLabelOutline,
+  MdOutlineCollectionsBookmark,
   MdOutlineArchive,
 } from 'react-icons/md';
 import { LuFolderPlus } from 'react-icons/lu';
@@ -24,6 +25,7 @@ interface SelectModeActionsProps {
   onOpen: () => void;
   onGroup: () => void;
   onTag: () => void;
+  onSeries?: () => void;
   onDetails: () => void;
   onStatus: () => void;
   // Queues every cloud-only book in the selection, groups included (#5244).
@@ -44,6 +46,7 @@ const SelectModeActions: React.FC<SelectModeActionsProps> = ({
   onOpen,
   onGroup,
   onTag,
+  onSeries,
   onDetails,
   onStatus,
   onDownload,
@@ -125,6 +128,19 @@ const SelectModeActions: React.FC<SelectModeActionsProps> = ({
           <MdLabelOutline />
           <div>{_('Tag')}</div>
         </button>
+        {onSeries && (
+          <button
+            onClick={onSeries}
+            disabled={!hasSelection}
+            className={clsx(
+              'flex flex-col items-center justify-center gap-1',
+              !hasSelection && 'btn-disabled opacity-50',
+            )}
+          >
+            <MdOutlineCollectionsBookmark />
+            <div>{_('Series')}</div>
+          </button>
+        )}
         <button
           onClick={onStatus}
           className={clsx(

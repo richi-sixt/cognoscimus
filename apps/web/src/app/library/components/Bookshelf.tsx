@@ -56,6 +56,7 @@ import { createCollectionPack, COGNOSCIMUS_PACK_MIME } from '@/services/pack/pac
 import { useAuth } from '@/context/AuthContext';
 import GroupingModal from './GroupingModal';
 import TaggingModal from './TaggingModal';
+import SeriesModal from './SeriesModal';
 import SetStatusAlert from './SetStatusAlert';
 import { useOpenBook } from '../hooks/useOpenBook';
 import LibrarySearchResults from './LibrarySearchResults';
@@ -189,6 +190,7 @@ const Bookshelf: React.FC<BookshelfProps> = ({
   const [showStatusAlert, setShowStatusAlert] = useState(false);
   const [showGroupingModal, setShowGroupingModal] = useState(false);
   const [tagBookHashes, setTagBookHashes] = useState<string[] | null>(null);
+  const [seriesBookHashes, setSeriesBookHashes] = useState<string[] | null>(null);
   const [importBookUrl] = useState(searchParams?.get('url') || '');
 
   const abortDeletionRef = useRef(false);
@@ -494,6 +496,11 @@ const Bookshelf: React.FC<BookshelfProps> = ({
 
   const tagSelectedBooks = () => {
     setTagBookHashes(expandBookshelfSelection(getSelectedBooks(), sortedBookshelfItems));
+    setShowSelectModeActions(false);
+  };
+
+  const seriesSelectedBooks = () => {
+    setSeriesBookHashes(expandBookshelfSelection(getSelectedBooks(), sortedBookshelfItems));
     setShowSelectModeActions(false);
   };
 
@@ -889,23 +896,28 @@ const Bookshelf: React.FC<BookshelfProps> = ({
           <Spinner loading />
         </div>
       )}
-      {!showGroupingModal && !tagBookHashes && isSelectMode && showSelectModeActions && (
-        <SelectModeActions
-          selectedBooks={selectedBooks}
-          safeAreaBottom={safeAreaInsets?.bottom || 0}
-          onHeightChange={setSelectModeActionsHeight}
-          canDownload={downloadableBooks.length > 0}
-          onOpen={openSelectedBooks}
-          onGroup={groupSelectedBooks}
-          onTag={tagSelectedBooks}
-          onDetails={openBookDetails}
-          onStatus={showStatusSelection}
-          onDownload={downloadSelectedBooks}
-          onPack={handlePackSelectedBooks}
-          onDelete={deleteSelectedBooks}
-          onCancel={() => handleSetSelectMode(false)}
-        />
-      )}
+      {!showGroupingModal &&
+        !tagBookHashes &&
+        !seriesBookHashes &&
+        isSelectMode &&
+        showSelectModeActions && (
+          <SelectModeActions
+            selectedBooks={selectedBooks}
+            safeAreaBottom={safeAreaInsets?.bottom || 0}
+            onHeightChange={setSelectModeActionsHeight}
+            canDownload={downloadableBooks.length > 0}
+            onOpen={openSelectedBooks}
+            onGroup={groupSelectedBooks}
+            onTag={tagSelectedBooks}
+            onSeries={seriesSelectedBooks}
+            onDetails={openBookDetails}
+            onStatus={showStatusSelection}
+            onDownload={downloadSelectedBooks}
+            onPack={handlePackSelectedBooks}
+            onDelete={deleteSelectedBooks}
+            onCancel={() => handleSetSelectMode(false)}
+          />
+        )}
       {showGroupingModal && selectedBooks.length > 0 && (
         <ModalPortal>
           <GroupingModal
@@ -935,6 +947,22 @@ const Bookshelf: React.FC<BookshelfProps> = ({
             }}
             onConfirm={() => {
               setTagBookHashes(null);
+              handleSetSelectMode(false);
+            }}
+          />
+        </ModalPortal>
+      )}
+      {seriesBookHashes && (
+        <ModalPortal>
+          <SeriesModal
+            libraryBooks={libraryBooks}
+            bookHashes={seriesBookHashes}
+            onCancel={() => {
+              setSeriesBookHashes(null);
+              setShowSelectModeActions(true);
+            }}
+            onConfirm={() => {
+              setSeriesBookHashes(null);
               handleSetSelectMode(false);
             }}
           />
