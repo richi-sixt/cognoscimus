@@ -4,7 +4,6 @@ import { FiSearch } from 'react-icons/fi';
 import { MdOutlineMenu, MdOutlinePushPin, MdPushPin } from 'react-icons/md';
 import { MdArrowBackIosNew } from 'react-icons/md';
 import { useTranslation } from '@/hooks/useTranslation';
-import { useTrafficLight } from '@/hooks/useTrafficLight';
 import { useResponsiveSize } from '@/hooks/useResponsiveSize';
 import Dropdown from '@/components/Dropdown';
 import BookMenu from './BookMenu';
@@ -20,7 +19,6 @@ const SidebarHeader: React.FC<{
 }> = ({ bookKey, isPinned, isSearchBarVisible, onClose, onTogglePin, onToggleSearchBar }) => {
   const _ = useTranslation();
   const headerRef = useRef<HTMLDivElement>(null);
-  const { isTrafficLightVisible } = useTrafficLight(headerRef);
   const iconSize15 = useResponsiveSize(15);
   const iconSize18 = useResponsiveSize(18);
   const iconSize22 = useResponsiveSize(22);
@@ -28,10 +26,7 @@ const SidebarHeader: React.FC<{
   return (
     <div
       ref={headerRef}
-      className={clsx(
-        'sidebar-header flex h-11 items-center justify-between pe-2',
-        isTrafficLightVisible ? 'ps-1.5 sm:ps-20' : 'ps-1.5',
-      )}
+      className={clsx('sidebar-header flex h-11 items-center justify-between pe-2 ps-1.5')}
       dir='ltr'
     >
       <div className='flex items-center gap-x-8'>

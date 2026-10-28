@@ -2,7 +2,6 @@ import { describe, it, expect, beforeAll, afterEach, vi } from 'vitest';
 import { DocumentLoader } from '@/libs/document';
 import type { BookDoc } from '@/libs/document';
 import type { FoliateView, Renderer } from '@/types/view';
-import { NativePageTurn } from '@/app/reader/utils/nativePageTurn';
 
 // Vite serves fixture files; fetch the EPUB at runtime in the browser.
 const EPUB_URL = new URL('../fixtures/data/sample-alice.epub', import.meta.url).href;
@@ -106,56 +105,6 @@ describe('Paginator multi-view architecture (browser)', () => {
   });
 
   describe('Initial state', () => {
-    it('rejects backwards turns at the start during warm-up and still advances afterwards', async () => {
-      paginator = createPaginator(360);
-      paginator.open(book);
-      const stabilized = waitForStabilized(paginator);
-      await paginator.goTo({ index: 0 });
-      await stabilized;
-      await waitForFillComplete(paginator);
-      const keys = new Set<string>();
-      const native = new NativePageTurn(
-        {
-          getHostElement: () => document.body,
-          getContentRect: () => paginator.getBoundingClientRect(),
-          capture: async () => {
-            throw new Error('No encoded capture');
-          },
-          navigate: async (forward) => {
-            await (forward ? paginator.next() : paginator.prev());
-          },
-        },
-        {
-          renderer: paginator,
-          enabled: () => true,
-          call: async (command) => {
-            if (command.op === 'capture') {
-              expect(paginator.getPageTurnKey?.()).toBe(command.key);
-              keys.add(command.key!);
-            }
-            return { ready: true, keys: [...keys] };
-          },
-        },
-      );
-      try {
-        for (let i = 0; i < 3; i++) {
-          const warm = native.prepareCapture('curl');
-          expect(await native.turn(false, false)).toBe(false);
-          await warm;
-        }
-        for (let i = 0; i < 3; i++) {
-          const before = paginator.getPageTurnKey?.();
-          expect(await native.turn(true, false)).toBe(true);
-          const after = paginator.getPageTurnKey?.();
-          expect(after).not.toBe(before);
-          await new Promise((resolve) => setTimeout(resolve, 300));
-          expect(paginator.getPageTurnKey?.()).toBe(after);
-        }
-      } finally {
-        native.dispose();
-      }
-    });
-
     it('previews an adjacent page without relocating or changing the reading position', async () => {
       await setupAt(book.sections!.findIndex((s) => s.linear !== 'no'));
       await paginator.next();

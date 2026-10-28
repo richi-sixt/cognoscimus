@@ -1,9 +1,8 @@
 import { create } from 'zustand';
 import { Book, BookGroupType, ReadingStatus } from '@/types/book';
-import { EnvConfigType, isTauriAppPlatform } from '@/services/environment';
+import { EnvConfigType } from '@/services/environment';
 import { BOOK_UNGROUPED_NAME } from '@/services/constants';
 import { md5Fingerprint } from '@/utils/md5';
-import { isMainAppWindow } from '@/utils/window';
 
 interface LibraryState {
   library: Book[]; // might contain deleted books
@@ -76,12 +75,12 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   hashIndex: new Map(),
   visibleLibrary: [],
   coverThumbnails: new Map(),
-  checkOpenWithBooks: isTauriAppPlatform(),
-  checkLastOpenBooks: isTauriAppPlatform(),
+  checkOpenWithBooks: false,
+  checkLastOpenBooks: false,
   // Holds the Library blank while useOpenLaunchLinks checks for a pending
   // widget-tap deep link, so it doesn't flash before the reader takes over.
   // Only the launch window reads a cold-start link, so only it holds the gate.
-  checkPendingLaunchLink: isTauriAppPlatform() && isMainAppWindow(),
+  checkPendingLaunchLink: false,
 
   setIsSyncing: (syncing: boolean) => set({ isSyncing: syncing }),
   setSyncProgress: (progress: number) => set({ syncProgress: progress }),

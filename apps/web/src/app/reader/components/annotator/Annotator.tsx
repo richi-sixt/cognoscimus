@@ -21,8 +21,6 @@ import { useReaderStore } from '@/store/readerStore';
 import { useNotebookStore } from '@/store/notebookStore';
 import { useSidebarStore } from '@/store/sidebarStore';
 import { useCustomDictionaryStore } from '@/store/customDictionaryStore';
-import { isSystemDictionaryEnabled } from '@/services/dictionaries/registry';
-import { invokeSystemDictionary } from '@/services/dictionaries/systemDictionary';
 import { buildSelectionContext } from '@/services/dictionaries/contextDictionary';
 import type { DictionarySelectionContext } from '@/services/dictionaries/types';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -37,8 +35,6 @@ import { placeToolbar, Point, Position, Rect, TextSelection } from '@/utils/sel'
 import {
   getPopupPosition,
   getPosition,
-  getRangeRectInWebview,
-  getRangeTextStyleInWebview,
   getTextFromRange,
   getRenderedRunsFromRange,
 } from '@/utils/sel';
@@ -274,7 +270,7 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets; gridInsets?:
   const transPopupHeight = Math.min(265, maxHeight);
   const proofreadPopupWidth = Math.min(440, maxWidth);
   const proofreadPopupHeight = Math.min(200, maxHeight);
-  const canShare = canShareText(appService);
+  const canShare = canShareText();
   // For the ✓ (global) toggle in HighlightOptions: figure out whether
   // the booknote anchored at the current selection is currently global,
   // and whether the toggle should be shown at all (only meaningful for
@@ -1511,14 +1507,7 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets; gridInsets?:
 
   const handleShare = () => {
     if (!selection?.text) return;
-    const position = trianglePosition
-      ? {
-          x: trianglePosition.point.x,
-          y: trianglePosition.point.y,
-          preferredEdge: 'bottom' as const,
-        }
-      : undefined;
-    void shareSelectedText(selection.text, position, appService);
+    void shareSelectedText(selection.text);
     handleDismissPopupAndSelection();
   };
 
@@ -1860,27 +1849,6 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets; gridInsets?:
 
   const handleDictionary = () => {
     if (!selection || !selection.text) return;
-    // System-dictionary path: when the user has opted in via Settings →
-    // Languages → Dictionaries, hand the selection to the OS instead of
-    // opening the in-app popup. Exclusivity is enforced at the store
-    // level (enabling system disables everything else and vice versa),
-    // so a single check on the system flag is sufficient.
-    const dictSettings = useCustomDictionaryStore.getState().settings;
-    if (isSystemDictionaryEnabled(dictSettings)) {
-      // Build the macOS HUD anchor: the selection rect (so the HUD
-      // appears at the original word) and the underlying paragraph's
-      // text style (so AppKit re-draws the small label at the same
-      // font size / colour as the original, matching the system
-      // right-click → Look Up presentation).
-      const rect = selection.range ? getRangeRectInWebview(selection.range) : null;
-      const style = selection.range ? getRangeTextStyleInWebview(selection.range) : null;
-      void invokeSystemDictionary(
-        selection.text,
-        rect ? { rect, style: style ?? undefined } : undefined,
-      );
-      handleDismissPopupAndSelection();
-      return;
-    }
     setShowAnnotPopup(false);
     void suppressNativeSelectionHandles();
     setShowDictionaryPopup(true);

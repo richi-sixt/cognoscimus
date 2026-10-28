@@ -5,8 +5,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useThemeStore } from '@/store/themeStore';
 import { useEnv } from '@/context/EnvContext';
-import { isTauriAppPlatform } from '@/services/environment';
-import { tauriHandleSetAlwaysOnTop, tauriHandleToggleFullScreen } from '@/utils/window';
+import { canToggleFullScreen, toggleFullScreen } from '@/utils/window';
 import { nextThemeMode } from '@/utils/ambientLight';
 import { setAboutDialogVisible } from '@/components/AboutWindow';
 import { saveSysSettings } from '@/helpers/settings';
@@ -60,7 +59,7 @@ export const CommandPaletteProvider: React.FC<CommandPaletteProviderProps> = ({ 
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
 
-  const isDesktop = isTauriAppPlatform() && !appService?.isMobile;
+  const canFullscreen = canToggleFullScreen(appService);
 
   // action handlers
   const toggleTheme = useCallback(() => {
@@ -68,14 +67,8 @@ export const CommandPaletteProvider: React.FC<CommandPaletteProviderProps> = ({ 
   }, [themeMode, setThemeMode, appService?.hasAmbientLightSensor]);
 
   const toggleFullscreen = useCallback(() => {
-    tauriHandleToggleFullScreen();
+    toggleFullScreen();
   }, []);
-
-  const toggleAlwaysOnTop = useCallback(() => {
-    const newValue = !settings.alwaysOnTop;
-    saveSysSettings(envConfig, 'alwaysOnTop', newValue);
-    tauriHandleSetAlwaysOnTop(newValue);
-  }, [envConfig, settings.alwaysOnTop]);
 
   const toggleScreenWakeLock = useCallback(() => {
     const newValue = !settings.screenWakeLock;
@@ -85,11 +78,6 @@ export const CommandPaletteProvider: React.FC<CommandPaletteProviderProps> = ({ 
   const reloadPage = useCallback(() => {
     window.location.reload();
   }, []);
-
-  const toggleOpenLastBooks = useCallback(() => {
-    const newValue = !settings.openLastBooks;
-    saveSysSettings(envConfig, 'openLastBooks', newValue);
-  }, [envConfig, settings.openLastBooks]);
 
   const showAbout = useCallback(() => {
     setAboutDialogVisible(true);
@@ -115,12 +103,10 @@ export const CommandPaletteProvider: React.FC<CommandPaletteProviderProps> = ({ 
         openSettingsPanel,
         toggleTheme,
         toggleFullscreen,
-        toggleAlwaysOnTop,
         toggleScreenWakeLock,
         reloadPage,
-        toggleOpenLastBooks,
         showAbout,
-        isDesktop,
+        canFullscreen,
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
@@ -128,12 +114,10 @@ export const CommandPaletteProvider: React.FC<CommandPaletteProviderProps> = ({ 
       openSettingsPanel,
       toggleTheme,
       toggleFullscreen,
-      toggleAlwaysOnTop,
       toggleScreenWakeLock,
       reloadPage,
-      toggleOpenLastBooks,
       showAbout,
-      isDesktop,
+      canFullscreen,
     ],
   );
 

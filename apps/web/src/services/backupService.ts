@@ -2,7 +2,6 @@ import { mergeBookshelfStates } from '@/services/bookshelves/state';
 import type { Configuration, FileEntry, ZipWriter } from '@zip.js/zip.js';
 import { AppService, FileItem } from '@/types/system';
 import { EXTS } from '@/libs/document';
-import { isTauriAppPlatform } from '@/services/environment';
 import { Book, BookConfig, BookNote } from '@/types/book';
 import { SystemSettings } from '@/types/settings';
 import type { PageStatEvent, StatBook } from '@/types/statistics';
@@ -276,7 +275,7 @@ interface BackupPlan {
 
 /**
  * Plan the archive: which entries a backup holds and what they are named.
- * Shared by the in-memory zip.js writer (web) and the native writer (Tauri).
+ * Used by the in-memory zip.js writer.
  */
 async function collectBackupEntries(
   appService: AppService,
@@ -369,25 +368,6 @@ export async function addBackupEntriesToZip(
   }
 }
 
-type ZipProgress = { current: number; total: number; name: string };
-
-/**
- * Run one of the Rust zip commands, forwarding its progress channel.
- * The bulk bytes never cross the IPC bridge: on Android a request body is
- * serialized as a JSON number array, 3.9 MB/s measured on a Xiaomi 13, which
- * made a 687 MB library take three minutes to back up (#6291).
- */
-async function invokeZipCommand(
-  cmd: 'write_backup_zip' | 'extract_backup_zip',
-  args: Record<string, unknown>,
-  onProgress?: ProgressCallback,
-): Promise<void> {
-  const { Channel, invoke } = await import('@tauri-apps/api/core');
-  const channel = new Channel<ZipProgress>();
-  channel.onmessage = ({ current, total, name }) => onProgress?.(current, total, name);
-  await invoke(cmd, { ...args, onProgress: channel });
-}
-
 const ZIP_WRITE_CONFIG: Partial<Configuration> = {
   useWebWorkers: true,
   useCompressionStream: true,
@@ -396,7 +376,6 @@ const ZIP_WRITE_CONFIG: Partial<Configuration> = {
 
 /**
  * Create a backup zip in memory, returning an ArrayBuffer.
- * Used on web where streaming to a file is not available.
  */
 export async function createBackupZip(
   appService: AppService,
@@ -412,70 +391,6 @@ export async function createBackupZip(
   await writer.close();
   const blob = await blobWriter.getData();
   return await blob.arrayBuffer();
-}
-
-/**
- * Stream a backup zip directly to a file path on disk.
- * Uses TransformStream so only chunks are held in memory at a time.
- * Only available on Tauri (requires @tauri-apps/plugin-fs).
- */
-export async function createBackupZipToFile(
-  appService: AppService,
-  filePath: string,
-  options: BackupOptions = {},
-  onProgress?: ProgressCallback,
-): Promise<void> {
-  const { texts, files } = await collectBackupEntries(appService, options);
-  const srcDir = await appService.resolveFilePath('', 'Books');
-  // A file entry's name is also its path under srcDir (forward slashes; the
-  // writer joins them, so host separators never reach it).
-  const entries = [...texts, ...files.map(({ entryName }) => ({ name: entryName }))];
-  try {
-    // The writer reports every entry; the dialog's contract counts book files
-    // only and echoes their on-disk path (same as the zip.js writer below).
-    await invokeZipCommand('write_backup_zip', { dest: filePath, srcDir, entries }, (current) => {
-      const index = current - texts.length - 1;
-      const file = files[index];
-      if (file) onProgress?.(index + 1, files.length, file.file.path);
-    });
-    return;
-  } catch (error) {
-    // A non-seekable Android document provider fails on the first seek; a
-    // mid-run I/O error leaves a partial archive. Either way stream it the
-    // old way, after truncating whatever the native writer left behind.
-    console.error('Native backup writer failed, streaming through the IPC bridge instead:', error);
-  }
-
-  await configureZip(ZIP_WRITE_CONFIG);
-  const { ZipWriter } = await import('@zip.js/zip.js');
-  const { writeFile } = await import('@tauri-apps/plugin-fs');
-
-  await writeFile(filePath, new Uint8Array());
-  let stream!: TransformStreamDefaultController<Uint8Array>;
-  const { readable, writable } = new TransformStream<Uint8Array>({
-    start: (controller) => {
-      stream = controller;
-    },
-  });
-  // When either side fails, error the stream so the other one stops too:
-  // the zip writer would wait on backpressure forever (#6375) and the file
-  // write would keep reading, its file open, until the stream ends.
-  const failBoth = (error: unknown) => {
-    stream.error(error);
-    throw error;
-  };
-
-  // Start streaming readable side to the file (runs concurrently)
-  const writePromise = writeFile(filePath, readable).catch(failBoth);
-  const zipPromise = (async () => {
-    const writer = new ZipWriter(writable);
-    await addBackupEntriesToZip(writer, appService, options, onProgress);
-    await writer.close();
-  })().catch(failBoth);
-  // Wait for both: the caller may delete the file as soon as this returns.
-  const results = await Promise.allSettled([writePromise, zipPromise]);
-  const failure = results.find((result) => result.status === 'rejected');
-  if (failure) throw failure.reason;
 }
 
 /**
@@ -499,8 +414,6 @@ export async function restoreFromBackupZip(
   appService: AppService,
   zipBlob: Blob,
   onProgress?: ProgressCallback,
-  /** Where the zip lives (path or picker URI); lets Tauri extract it natively. */
-  source?: string,
 ): Promise<{ booksAdded: number; booksUpdated: number; settingsRestored: boolean }> {
   await configureZip();
   const { BlobReader, ZipReader, Uint8ArrayWriter } = await import('@zip.js/zip.js');
@@ -629,7 +542,7 @@ export async function restoreFromBackupZip(
     mergedConfigs.push({ filename: entry.filename, json: JSON.stringify(mergedConfig) });
   }
 
-  await extractEntries(appService, bulkEntries, source, (current, _bulkTotal, name) => {
+  await extractEntries(appService, bulkEntries, (current, _bulkTotal, name) => {
     onProgress?.(configMerges.length + current, total, name);
   });
   done = configMerges.length + bulkEntries.length;
@@ -696,34 +609,12 @@ export async function restoreFromBackupZip(
   return { booksAdded, booksUpdated, settingsRestored };
 }
 
-/**
- * Write zip entries into the Books dir: natively on Tauri when the zip's
- * location is known, otherwise (web, or a native failure) one file at a time
- * through the IPC bridge.
- */
+/** Write zip entries into the Books dir, one file at a time. */
 async function extractEntries(
   appService: AppService,
   entries: FileEntry[],
-  source: string | undefined,
   onProgress?: ProgressCallback,
 ): Promise<void> {
-  if (isTauriAppPlatform() && source) {
-    try {
-      const destDir = await appService.resolveFilePath('', 'Books');
-      const names = entries.map((e) => e.filename);
-      await invokeZipCommand(
-        'extract_backup_zip',
-        { src: source, destDir, entries: names },
-        onProgress,
-      );
-      return;
-    } catch (error) {
-      console.warn(
-        'Native backup extractor failed, writing through the IPC bridge instead:',
-        error,
-      );
-    }
-  }
   const { Uint8ArrayWriter } = await import('@zip.js/zip.js');
   for (let i = 0; i < entries.length; i++) {
     const entry = entries[i]!;
@@ -733,50 +624,13 @@ async function extractEntries(
   }
 }
 
-/**
- * Create and save a backup zip file.
- * On Tauri, streams directly to disk to avoid holding the entire zip in memory.
- * On web, builds the zip in memory and triggers a download.
- */
+/** Create a backup zip in memory and save it as a download. */
 export async function saveBackupFile(
   appService: AppService,
   filename: string,
   options: BackupOptions = {},
   onProgress?: ProgressCallback,
 ): Promise<boolean> {
-  if (isTauriAppPlatform() && appService.isIOSApp) {
-    // The iOS save picker only exports a file: the URL it returns is not
-    // writable afterwards (EPERM, #6375). Write the zip inside the sandbox
-    // and let the share sheet's "Save to Files" copy it out.
-    const stagedName = `shared/${filename}`;
-    await appService.createDir('shared', 'Temp', true);
-    const stagedPath = await appService.resolveFilePath(stagedName, 'Temp');
-    try {
-      await createBackupZipToFile(appService, stagedPath, options, onProgress);
-      const { shareFile } = await import('@choochmeque/tauri-plugin-sharekit-api');
-      await shareFile(stagedPath, { mimeType: 'application/zip' });
-      return true;
-    } catch (error) {
-      if (error === 'Share cancelled') return false;
-      throw error;
-    } finally {
-      await appService.deleteFile(stagedName, 'Temp').catch(() => {});
-    }
-  } else if (isTauriAppPlatform()) {
-    // Tauri: stream directly to the chosen file path
-    const { save: saveDialog } = await import('@tauri-apps/plugin-dialog');
-    const ext = filename.split('.').pop() || 'zip';
-    const filePath = await saveDialog({
-      defaultPath: filename,
-      filters: [{ name: ext.toUpperCase(), extensions: [ext] }],
-    });
-    if (!filePath) return false;
-    await createBackupZipToFile(appService, filePath, options, onProgress);
-    return true;
-  } else {
-    // Web: build zip in memory then save
-    const zipData = await createBackupZip(appService, options, onProgress);
-    let filePath: string | undefined;
-    return appService.saveFile(filename, zipData, { filePath, mimeType: 'application/zip' });
-  }
+  const zipData = await createBackupZip(appService, options, onProgress);
+  return appService.saveFile(filename, zipData, { mimeType: 'application/zip' });
 }

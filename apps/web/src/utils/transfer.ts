@@ -1,7 +1,3 @@
-import { invoke, Channel } from '@tauri-apps/api/core';
-
-export type UploadMethod = 'POST' | 'PUT';
-
 export const enum UploadFileError {
   Unauthorized = 'Unauthorized access',
   DownloadFailed = 'File download failed',
@@ -166,61 +162,4 @@ export const webDownload = async (
   }
 
   return { headers: responseHeaders, blob: new Blob(chunks as BlobPart[]) };
-};
-
-export const tauriUpload = async (
-  url: string,
-  filePath: string,
-  method: UploadMethod,
-  progressHandler?: ProgressHandler,
-  headers?: Map<string, string>,
-): Promise<string> => {
-  const ids = new Uint32Array(1);
-  window.crypto.getRandomValues(ids);
-  const id = ids[0];
-
-  const onProgress = new Channel<ProgressPayload>();
-  if (progressHandler) {
-    onProgress.onmessage = progressHandler;
-  }
-
-  return await invoke('upload_file', {
-    id,
-    url,
-    filePath,
-    method,
-    headers: headers ?? {},
-    onProgress,
-  });
-};
-
-export const tauriDownload = async (
-  url: string,
-  filePath: string,
-  progressHandler?: ProgressHandler,
-  headers?: Record<string, string>,
-  body?: string,
-  singleThreaded?: boolean,
-  skipSslVerification?: boolean,
-): Promise<Record<string, string>> => {
-  const ids = new Uint32Array(1);
-  window.crypto.getRandomValues(ids);
-  const id = ids[0];
-
-  const onProgress = new Channel<ProgressPayload>();
-  if (progressHandler) {
-    onProgress.onmessage = progressHandler;
-  }
-
-  const responseHeaders = await invoke<Record<string, string>>('download_file', {
-    id,
-    url,
-    filePath,
-    headers: headers ?? {},
-    onProgress,
-    body,
-    singleThreaded,
-    skipSslVerification,
-  });
-  return responseHeaders;
 };

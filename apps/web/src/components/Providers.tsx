@@ -8,14 +8,11 @@ import { AuthProvider } from '@/context/AuthContext';
 import AuthGate from '@/components/AuthGate';
 import AccountScope from '@/components/AccountScope';
 import { useEnv } from '@/context/EnvContext';
-import WindowResizeHandles from '@/components/WindowResizeHandles';
-import WindowOutline from '@/components/WindowOutline';
 import { SyncProvider } from '@/context/SyncContext';
 import { initSystemThemeListener, loadDataTheme } from '@/store/themeStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useCustomTextureStore } from '@/store/customTextureStore';
 import { useSafeAreaInsets } from '@/hooks/useSafeAreaInsets';
-import { useSettingsSync } from '@/hooks/useSettingsSync';
 import { useDefaultIconSize } from '@/hooks/useResponsiveSize';
 import { useBackgroundTexture } from '@/hooks/useBackgroundTexture';
 import { useEinkMode } from '@/hooks/useEinkMode';
@@ -29,7 +26,6 @@ import AtmosphereOverlay from '@/components/AtmosphereOverlay';
 import AppLockScreen from '@/components/AppLockScreen';
 import AppLockDialog from '@/components/settings/AppLockDialog';
 import PassphrasePrompt from '@/components/PassphrasePrompt';
-import { upgradeToKeychainIfAvailable } from '@/libs/crypto/passphrase';
 import { cryptoSession } from '@/libs/crypto/session';
 import { useAppLockStore } from '@/store/appLockStore';
 import { initSettingsSync } from '@/services/sync/replicaSettingsSync';
@@ -46,7 +42,6 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
   } = useAppLockStore();
   const iconSize = useDefaultIconSize();
   useSafeAreaInsets(); // Initialize safe area insets
-  useSettingsSync(); // Adopt global settings broadcast by other windows (#4580)
 
   useEffect(() => {
     const handlerLanguageChanged = (lng: string) => {
@@ -72,24 +67,6 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
     loadDataTheme();
     if (appService) {
       initSystemThemeListener(appService);
-      // Windows: the main window is created hidden and only mapped once the
-      // themed page is painted (the shell listens for this event) — see
-      // lib.rs. Other platforms ignore it.
-      import('@tauri-apps/api/event')
-        .then(({ emit }) => {
-          // Emit only after the themed frame has actually been painted
-          // (two rAFs = one full render). Hidden windows never fire rAF,
-          // so race a short fallback timer — beyond it, the page is
-          // painted anyway and emitting immediately is the pre-existing
-          // verified behavior.
-          const painted = new Promise<void>((resolve) => {
-            requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-          });
-          Promise.race([painted, new Promise<void>((r) => setTimeout(r, 100))]).then(() =>
-            emit('window-themed').catch(() => {}),
-          );
-        })
-        .catch(() => {});
       appService.loadSettings().then((settings) => {
         const globalViewSettings = settings.globalViewSettings;
         applyUILanguage(globalViewSettings.uiLanguage);
@@ -117,7 +94,6 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
           enabled: !!settings.pinCodeEnabled,
           hash: settings.pinCodeHash,
           salt: settings.pinCodeSalt,
-          biometricUnlockEnabled: !!settings.biometricUnlockEnabled,
         });
         // Subscribe the bundled-settings publisher to settingsStore
         // changes, AFTER priming the publish snapshot from the just-
@@ -140,16 +116,11 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
     initializeAppLock,
   ]);
 
-  // Sync-passphrase boot path: upgrade the passphrase store from
-  // ephemeral to OS keychain on Tauri (probe is async — must run after
-  // the platform check resolves), then attempt a silent unlock from
-  // the saved passphrase. Failures are silent — the gate prompts on
-  // first encrypted-field operation if we couldn't restore.
+  // Sync-passphrase boot path: attempt a silent unlock from the saved
+  // passphrase. Failures are silent — the gate prompts on first
+  // encrypted-field operation if we couldn't restore.
   useEffect(() => {
-    void (async () => {
-      await upgradeToKeychainIfAvailable();
-      await cryptoSession.tryRestoreFromStore();
-    })();
+    void cryptoSession.tryRestoreFromStore();
   }, []);
 
   useEffect(() => {
@@ -186,11 +157,9 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
                   <CommandPalette />
                   <AtmosphereOverlay />
                   <PassphrasePrompt />
-                  <WindowResizeHandles />
                 </div>
                 <AppLockDialog />
                 {showAppLockScreen && <AppLockScreen />}
-                <WindowOutline />
               </CommandPaletteProvider>
             </DropdownProvider>
           </SyncProvider>

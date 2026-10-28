@@ -1,20 +1,11 @@
 import { create } from 'zustand';
-import { addPluginListener, type PluginListener } from '@tauri-apps/api/core';
 import { AppService } from '@/types/system';
 import { getThemeCode, ThemeCode } from '@/utils/style';
 import {
-  getSystemColorScheme,
-  startAmbientLightUpdates,
-  stopAmbientLightUpdates,
-  type AmbientLightPayload,
-} from '@/utils/bridge';
-import {
   isValidThemeMode,
   readStoredAmbientIsDarkMode,
-  resolveAmbientIsDarkMode,
   resolveThemeIsDarkMode,
 } from '@/utils/ambientLight';
-import { getCurrentWindow } from '@tauri-apps/api/window';
 import { CustomTheme, Palette, ThemeMode, ThemeScope } from '@/styles/themes';
 import { EnvConfigType, isWebAppPlatform } from '@/services/environment';
 import { SystemSettings } from '@/types/settings';
@@ -24,7 +15,6 @@ import { StatusBarHiddenInsets } from '@/utils/insets';
 declare global {
   interface Window {
     __COGNOSCIMUS_IS_EINK?: boolean;
-    onNativeColorSchemeChange?: (colorScheme: 'light' | 'dark') => void;
   }
 }
 
@@ -90,7 +80,6 @@ interface ThemeState {
     isDelete?: boolean,
   ) => void;
   handleSystemThemeChange: (isDark: boolean) => void;
-  handleAmbientLightChange: (lux: number) => void;
   updateSafeAreaInsets: (insets: Insets) => void;
   recordStatusBarHiddenInsets: (insets: Insets) => void;
   updateScreenCornerRadius: (radius: number) => void;
@@ -138,12 +127,6 @@ const getInitialAmbientIsDarkMode = (systemIsDarkMode: boolean): boolean => {
   return systemIsDarkMode;
 };
 
-const persistAmbientIsDarkMode = (isDark: boolean) => {
-  if (typeof window !== 'undefined' && localStorage) {
-    localStorage.setItem('ambientIsDarkMode', isDark ? 'true' : 'false');
-  }
-};
-
 const applyDataTheme = (themeColor: string, isDarkMode: boolean) => {
   document.documentElement.setAttribute(
     'data-theme',
@@ -179,65 +162,6 @@ const resolveScopedTheme = (
 export const getThemeScopeForPath = (pathname?: string): ThemeScope => {
   const path = pathname ?? (typeof window !== 'undefined' ? window.location.pathname : '');
   return path.startsWith('/reader') ? 'reader' : 'library';
-};
-
-let ambientLightListener: PluginListener | null = null;
-let ambientLightListening = false;
-let ambientHasLuxReading = false;
-
-const stopAmbientLightListening = async () => {
-  if (ambientLightListener) {
-    try {
-      await ambientLightListener.unregister();
-    } catch {
-      // ignore unregister races on teardown
-    }
-    ambientLightListener = null;
-  }
-  if (ambientLightListening) {
-    ambientLightListening = false;
-    try {
-      await stopAmbientLightUpdates();
-    } catch {
-      // platform may not support ambient light
-    }
-  }
-  ambientHasLuxReading = false;
-};
-
-const startAmbientLightListening = async () => {
-  if (ambientLightListening) return;
-  try {
-    const started = await startAmbientLightUpdates();
-    if (!started.success) {
-      useThemeStore.getState().setThemeMode('auto');
-      return;
-    }
-    ambientLightListening = true;
-    ambientLightListener = await addPluginListener<AmbientLightPayload>(
-      'native-bridge',
-      'ambient-light',
-      (payload) => {
-        if (typeof payload?.lux === 'number') {
-          useThemeStore.getState().handleAmbientLightChange(payload.lux);
-        }
-      },
-    );
-  } catch {
-    useThemeStore.getState().setThemeMode('auto');
-  }
-};
-
-// Start and stop both span several awaits, so overlapping calls could
-// interleave: a stop landing after a start leaves the sensor off while we
-// still believe we are listening, and two starts leak the first listener.
-// Chaining every transition keeps the sensor in step with the last mode set.
-let ambientLightSync: Promise<void> = Promise.resolve();
-
-const syncAmbientLightSubscription = (mode: ThemeMode) => {
-  ambientLightSync = ambientLightSync.then(() =>
-    mode === 'ambient' ? startAmbientLightListening() : stopAmbientLightListening(),
-  );
 };
 
 export const useThemeStore = create<ThemeState>((set, get) => {
@@ -320,8 +244,7 @@ export const useThemeStore = create<ThemeState>((set, get) => {
     getScopedTheme: (scope) => resolveScopedTheme(scope, get()),
     setThemeScope: (scope) => {
       if (get().themeScope === scope) return;
-      const mode = applyActiveScope({ themeScope: scope }, false);
-      syncAmbientLightSubscription(mode);
+      applyActiveScope({ themeScope: scope }, false);
     },
     // The quick toggles (library settings menu, reader view menu, reader color
     // panel, command palette) route through here. While the library is still
@@ -345,11 +268,7 @@ export const useThemeStore = create<ThemeState>((set, get) => {
       if (typeof window !== 'undefined' && localStorage) {
         localStorage.setItem(isReader ? 'themeMode' : LIBRARY_THEME_MODE_KEY, mode);
       }
-      const activeMode = applyActiveScope(
-        isReader ? { readerThemeMode: mode } : { libraryThemeMode: mode },
-        isReader,
-      );
-      syncAmbientLightSubscription(activeMode);
+      applyActiveScope(isReader ? { readerThemeMode: mode } : { libraryThemeMode: mode }, isReader);
     },
     setScopedThemeColor: (scope, color) => {
       const isReader = scope === 'reader';
@@ -370,7 +289,7 @@ export const useThemeStore = create<ThemeState>((set, get) => {
         localStorage.removeItem(LIBRARY_THEME_MODE_KEY);
         localStorage.removeItem(LIBRARY_THEME_COLOR_KEY);
       }
-      const activeMode = applyActiveScope(
+      applyActiveScope(
         {
           readerThemeMode: 'auto',
           readerThemeColor: 'default',
@@ -379,7 +298,6 @@ export const useThemeStore = create<ThemeState>((set, get) => {
         },
         true,
       );
-      syncAmbientLightSubscription(activeMode);
     },
     updateAppTheme: (color) => {
       if (isWebAppPlatform()) {
@@ -408,17 +326,6 @@ export const useThemeStore = create<ThemeState>((set, get) => {
     },
     handleSystemThemeChange: (systemIsDarkMode) => {
       applyActiveScope({ systemIsDarkMode }, true);
-    },
-    handleAmbientLightChange: (lux) => {
-      if (get().themeMode !== 'ambient') return;
-      const previous = ambientHasLuxReading ? get().ambientIsDarkMode : null;
-      ambientHasLuxReading = true;
-      const nextAmbientIsDark = resolveAmbientIsDarkMode(lux, previous);
-      if (nextAmbientIsDark === get().ambientIsDarkMode && get().isDarkMode === nextAmbientIsDark) {
-        return;
-      }
-      persistAmbientIsDarkMode(nextAmbientIsDark);
-      applyActiveScope({ ambientIsDarkMode: nextAmbientIsDark }, true);
     },
     updateSafeAreaInsets: (insets) => {
       set({ safeAreaInsets: insets });
@@ -489,59 +396,17 @@ export const initSystemThemeListener = (appService: AppService) => {
     }
     useThemeStore.getState().handleSystemThemeChange(systemIsDarkMode);
   };
-  const updateColorTheme = async () => {
-    let systemIsDarkMode;
-    if (appService.isIOSApp) {
-      const res = await getSystemColorScheme();
-      systemIsDarkMode = res.colorScheme === 'dark';
-    } else {
-      systemIsDarkMode = mediaQuery.matches;
-    }
-    applySystemTheme(systemIsDarkMode);
-  };
-
-  const updateWindowTheme = async () => {
-    if (!appService.hasWindow || !appService.isLinuxApp) return;
-    const currentWindow = getCurrentWindow();
-    const isFullscreen = await currentWindow.isFullscreen();
-    const isMaximized = await currentWindow.isMaximized();
-    useThemeStore.setState({ isRoundedWindow: !isMaximized && !isFullscreen });
-  };
-
-  const syncAmbientForVisibility = () => {
-    const mode = useThemeStore.getState().themeMode;
-    if (document.visibilityState === 'visible') {
-      syncAmbientLightSubscription(mode);
-    } else {
-      void stopAmbientLightListening();
-    }
+  const updateColorTheme = () => {
+    applySystemTheme(mediaQuery.matches);
   };
 
   mediaQuery?.addEventListener('change', updateColorTheme);
-  document.addEventListener('visibilitychange', () => {
-    void updateColorTheme();
-    syncAmbientForVisibility();
-  });
-  window.addEventListener('resize', updateWindowTheme);
-
-  // iOS WKWebView never fires the `prefers-color-scheme` media query
-  // `change` event while the app stays foregrounded (e.g. toggling dark
-  // mode from Control Center), so the native plugin pushes the new
-  // appearance through this callback instead.
-  if (appService.isIOSApp) {
-    window.onNativeColorSchemeChange = (colorScheme) => {
-      applySystemTheme(colorScheme === 'dark');
-    };
-  }
+  document.addEventListener('visibilitychange', updateColorTheme);
 
   updateColorTheme();
 
-  // appService.init() has already probed the sensor by the time this runs, so
-  // fall back when Ambient Mode was persisted on a device that lacks one.
-  const themeMode = useThemeStore.getState().themeMode;
-  if (themeMode === 'ambient' && !appService.hasAmbientLightSensor) {
+  // Ambient Mode needs a light sensor, which the web has no access to.
+  if (useThemeStore.getState().themeMode === 'ambient') {
     useThemeStore.getState().setThemeMode('auto');
-  } else {
-    syncAmbientLightSubscription(themeMode);
   }
 };

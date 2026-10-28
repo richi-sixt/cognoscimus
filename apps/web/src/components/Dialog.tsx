@@ -7,11 +7,8 @@ import { useEnv } from '@/context/EnvContext';
 import { useDrag } from '@/hooks/useDrag';
 import { useThemeStore } from '@/store/themeStore';
 import { useTranslation } from '@/hooks/useTranslation';
-import { useDeviceControlStore } from '@/store/deviceStore';
 import { useResponsiveSize } from '@/hooks/useResponsiveSize';
-import { impactFeedback } from '@tauri-apps/plugin-haptics';
 import { getDirFromUILanguage } from '@/utils/rtl';
-import { eventDispatcher } from '@/utils/event';
 import { getHorizontalInsetStyle } from '@/utils/insets';
 import { Overlay } from './Overlay';
 
@@ -95,7 +92,6 @@ const Dialog: React.FC<DialogProps> = ({
   const _ = useTranslation();
   const { appService } = useEnv();
   const { systemUIVisible, statusBarHeight, safeAreaInsets, isIPhoneDuo } = useThemeStore();
-  const { acquireBackKeyInterception, releaseBackKeyInterception } = useDeviceControlStore();
   const [isFullHeightInMobile, setIsFullHeightInMobile] = useState(!snapHeight);
   // A mobile sheet sized by its content (a confirmation) rests at the bottom,
   // short of the screen's top, like a snapped one.
@@ -210,10 +206,6 @@ const Dialog: React.FC<DialogProps> = ({
     if (dialogRef.current) {
       dialogRef.current.addEventListener('keydown', handleKeyDown);
     }
-    if (appService?.isAndroidApp) {
-      acquireBackKeyInterception();
-      eventDispatcher.onSync('native-key-down', handleKeyDown);
-    }
 
     const timer = setTimeout(() => {
       if (
@@ -227,10 +219,6 @@ const Dialog: React.FC<DialogProps> = ({
     return () => {
       clearTimeout(timer);
       window.removeEventListener('keydown', handleKeyDown);
-      if (appService?.isAndroidApp) {
-        releaseBackKeyInterception();
-        eventDispatcher.offSync('native-key-down', handleKeyDown);
-      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
@@ -283,9 +271,6 @@ const Dialog: React.FC<DialogProps> = ({
       overlay.style.transition = `opacity ${transitionDuration}s ease-out`;
       overlay.style.opacity = '0';
       onClose();
-      if (appService?.hasHaptics) {
-        impactFeedback('light');
-      }
       setTimeout(() => {
         modal.style.transform = 'translateY(0%)';
       }, 300);

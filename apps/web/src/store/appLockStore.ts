@@ -23,20 +23,8 @@ interface AppLockState {
   pinHash: string | null;
   pinSalt: string | null;
 
-  /**
-   * Startup snapshot of `SystemSettings.biometricUnlockEnabled` (mobile-only).
-   * Threaded through `initialize` so `AppLockScreen` never races the page-level
-   * settingsStore seed.
-   */
-  biometricUnlockEnabled: boolean;
-
   /** Called once from `Providers` after `loadSettings` resolves. */
-  initialize: (config: {
-    enabled: boolean;
-    hash?: string;
-    salt?: string;
-    biometricUnlockEnabled?: boolean;
-  }) => void;
+  initialize: (config: { enabled: boolean; hash?: string; salt?: string }) => void;
 
   /** Called by `<AppLockScreen />` after a verified PIN entry. */
   unlock: () => void;
@@ -65,14 +53,12 @@ export const useAppLockStore = create<AppLockState>((set) => ({
   isUnlocked: true,
   pinHash: null,
   pinSalt: null,
-  biometricUnlockEnabled: false,
-  initialize: ({ enabled, hash, salt, biometricUnlockEnabled }) =>
+  initialize: ({ enabled, hash, salt }) =>
     set({
       isInitialized: true,
       isUnlocked: !enabled,
       pinHash: hash ?? null,
       pinSalt: salt ?? null,
-      biometricUnlockEnabled: !!biometricUnlockEnabled,
     }),
   unlock: () => set({ isUnlocked: true }),
   lock: () => set({ isUnlocked: false }),

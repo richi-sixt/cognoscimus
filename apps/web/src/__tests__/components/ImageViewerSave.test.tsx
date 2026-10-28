@@ -71,23 +71,6 @@ describe('ImageViewer save/share button', () => {
     );
   });
 
-  it('shares via saveFile without a toast on a share-capable platform', async () => {
-    const saveFile = vi.fn().mockResolvedValue(true);
-    h.appService = { isMobileApp: true, isMacOSApp: false, saveFile };
-
-    const { getByLabelText } = render(
-      <ImageViewer src={PNG_DATA_URL} onClose={vi.fn()} gridInsets={gridInsets} />,
-    );
-
-    // Share-capable → the affordance is the "Share Image" button.
-    fireEvent.click(getByLabelText('Share Image'));
-
-    await waitFor(() => expect(saveFile).toHaveBeenCalledTimes(1));
-    expect(saveFile.mock.calls[0]![2]).toMatchObject({ share: true });
-    // The OS share sheet is its own feedback; no toast on the share path.
-    expect(h.dispatch).not.toHaveBeenCalled();
-  });
-
   it('saves to the photo gallery on Android instead of sharing', async () => {
     const saveImageToGallery = vi.fn().mockResolvedValue(true);
     const saveFile = vi.fn().mockResolvedValue(true);

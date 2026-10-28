@@ -10,20 +10,14 @@ vi.mock('@/utils/time', () => ({
   initDayjs: vi.fn(),
 }));
 
-vi.mock('@/utils/settingsSync', () => ({
-  broadcastGlobalSettings: vi.fn(),
-}));
-
 import i18n from '@/i18n/i18n';
 import { initDayjs } from '@/utils/time';
-import { broadcastGlobalSettings } from '@/utils/settingsSync';
 import { useSettingsStore } from '@/store/settingsStore';
 import type { EnvConfigType } from '@/services/environment';
 import type { SystemSettings } from '@/types/settings';
 
 const mockChangeLanguage = vi.mocked(i18n.changeLanguage);
 const mockInitDayjs = vi.mocked(initDayjs);
-const mockBroadcastGlobalSettings = vi.mocked(broadcastGlobalSettings);
 
 function makeSettings(overrides: Partial<SystemSettings> = {}): SystemSettings {
   return {
@@ -96,7 +90,7 @@ describe('settingsStore', () => {
   });
 
   describe('saveSettings', () => {
-    test('persists settings and broadcasts globals to other windows', async () => {
+    test('persists settings', async () => {
       const settings = makeSettings({ version: 7 });
       const saveSettings = vi.fn().mockResolvedValue(undefined);
       const envConfig = {
@@ -106,7 +100,6 @@ describe('settingsStore', () => {
       await useSettingsStore.getState().saveSettings(envConfig, settings);
 
       expect(saveSettings).toHaveBeenCalledWith(settings);
-      expect(mockBroadcastGlobalSettings).toHaveBeenCalledWith(settings);
     });
   });
 

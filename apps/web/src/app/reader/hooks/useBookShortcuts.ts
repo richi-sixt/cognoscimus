@@ -1,11 +1,9 @@
 import { useEffect, useRef } from 'react';
 import { useReaderStore } from '@/store/readerStore';
 import { useNotebookStore } from '@/store/notebookStore';
-import { isTauriAppPlatform } from '@/services/environment';
 import { useSidebarStore } from '@/store/sidebarStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useBookDataStore } from '@/store/bookDataStore';
-import { tauriHandleClose, tauriHandleToggleFullScreen, tauriQuitApp } from '@/utils/window';
 import { eventDispatcher } from '@/utils/event';
 import { useEnv } from '@/context/EnvContext';
 import { saveViewSettings } from '@/helpers/settings';
@@ -273,22 +271,6 @@ const useBookShortcuts = ({ sideBarBookKey, bookKeys }: UseBookShortcutsProps) =
     window.location.reload();
   };
 
-  const toggleFullscreen = () => {
-    if (!isTauriAppPlatform()) return false;
-    return tauriHandleToggleFullScreen().then(() => true);
-  };
-
-  const closeWindow = () => {
-    if (!isTauriAppPlatform()) return false;
-    return tauriHandleClose().then(() => true);
-  };
-
-  const quitApp = () => {
-    // on web platform use browser's default shortcut to close the tab
-    if (!isTauriAppPlatform()) return false;
-    return tauriQuitApp().then(() => true);
-  };
-
   const showSearchBar = () => {
     setTimeout(() => {
       eventDispatcher.dispatch('search-term', { term: null, bookKey: sideBarBookKey });
@@ -516,7 +498,6 @@ const useBookShortcuts = ({ sideBarBookKey, bookKeys }: UseBookShortcutsProps) =
         setSettingsDialogOpen(true);
       },
       onShowSearchBar: showSearchBar,
-      onToggleFullscreen: toggleFullscreen,
       onToggleTTS: toggleTTS,
       onTTSPlayPause: ttsPlayPause,
       onTTSGoNextSentence: ttsGoNextSentence,
@@ -525,8 +506,6 @@ const useBookShortcuts = ({ sideBarBookKey, bookKeys }: UseBookShortcutsProps) =
       onTTSGoPreviousParagraph: ttsGoPreviousParagraph,
       onTTSHighlightSentence: ttsHighlightSentence,
       onReloadPage: reloadPage,
-      onCloseWindow: closeWindow,
-      onQuitApp: quitApp,
       onGoLeft: goLeft,
       onGoRight: goRight,
       onGoUp: goUp,

@@ -426,12 +426,6 @@ export const useCustomDictionaryStore = create<DictionaryStoreState>((set, get) 
 
   setEnabled: (id, enabled) => {
     set((state) => {
-      // System-dictionary exclusivity is enforced at LOOKUP time:
-      // `isSystemDictionaryEnabled` short-circuits to the OS handoff before
-      // any in-app provider runs. Persisting each provider's enabled state
-      // independently lets the user toggle System on/off without losing
-      // their preferred set of in-app providers — every flag is restored
-      // verbatim the moment System is turned back off.
       const next: Record<string, boolean> = {
         ...state.settings.providerEnabled,
         [id]: enabled,

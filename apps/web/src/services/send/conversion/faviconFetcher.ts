@@ -1,7 +1,3 @@
-import { browserFetch as tauriFetch } from '@/services/webBrowser/browserFetch';
-import { isTauriAppPlatform } from '@/services/environment';
-import { imageFetchHeaders } from './httpHeaders';
-
 /**
  * Find and fetch the best icon for a clipped article — the icon that
  * lands on the synthetic cover. We prefer the page's `<link rel="apple-
@@ -29,20 +25,10 @@ const HOSTED_FALLBACK_PATHS = [
   '/favicon.ico',
 ];
 
-const httpFetch = (url: string, referer: string | null, init?: RequestInit): Promise<Response> => {
-  if (!isTauriAppPlatform()) {
-    // In the extension SW (the only non-Tauri caller today) include
-    // credentials so cookie-gated favicons / author images on paywalled
-    // hosts come through with the user's session.
-    return globalThis.fetch(url, { credentials: 'include', ...init });
-  }
-  const baseHeaders = imageFetchHeaders(referer);
-  const headers = new Headers(init?.headers);
-  for (const [k, v] of Object.entries(baseHeaders)) {
-    if (!headers.has(k)) headers.set(k, v);
-  }
-  return tauriFetch(url, { ...init, headers });
-};
+// Include credentials so cookie-gated favicons / author images on paywalled
+// hosts come through with the user's session.
+const httpFetch = (url: string, init?: RequestInit): Promise<Response> =>
+  globalThis.fetch(url, { credentials: 'include', ...init });
 
 interface IconCandidate {
   url: string;
@@ -104,29 +90,24 @@ export function extractIconCandidates(doc: Document, pageUrl: string): IconCandi
  */
 export async function fetchAuthorImage(
   url: string,
-  referer: string | null,
 ): Promise<{ bytes: ArrayBuffer; mime: string } | null> {
-  return fetchImage(url, referer, MAX_AUTHOR_IMAGE_BYTES);
+  return fetchImage(url, MAX_AUTHOR_IMAGE_BYTES);
 }
 
-async function fetchFavicon(
-  url: string,
-  referer: string | null,
-): Promise<{ bytes: ArrayBuffer; mime: string } | null> {
-  return fetchImage(url, referer, MAX_FAVICON_BYTES);
+async function fetchFavicon(url: string): Promise<{ bytes: ArrayBuffer; mime: string } | null> {
+  return fetchImage(url, MAX_FAVICON_BYTES);
 }
 
 const MAX_AUTHOR_IMAGE_BYTES = 2 * 1024 * 1024;
 
 async function fetchImage(
   url: string,
-  referer: string | null,
   maxBytes: number,
 ): Promise<{ bytes: ArrayBuffer; mime: string } | null> {
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort(), FETCH_TIMEOUT_MS);
   try {
-    const res = await httpFetch(url, referer, { signal: ac.signal, redirect: 'follow' });
+    const res = await httpFetch(url, { signal: ac.signal, redirect: 'follow' });
     if (!res.ok) return null;
     const bytes = await res.arrayBuffer();
     if (bytes.byteLength === 0 || bytes.byteLength > maxBytes) return null;
@@ -195,7 +176,7 @@ export async function fetchBestFavicon(
   });
 
   for (const candidate of ordered) {
-    const result = await fetchFavicon(candidate.url, pageUrl);
+    const result = await fetchFavicon(candidate.url);
     if (result) return result;
   }
   return null;

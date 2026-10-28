@@ -14,12 +14,6 @@ vi.mock('@/services/tts/WebSpeechClient', () => ({
   }),
 }));
 
-vi.mock('@/services/tts/NativeTTSClient', () => ({
-  NativeTTSClient: vi.fn().mockImplementation(function (this: Record<string, unknown>) {
-    Object.assign(this, createMockTTSClient('native'));
-  }),
-}));
-
 // Track the inaudible background keep-alive (WebAudio) toggled for direct-speak
 // engines. Arrow closures so the vi.mock hoist never hits a TDZ on these consts.
 const startKeepAlive = vi.fn();
@@ -249,22 +243,6 @@ describe('TTSController', () => {
       expect(controller.ttsClient.name).toBe('web');
     });
 
-    test('creates native client when isAndroidApp', () => {
-      const androidService = createMockAppService(true);
-      const c = new TTSController(androidService, mockView);
-      expect(c.ttsNativeClient).not.toBeNull();
-    });
-
-    test('creates native client when isIOSApp', () => {
-      const iosService = createMockAppService(false, true);
-      const c = new TTSController(iosService, mockView);
-      expect(c.ttsNativeClient).not.toBeNull();
-    });
-
-    test('does not create native client when neither Android nor iOS', () => {
-      expect(controller.ttsNativeClient).toBeNull();
-    });
-
     test('stores preprocessCallback', () => {
       const cb = vi.fn();
       const c = new TTSController(mockAppService, mockView, false, cb);
@@ -297,14 +275,6 @@ describe('TTSController', () => {
       // first available is web
       expect(controller.ttsClient.name).toBe('web');
     });
-
-    test('also initializes native client on Android', async () => {
-      const androidService = createMockAppService(true);
-      const c = new TTSController(androidService, mockView);
-      await c.init();
-      expect(c.ttsNativeClient!.init).toHaveBeenCalled();
-      expect(c.ttsNativeClient!.getAllVoices).toHaveBeenCalled();
-    });
   });
 
   describe('setRate', () => {
@@ -324,18 +294,6 @@ describe('TTSController', () => {
     test('returns false when ttsClient is not the edge client', () => {
       controller.ttsClient = controller.ttsWebClient;
       expect(controller.supportsGapControl()).toBe(false);
-    });
-  });
-
-  describe('setVoice', () => {
-    test('switches to native client when voice found in native voices', async () => {
-      const androidService = createMockAppService(true);
-      const c = new TTSController(androidService, mockView);
-      await c.init();
-      c.ttsNativeVoices = [{ id: 'native-v', name: 'Native', lang: 'en-US' }];
-      await c.setVoice('native-v', 'en');
-
-      expect(c.ttsClient.name).toBe('native');
     });
   });
 
@@ -1655,20 +1613,6 @@ describe('TTSController', () => {
     });
   });
 
-  describe('shutdown', () => {
-    test('shuts down native client when initialized', async () => {
-      const androidService = createMockAppService(true);
-      const c = new TTSController(androidService, mockView);
-      await c.init();
-      c.ttsNativeClient!.initialized = true;
-
-      vi.spyOn(c, 'stop').mockResolvedValue();
-      await c.shutdown();
-
-      expect(c.ttsNativeClient!.shutdown).toHaveBeenCalled();
-    });
-  });
-
   describe('start', () => {
     test('uses tts.resume() not tts.start() when state is stopped (play/pause race fix)', async () => {
       // Repro: `forward()` transitions state to 'stopped' transiently between its
@@ -1748,173 +1692,6 @@ describe('TTSController', () => {
       // should not throw
       await controller.stop();
       expect(controller.state).toBe('stopped');
-    });
-  });
-
-  // Regression: Android System TTS (and iOS) read offline can report a terminal
-  // 'error' for an utterance it cannot synthesize — typically a specific
-  // unsupported character, hit characteristically on the first utterance after
-  // a chapter boundary even with a local/offline voice (online the engine often
-  // network-falls-back, which is why it only breaks offline). #speak only
-  // auto-advances on 'end', so without handling, one such error dead-ends
-  // playback ("stops at the end of the chapter") with the controls wedged in
-  // 'playing'. Re-speaking the same text would just fail again, so the
-  // controller skips the bad chunk and advances, bounding consecutive failures
-  // so a wholly-unusable engine still stops gracefully. See #4613, #4408.
-  describe('native TTS offline error recovery (#4613, #4408)', () => {
-    // An Android controller whose ACTIVE client is the native client, so the
-    // native-scoped recovery in #speak() is exercised.
-    const makeAndroidNativeController = async () => {
-      const androidService = createMockAppService(true);
-      const c = new TTSController(androidService, mockView);
-      await c.init();
-      c.ttsClient = c.ttsNativeClient!;
-      await c.initViewTTS(0);
-      speakingControllers.push(c);
-      return c;
-    };
-
-    // A native speak() mock that always reports a terminal 'error' for real
-    // (non-preload) utterances — i.e. a deterministically unspeakable chunk.
-    // Preload calls (used to warm caches) resolve immediately like the real
-    // client and never count as attempts.
-    const alwaysErrorSpeakMock = (state: { attempts: number }) =>
-      async function* (
-        _ssml: string,
-        _signal: AbortSignal,
-        preload?: boolean,
-      ): AsyncGenerator<TTSMessageEvent> {
-        if (preload) {
-          yield { code: 'end' };
-          return;
-        }
-        state.attempts += 1;
-        yield { code: 'error', message: 'TTS playback error:-8' };
-      };
-
-    test('skips a chunk the engine cannot speak and advances instead of dead-ending', async () => {
-      const c = await makeAndroidNativeController();
-      // Stub forward() so the skip is observable without recursing through the
-      // mock sections; the point is that an error triggers an advance at all
-      // (retrying the same unspeakable text would be futile).
-      const forwardSpy = vi.spyOn(c, 'forward').mockResolvedValue();
-
-      const state = { attempts: 0 };
-      vi.mocked(c.ttsNativeClient!.speak).mockImplementation(alwaysErrorSpeakMock(state));
-
-      c.speak('<speak>bad-char</speak>');
-
-      await vi.waitFor(
-        () => {
-          expect(forwardSpy).toHaveBeenCalled(); // advanced past the bad chunk
-        },
-        { timeout: 5000 },
-      );
-      // It advanced rather than freezing in a phantom 'playing' halt.
-      expect(c.state).toBe('playing');
-    });
-
-    test('stops gracefully after a run of consecutive unspeakable chunks', async () => {
-      const c = await makeAndroidNativeController();
-      // Real forward(): each error skips to the next (mock) chunk, which also
-      // errors, until the consecutive-error cap stops playback.
-
-      const state = { attempts: 0 };
-      vi.mocked(c.ttsNativeClient!.speak).mockImplementation(alwaysErrorSpeakMock(state));
-
-      c.speak('<speak>bad-char</speak>');
-
-      // It skips past each unspeakable chunk — attempts climb past 1 (not an
-      // immediate halt) — until the consecutive-error cap is reached. (We key
-      // off attempts, not state: the controller starts 'stopped' and forward()
-      // transiently re-enters 'stopped' between chunks.)
-      await vi.waitFor(() => expect(state.attempts).toBeGreaterThanOrEqual(5), { timeout: 8000 });
-
-      // Confirm the cap-stop settled (bounded, not racing to the end of the book).
-      await vi.waitFor(() => expect(c.state).not.toBe('playing'));
-      expect(c.state).not.toBe('playing');
-      expect(state.attempts).toBeLessThanOrEqual(10);
-    });
-  });
-
-  describe('native TTS background keep-alive (#4408)', () => {
-    // Android controller whose ACTIVE client is the direct-speak native engine
-    // (mediaClock === false): its audio renders in the OS, not the WebView.
-    const makeAndroidNativeController = async () => {
-      const c = new TTSController(createMockAppService(true), mockView);
-      await c.init();
-      c.ttsClient = c.ttsNativeClient!;
-      await c.initViewTTS(0);
-      speakingControllers.push(c);
-      return c;
-    };
-
-    test('starts an inaudible keep-alive when native TTS begins playing on Android', async () => {
-      const c = await makeAndroidNativeController();
-      vi.spyOn(c, 'forward').mockResolvedValue();
-
-      c.speak('<speak>hello</speak>');
-
-      await vi.waitFor(() => expect(startKeepAlive).toHaveBeenCalled(), { timeout: 5000 });
-      expect(c.state).toBe('playing');
-      expect(stopKeepAlive).not.toHaveBeenCalled();
-    });
-
-    test('does not start the keep-alive off Android', async () => {
-      // Default controller: appService.isAndroidApp === false, web engine.
-      await controller.initViewTTS(0);
-      vi.spyOn(controller, 'forward').mockResolvedValue();
-
-      controller.speak('<speak>hello</speak>');
-
-      await vi.waitFor(() => expect(controller.state).toBe('playing'), { timeout: 5000 });
-      expect(startKeepAlive).not.toHaveBeenCalled();
-    });
-
-    // A paused session is still a live session: its lock-screen / Bluetooth
-    // transport handlers run in the WebView. Dropping the keep-alive at pause
-    // let Android freeze the hidden page, after which Play from a headset only
-    // flipped the notification (the media session lives in the app process)
-    // while the reader never woke up to speak. See #5561.
-    test('keeps the keep-alive running while paused so transport still reaches the page', async () => {
-      const c = await makeAndroidNativeController();
-      vi.spyOn(c, 'forward').mockResolvedValue();
-      c.speak('<speak>hello</speak>');
-      await vi.waitFor(() => expect(startKeepAlive).toHaveBeenCalled(), { timeout: 5000 });
-      startKeepAlive.mockClear();
-      stopKeepAlive.mockClear();
-
-      await c.pause();
-
-      expect(startKeepAlive).toHaveBeenCalled();
-      expect(stopKeepAlive).not.toHaveBeenCalled();
-    });
-
-    // Buffered engines earn the exemption for free only while they are actually
-    // speaking; a paused WebAudio session emits nothing either, so it needs the
-    // tone exactly as the direct-speak engines do.
-
-    test('does not keep the page awake while paused off Android', async () => {
-      await controller.initViewTTS(0);
-      vi.spyOn(controller, 'forward').mockResolvedValue();
-      controller.speak('<speak>hello</speak>');
-      await vi.waitFor(() => expect(controller.state).toBe('playing'), { timeout: 5000 });
-
-      await controller.pause();
-
-      expect(startKeepAlive).not.toHaveBeenCalled();
-      expect(stopKeepAlive).toHaveBeenCalled();
-    });
-
-    test('stops the keep-alive on shutdown', async () => {
-      const c = await makeAndroidNativeController();
-      vi.spyOn(c, 'forward').mockResolvedValue();
-      c.speak('<speak>hello</speak>');
-      await vi.waitFor(() => expect(startKeepAlive).toHaveBeenCalled(), { timeout: 5000 });
-
-      await c.shutdown();
-
-      expect(stopKeepAlive).toHaveBeenCalled();
     });
   });
 

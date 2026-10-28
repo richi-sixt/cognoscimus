@@ -1,15 +1,8 @@
-import { getAPIBaseUrl, isWebAppPlatform } from '@/services/environment';
+import { getAPIBaseUrl } from '@/services/environment';
 import { AppService } from '@/types/system';
 import { getUserID } from '@/utils/access';
 import { fetchWithAuth } from '@/utils/fetch';
-import {
-  tauriUpload,
-  tauriDownload,
-  webUpload,
-  webDownload,
-  ProgressHandler,
-  ProgressPayload,
-} from '@/utils/transfer';
+import { webUpload, webDownload, ProgressHandler, ProgressPayload } from '@/utils/transfer';
 
 const API_ENDPOINTS = {
   upload: getAPIBaseUrl() + '/storage/upload',
@@ -39,12 +32,7 @@ export const createProgressHandler = (
   };
 };
 
-export const uploadFile = async (
-  file: File,
-  fileFullPath: string,
-  onProgress?: ProgressHandler,
-  bookHash?: string,
-) => {
+export const uploadFile = async (file: File, onProgress?: ProgressHandler, bookHash?: string) => {
   try {
     const response = await fetchWithAuth(API_ENDPOINTS.upload, {
       method: 'POST',
@@ -59,11 +47,7 @@ export const uploadFile = async (
     });
 
     const { uploadUrl }: { uploadUrl: string } = await response.json();
-    if (isWebAppPlatform()) {
-      await webUpload(file, uploadUrl, onProgress);
-    } else {
-      await tauriUpload(uploadUrl, fileFullPath, 'PUT', onProgress);
-    }
+    await webUpload(file, uploadUrl, onProgress);
   } catch (error) {
     console.error('File upload failed:', error);
     if (error instanceof Error) {
@@ -80,7 +64,6 @@ export const uploadFile = async (
 // Filenames are server-validated (see src/libs/replicaSchemas.ts:validateFilename).
 export const uploadReplicaFile = async (
   file: File,
-  fileFullPath: string,
   cfp: string,
   replicaKind: string,
   replicaId: string,
@@ -102,11 +85,7 @@ export const uploadReplicaFile = async (
     });
 
     const { uploadUrl }: { uploadUrl: string } = await response.json();
-    if (isWebAppPlatform()) {
-      await webUpload(file, uploadUrl, onProgress);
-    } else {
-      await tauriUpload(uploadUrl, fileFullPath, 'PUT', onProgress);
-    }
+    await webUpload(file, uploadUrl, onProgress);
   } catch (error) {
     console.error('Replica file upload failed:', error);
     if (error instanceof Error) throw error;
@@ -151,8 +130,6 @@ type DownloadFileParams = {
   cfp: string;
   url?: string;
   headers?: Record<string, string>;
-  singleThreaded?: boolean;
-  skipSslVerification?: boolean;
   onProgress?: ProgressHandler;
 };
 
@@ -162,8 +139,6 @@ export const downloadFile = async ({
   cfp,
   url,
   headers,
-  singleThreaded,
-  skipSslVerification,
   onProgress,
 }: DownloadFileParams) => {
   try {
@@ -189,25 +164,9 @@ export const downloadFile = async ({
       throw new Error('No download URL available');
     }
 
-    if (isWebAppPlatform()) {
-      const { headers: responseHeaders, blob } = await webDownload(
-        downloadUrl,
-        onProgress,
-        headers,
-      );
-      await appService.writeFile(dst, 'None', await blob.arrayBuffer());
-      return responseHeaders;
-    } else {
-      return await tauriDownload(
-        downloadUrl,
-        dst,
-        onProgress,
-        headers,
-        undefined,
-        singleThreaded,
-        skipSslVerification,
-      );
-    }
+    const { headers: responseHeaders, blob } = await webDownload(downloadUrl, onProgress, headers);
+    await appService.writeFile(dst, 'None', await blob.arrayBuffer());
+    return responseHeaders;
   } catch (error) {
     console.error(`File '${dst}' download failed:`, error);
     throw error;

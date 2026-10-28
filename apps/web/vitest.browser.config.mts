@@ -32,10 +32,6 @@ export default defineConfig({
   optimizeDeps: {
     include: [
       '@supabase/supabase-js',
-      '@tauri-apps/plugin-fs',
-      '@tauri-apps/plugin-http',
-      '@tauri-apps/api/path',
-      '@tauri-apps/api/core',
       '@testing-library/react',
       '@dnd-kit/core',
       '@dnd-kit/sortable',

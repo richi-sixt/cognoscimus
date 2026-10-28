@@ -1,14 +1,11 @@
-import { fetch as tauriFetch } from '@tauri-apps/plugin-http';
 import { getProxiedURL, needsProxy } from '@/utils/proxiedRequest';
-import { isTauriAppPlatform } from '@/services/environment';
 import { parseFeed } from './feedParser';
 import { discoverFeedUrls } from './feedDiscovery';
 import type { ParsedFeed } from '@/types/rss';
 
 export async function fetchFeedText(url: string): Promise<string> {
-  const doFetch = isTauriAppPlatform() ? tauriFetch : window.fetch;
-  const target = !isTauriAppPlatform() && needsProxy(url) ? getProxiedURL(url) : url;
-  const res = await doFetch(target, { method: 'GET' });
+  const target = needsProxy(url) ? getProxiedURL(url) : url;
+  const res = await window.fetch(target, { method: 'GET' });
   if (!res.ok) throw new Error(`Failed to fetch feed: ${res.status} ${res.statusText}`);
   return res.text();
 }

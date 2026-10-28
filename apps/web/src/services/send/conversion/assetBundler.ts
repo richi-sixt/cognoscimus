@@ -1,30 +1,10 @@
-import { browserFetch as tauriFetch } from '@/services/webBrowser/browserFetch';
-import { isTauriAppPlatform } from '@/services/environment';
-import { imageFetchHeaders } from './httpHeaders';
 import type { EpubImage } from './types';
 
-// On Tauri we go through the Rust HTTP client (no browser-CORS); on web
-// we use the native fetch — the bundler is only ever invoked from a
-// CORS-free caller there (the browser extension's service worker, which
-// has broad `host_permissions`). In the non-Tauri path we set
-// `credentials: 'include'` so the browser sends the user's cookies for
-// paywalled / member-only CDN hosts — without that, an authenticated
-// Substack image returns a placeholder. In Tauri we also fold in the
-// full image-fetch header set (UA + Sec-Ch-Ua + Sec-Fetch-* + Referer)
-// and use the browser's native cookie store, including HttpOnly cookies,
-// so CDNs that gate images on the browser shape — NYT, WSJ, paywalled
-// CDNs — cooperate.
-const httpFetch = (url: string, referer: string | null, init?: RequestInit): Promise<Response> => {
-  if (!isTauriAppPlatform() || url.startsWith('data:')) {
-    return globalThis.fetch(url, { credentials: 'include', ...init });
-  }
-  const baseHeaders = imageFetchHeaders(referer);
-  const headers = new Headers(init?.headers);
-  for (const [k, v] of Object.entries(baseHeaders)) {
-    if (!headers.has(k)) headers.set(k, v);
-  }
-  return tauriFetch(url, { ...init, headers });
-};
+// `credentials: 'include'` makes the browser send the user's cookies for
+// paywalled / member-only CDN hosts — without that, an authenticated Substack
+// image returns a placeholder.
+const httpFetch = (url: string, init?: RequestInit): Promise<Response> =>
+  globalThis.fetch(url, { credentials: 'include', ...init });
 
 /** Per-asset limits picked to keep clipped articles light. */
 export const MAX_ASSET_BYTES = 5 * 1024 * 1024;
@@ -223,18 +203,14 @@ interface FetchedAsset {
   mime: string;
 }
 
-async function fetchAsset(
-  url: string,
-  referer: string | null,
-  signal?: AbortSignal,
-): Promise<FetchedAsset | null> {
+async function fetchAsset(url: string, signal?: AbortSignal): Promise<FetchedAsset | null> {
   signal?.throwIfAborted();
   const ac = new AbortController();
   const onAbort = () => ac.abort();
   signal?.addEventListener('abort', onAbort, { once: true });
   const timer = setTimeout(() => ac.abort(), FETCH_TIMEOUT_MS);
   try {
-    const res = await httpFetch(url, referer, { signal: ac.signal, redirect: 'follow' });
+    const res = await httpFetch(url, { signal: ac.signal, redirect: 'follow' });
     if (!res.ok) return null;
     const bytes = await res.arrayBuffer();
     if (bytes.byteLength === 0) return null;
@@ -391,7 +367,7 @@ export async function bundleAssets(
       const url = uniqueUrls[i]!;
       if (isFetchableAssetUrl(url, pageUrl) && settledPrefixBytes() < maxBytes) {
         try {
-          settled[i] = await fetchAsset(url, pageUrl, options.signal);
+          settled[i] = await fetchAsset(url, options.signal);
         } catch (err) {
           console.warn('[clip/bundle] image fetch failed', {
             url,

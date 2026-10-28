@@ -2,7 +2,6 @@ import { FoliateView, ViewTTS } from '@/types/view';
 import { AppService } from '@/types/system';
 import type { PageInfo, PairedAudiobook } from '@/types/book';
 import { SectionItem } from '@/libs/document';
-import { convertFileSrc } from '@tauri-apps/api/core';
 import { transformTTSSectionDocument } from './transformDoc';
 import { filterSSMLWithLang, parseSSMLMarks, truncateSSMLAfterMark } from '@/utils/ssml';
 import * as CFI from 'foliate-js/epubcfi.js';
@@ -19,7 +18,6 @@ import {
 import { createTTSNodeFilter } from './nodeFilter';
 import { expandRangeOverRuby } from '@/utils/ruby';
 import { WebSpeechClient } from './WebSpeechClient';
-import { NativeTTSClient } from './NativeTTSClient';
 import { BufferedTTSClient } from './BufferedTTSClient';
 import { createBookTTSCacheStore } from './providers/bookCacheStore';
 import { CachingProvider } from './providers/cache';
@@ -41,7 +39,6 @@ import {
   TTSWordOffset,
 } from './wordHighlight';
 import {
-  audioType,
   findNarratedSection,
   hasMediaOverlays,
   loadMediaOverlaySection,
@@ -71,17 +68,6 @@ import {
 // across sessions.
 let ttsPositionSequence = 0;
 
-// Native TTS (Android System TTS / iOS) can report a terminal 'error' for an
-// utterance it cannot synthesize offline — typically a specific unsupported
-// character, hit characteristically on the first utterance after a chapter
-// boundary even with a local/offline voice (online the engine often
-// network-falls-back, which is why it only breaks offline). #speak only
-// auto-advances on 'end', so without handling, a single such error dead-ends
-// playback and wedges the controls in 'playing'. Re-speaking the same text
-// would just fail again, so we skip the bad chunk and advance — bounding
-// consecutive failures so a wholly-unusable engine still stops gracefully
-// instead of silently racing to the end of the book. See #4613, #4408.
-const TTS_NATIVE_SPEAK_MAX_CONSECUTIVE_ERRORS = 5;
 // Windowed engines (TTSCapabilities.windowedPrefetch): preload upcoming
 // paragraphs until about this much estimated audio, at most this many.
 const PRELOAD_AHEAD_SEC = 180;
@@ -196,10 +182,6 @@ export class TTSController extends EventTarget {
   #loopB: TTSLoopPoint | null = null;
   #paragraphGapSec: number = DEFAULT_PARAGRAPH_GAP_SEC;
   #nossmlCnt: number = 0;
-  // Consecutive native-TTS utterances that ended in a terminal 'error' without
-  // a successful 'end' in between. Reset on success; caps skip-on-error so a
-  // wholly-unusable engine stops instead of racing to the book end. See #4613.
-  #consecutiveSpeakErrors: number = 0;
   #currentSpeakAbortController: AbortController | null = null;
   #currentSpeakPromise: Promise<void> | null = null;
 
@@ -280,11 +262,9 @@ export class TTSController extends EventTarget {
   // Supplied by the reader (setCustomTTSServices) so the controller stays free
   // of store imports.
   #customTTSServices: () => CustomTTSService[] = () => [];
-  ttsNativeClient: TTSClient | null = null;
   ttsMediaOverlayClient: MediaOverlayClient;
   ttsWebVoices: TTSVoice[] = [];
   ttsCustomVoices: TTSVoice[] = [];
-  ttsNativeVoices: TTSVoice[] = [];
   ttsTargetLang: string = '';
 
   options: TTSHighlightOptions = { style: 'highlight', color: 'gray' };
@@ -314,11 +294,6 @@ export class TTSController extends EventTarget {
       this,
       appService,
     );
-    // Native TTS is backed by Android TextToSpeech and iOS AVSpeechSynthesizer.
-    // TODO: implement native TTS client for desktop platforms.
-    if (appService?.isAndroidApp || appService?.isIOSApp) {
-      this.ttsNativeClient = new NativeTTSClient(this);
-    }
     this.ttsMediaOverlayClient = new MediaOverlayClient(this, appService);
     this.ttsClient = this.ttsWebClient;
     this.appService = appService;
@@ -503,14 +478,7 @@ export class TTSController extends EventTarget {
     // voices), and play waits on them all. Results are still taken in priority
     // order.
     const customReady = withinEngineTimeout(this.ttsCustomClient.init(), false);
-    const nativeReady = this.ttsNativeClient
-      ? withinEngineTimeout(this.ttsNativeClient.init(), false)
-      : undefined;
     const webReady = withinEngineTimeout(this.ttsWebClient.init(), false);
-    if (this.ttsNativeClient && (await nativeReady)) {
-      availableClients.push(this.ttsNativeClient);
-      this.ttsNativeVoices = await withinEngineTimeout(this.ttsNativeClient.getAllVoices(), []);
-    }
     if (await webReady) {
       availableClients.push(this.ttsWebClient);
     }
@@ -596,14 +564,6 @@ export class TTSController extends EventTarget {
         ...(narrator ? { narrator } : {}),
         textHighlight: false,
         loadBlob: async (href) => await this.appService!.openFile(href, 'Books'),
-        resolveUrl: async (href) => {
-          const appService = this.appService!;
-          if (appService.appPlatform !== 'tauri' || appService.isMobileApp) return null;
-          const path = await appService.resolveFilePath(href, 'Books');
-          const { getLocalMediaUrl } = await import('@/services/audiobook/mediaProxy');
-          return (await getLocalMediaUrl(path, audioType(href))) ?? convertFileSrc(path);
-        },
-        resolvePath: async (href) => await this.appService!.resolveFilePath(href, 'Books'),
       });
       return;
     }
@@ -1760,9 +1720,6 @@ export class TTSController extends EventTarget {
           }
           await this.preloadSSML(ssml, signal);
         }
-        // Only the native client surfaces an offline engine failure as a
-        // terminal 'error' code (Edge/Web throw, which the catch below handles).
-        const canSkipOnError = this.ttsClient === this.ttsNativeClient;
         const iter = await this.ttsClient.speak(
           stepped ? truncateSSMLAfterMark(ssml, marks[0]!.name) : ssml,
           signal,
@@ -1816,43 +1773,15 @@ export class TTSController extends EventTarget {
         }
 
         if (stepAfter) {
-          this.#consecutiveSpeakErrors = 0;
           resolve();
           await this.#afterSentence(stepAfter.range, stepAfter.advance, signal);
         } else if (lastCode === 'end' && this.state === 'playing' && !oneTime) {
-          this.#consecutiveSpeakErrors = 0;
           resolve();
           await this.#delayParagraphGap(signal);
           if (signal.aborted) return;
           await this.forward(stepped, true);
         } else if (
           lastCode === 'error' &&
-          canSkipOnError &&
-          !signal.aborted &&
-          this.state === 'playing' &&
-          !oneTime
-        ) {
-          // The native engine reported it can't speak this chunk. Offline this
-          // is almost always a specific unsynthesizable utterance (e.g. an
-          // unsupported character) that would fail every time, not a transient
-          // glitch — so retrying the same text is futile. Skip it and advance
-          // exactly as a normal 'end' would, so one bad chunk (often the first
-          // utterance across a chapter boundary) can't strand playback with the
-          // controls wedged in 'playing'. Bound consecutive failures so a
-          // wholly-unusable engine stops gracefully instead of silently racing
-          // to the end of the book. See #4613, #4408.
-          this.#consecutiveSpeakErrors++;
-          resolve();
-          if (this.#consecutiveSpeakErrors <= TTS_NATIVE_SPEAK_MAX_CONSECUTIVE_ERRORS) {
-            await this.forward(false, true);
-          } else {
-            this.#consecutiveSpeakErrors = 0;
-            this.#terminate('error');
-            await this.stop();
-          }
-        } else if (
-          lastCode === 'error' &&
-          !canSkipOnError &&
           !signal.aborted &&
           this.state === 'playing' &&
           !oneTime
@@ -2175,7 +2104,6 @@ export class TTSController extends EventTarget {
   async setPrimaryLang(lang: string) {
     if (this.ttsCustomClient.initialized) this.ttsCustomClient.setPrimaryLang(lang);
     if (this.ttsWebClient.initialized) this.ttsWebClient.setPrimaryLang(lang);
-    if (this.ttsNativeClient?.initialized) this.ttsNativeClient?.setPrimaryLang(lang);
     if (this.ttsMediaOverlayClient.initialized) this.ttsMediaOverlayClient.setPrimaryLang(lang);
   }
 
@@ -2190,7 +2118,6 @@ export class TTSController extends EventTarget {
 
   async getVoices(lang: string) {
     const ttsWebVoices = await this.ttsWebClient.getVoices(lang);
-    const ttsNativeVoices = (await this.ttsNativeClient?.getVoices(lang)) ?? [];
     // The book's own narrator leads the list when there is one: it is the best
     // voice available for that book by a wide margin.
     const narrationVoices = this.narrationAvailable
@@ -2201,12 +2128,7 @@ export class TTSController extends EventTarget {
       ? (await this.ttsCustomClient.getVoices(lang)).filter((group) => group.voices.length > 0)
       : [];
 
-    const voicesGroups = [
-      ...narrationVoices,
-      ...ttsCustomVoices,
-      ...ttsNativeVoices,
-      ...ttsWebVoices,
-    ];
+    const voicesGroups = [...narrationVoices, ...ttsCustomVoices, ...ttsWebVoices];
     return voicesGroups;
   }
 
@@ -2241,17 +2163,8 @@ export class TTSController extends EventTarget {
       voiceId !== '' &&
       this.ttsCustomClient.initialized &&
       this.ttsCustomVoices.some((voice) => voice.id === voiceId);
-    const useNativeTTS = !!this.ttsNativeVoices.find(
-      (voice) => (voiceId === '' || voice.id === voiceId) && !voice.disabled,
-    );
     if (useCustomTTS) {
       this.ttsClient = this.ttsCustomClient;
-      await this.ttsClient.setRate(this.ttsRate);
-    } else if (useNativeTTS) {
-      if (!this.ttsNativeClient) {
-        throw new Error('Native TTS client is not available');
-      }
-      this.ttsClient = this.ttsNativeClient;
       await this.ttsClient.setRate(this.ttsRate);
     } else {
       this.ttsClient = this.ttsWebClient;
@@ -2616,9 +2529,6 @@ export class TTSController extends EventTarget {
     }
     if (this.ttsCustomClient.initialized) {
       await this.ttsCustomClient.shutdown();
-    }
-    if (this.ttsNativeClient?.initialized) {
-      await this.ttsNativeClient.shutdown();
     }
     if (this.ttsMediaOverlayClient.initialized) {
       await this.ttsMediaOverlayClient.shutdown();

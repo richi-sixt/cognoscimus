@@ -34,7 +34,7 @@ import { useCloudSyncStatus } from '@/hooks/useCloudSyncStatus';
 import { getStyles } from '@/utils/style';
 import { navigateToLogin } from '@/utils/nav';
 import { getScrollGapAttr } from '@/utils/webtoon';
-import { applyPageTurnAttributes } from '@/app/reader/hooks/useCapturedTurn';
+import { applyPageTurnAttributes } from '@/app/reader/utils/pageTurnAttributes';
 import { eventDispatcher } from '@/utils/event';
 import { getMaxInlineSize } from '@/utils/config';
 import { nextThemeMode } from '@/utils/ambientLight';
@@ -124,7 +124,7 @@ const ViewMenu: React.FC<ViewMenuProps> = ({
   };
 
   const handleFullScreen = () => {
-    toggleFullScreen(appService);
+    toggleFullScreen();
     setIsDropdownOpen?.(false);
   };
 
@@ -203,7 +203,7 @@ const ViewMenu: React.FC<ViewMenuProps> = ({
     // recomputes eligibility live — runs a captured turn over the top, and
     // three pages slide at once.
     const view = getView(bookKey);
-    if (view) applyPageTurnAttributes(view, viewSettings!, !!bookData?.isFixedLayout);
+    if (view) applyPageTurnAttributes(view, viewSettings!);
     setViewSettings(bookKey, viewSettings!);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isScrolledMode]);

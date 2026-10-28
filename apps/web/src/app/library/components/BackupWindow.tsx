@@ -58,7 +58,7 @@ export const BackupWindow: React.FC<BackupWindowProps> = ({ onPullLibrary }) => 
   const isProcessing = status === 'backing-up' || status === 'restoring';
   // Keep the screen on while a backup or restore runs, otherwise Android
   // suspends the app with it and the job stalls (#6291).
-  useScreenWakeLock(isProcessing, appService?.hasWindow, appService?.isIOSApp);
+  useScreenWakeLock(isProcessing);
 
   const resetState = () => {
     setStatus('idle');
@@ -145,7 +145,6 @@ export const BackupWindow: React.FC<BackupWindowProps> = ({ onPullLibrary }) => 
         (current, total, currentFile) => {
           setProgress({ current, total, currentFile });
         },
-        result.files[0]?.path,
       );
 
       const newLibrary = await appService.loadLibraryBooks();

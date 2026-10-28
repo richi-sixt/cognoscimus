@@ -11,8 +11,6 @@ import { useBookDataStore } from '@/store/bookDataStore';
 import { useSidebarStore } from '@/store/sidebarStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useSettingsStore } from '@/store/settingsStore';
-import { useTrafficLightStore } from '@/store/trafficLightStore';
-import { useTrafficLight } from '@/hooks/useTrafficLight';
 import { useResponsiveSize } from '@/hooks/useResponsiveSize';
 import { useSpatialNavigation } from '@/app/reader/hooks/useSpatialNavigation';
 import { useWindowFocusRestore } from '@/app/reader/hooks/useWindowFocusRestore';
@@ -26,7 +24,6 @@ import { isForcedMobileLayout } from '../utils/mobileLayout';
 import { HighlighterIcon } from '@/components/HighlighterIcon';
 import Dropdown from '@/components/Dropdown';
 import ModalPortal from '@/components/ModalPortal';
-import WindowButtons from '@/components/WindowButtons';
 import QuickActionMenu from './annotator/QuickActionMenu';
 import SidebarToggler from './SidebarToggler';
 import BookmarkToggler from './BookmarkToggler';
@@ -38,7 +35,6 @@ import SyncInfoDialog from './SyncInfoDialog';
 interface HeaderBarProps {
   bookKey: string;
   bookTitle: string;
-  isTopLeft: boolean;
   isHoveredAnim: boolean;
   gridInsets: Insets;
   screenInsets: Insets;
@@ -50,7 +46,6 @@ interface HeaderBarProps {
 const HeaderBar: React.FC<HeaderBarProps> = ({
   bookKey,
   bookTitle,
-  isTopLeft,
   isHoveredAnim,
   gridInsets,
   screenInsets,
@@ -62,11 +57,9 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
   const { envConfig, appService } = useEnv();
   const { settings } = useSettingsStore();
   const headerRef = useRef<HTMLDivElement>(null);
-  const { isTrafficLightVisible } = useTrafficLight(headerRef);
-  const { trafficLightInFullscreen, setTrafficLightVisibility } = useTrafficLightStore();
-  const { bookKeys, hoveredBookKey } = useReaderStore();
+  const { hoveredBookKey } = useReaderStore();
   const { isDarkMode, systemUIVisible, statusBarHeight, isIPhoneDuo } = useThemeStore();
-  const { isSideBarVisible, getIsSideBarVisible } = useSidebarStore();
+  const { isSideBarVisible } = useSidebarStore();
   const { getView, getViewSettings, setHoveredBookKey } = useReaderStore();
   const { getBookData, getConfig } = useBookDataStore();
   const viewSettings = getViewSettings(bookKey);
@@ -117,29 +110,6 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
   };
 
   useEffect(() => {
-    if (!appService?.hasTrafficLight) return;
-
-    if (hoveredBookKey === bookKey && isTopLeft) {
-      setTrafficLightVisibility(true);
-      return;
-    }
-    if (hoveredBookKey) return;
-    // The hide is deferred so a pointer crossing from one hover target to the
-    // next doesn't flash the buttons off. Cancel it on unmount: closing the
-    // last book writes `hoveredBookKey = null` and then routes to the library,
-    // so an uncancelled timer comes due after the library header has already
-    // asked for the buttons and hides them there (#6222). `getIsSideBarVisible`
-    // is why an open sidebar masked this — it short-circuits the same hide.
-    const timeout = setTimeout(() => {
-      if (!getIsSideBarVisible()) {
-        setTrafficLightVisibility(false);
-      }
-    }, 100);
-    return () => clearTimeout(timeout);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appService, hoveredBookKey]);
-
-  useEffect(() => {
     const header = headerRef.current;
     if (!header) return;
     const observer = new ResizeObserver(([entry]) => {
@@ -169,10 +139,6 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
   const triggerHeight = viewSettings ? getHeaderTriggerHeight(gridInsets.top, viewSettings) : 0;
 
   useSpatialNavigation(headerRef, isHeaderVisible);
-  const trafficLightInHeader =
-    appService?.hasTrafficLight && !trafficLightInFullscreen && !isSideBarVisible && isTopLeft;
-  const windowButtonVisible =
-    appService?.hasWindowBar && !isTrafficLightVisible && !trafficLightInHeader;
 
   return (
     <div
@@ -235,7 +201,7 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
         className={clsx(
           `header-bar bg-base-100 absolute top-0 z-10 flex h-11 w-full items-center pr-4`,
           `shadow-xs transition-[opacity,margin-top] duration-300`,
-          trafficLightInHeader ? 'pl-20' : isSideBarVisible ? 'ps-4' : 'ps-4 sm:ps-1.5',
+          isSideBarVisible ? 'ps-4' : 'ps-4 sm:ps-1.5',
           appService?.hasRoundedWindow && 'rounded-window-top-right',
           !isSideBarVisible && appService?.hasRoundedWindow && 'rounded-window-top-left',
           isHoveredAnim && 'hover-bar-anim',
@@ -331,17 +297,14 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
           aria-label={_('Title') + ' - ' + bookTitle}
           className={clsx(
             'header-title z-15 bg-base-100 pointer-events-none hidden flex-1 items-center justify-center sm:flex',
-            !windowButtonVisible && 'absolute inset-0',
+            'absolute inset-0',
             isHeaderCompact && 'hidden!',
           )}
           {...getBookDataAttributes(bookTitle, bookData?.book?.metadata)}
         >
           <div
             aria-hidden='true'
-            className={clsx(
-              'line-clamp-1 text-center text-xs font-semibold',
-              !windowButtonVisible && 'max-w-[50%]',
-            )}
+            className={clsx('line-clamp-1 text-center text-xs font-semibold', 'max-w-[50%]')}
           >
             {bookTitle}
           </div>
@@ -374,17 +337,24 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
               />
             </ModalPortal>
           )}
-          <WindowButtons
-            className='window-buttons flex items-center'
-            headerRef={headerRef}
-            showMinimize={bookKeys.length == 1 && windowButtonVisible}
-            showMaximize={bookKeys.length == 1 && windowButtonVisible}
-            closeButtonLabel={_('Close Book')}
-            onClose={() => {
-              setHoveredBookKey(null);
-              onCloseBook(bookKey);
-            }}
-          />
+          <div className='window-buttons flex h-8 items-center justify-end space-x-2'>
+            <button
+              id='titlebar-close'
+              className='window-button bg-base-200/35 hover:bg-base-200 text-base-content/85 hover:text-base-content'
+              aria-label={_('Close Book')}
+              onClick={() => {
+                setHoveredBookKey(null);
+                onCloseBook(bookKey);
+              }}
+            >
+              <svg xmlns='http://www.w3.org/2000/svg' width='1em' height='1em' viewBox='0 0 24 24'>
+                <path
+                  fill='currentColor'
+                  d='M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12z'
+                />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
     </div>

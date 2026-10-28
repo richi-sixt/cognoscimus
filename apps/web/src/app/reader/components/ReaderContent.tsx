@@ -9,23 +9,13 @@ import { useSettingsStore } from '@/store/settingsStore';
 import { flushPendingLibrarySave, useBookDataStore } from '@/store/bookDataStore';
 import { useReaderStore } from '@/store/readerStore';
 import { useSidebarStore } from '@/store/sidebarStore';
-import { useAndroidGamepadConnection } from '@/hooks/useAndroidGamepadConnection';
 import { useGamepad } from '@/hooks/useGamepad';
 import { useTranslation } from '@/hooks/useTranslation';
 import { SystemSettings } from '@/types/settings';
-import { parseOpenWithFiles } from '@/helpers/openWith';
-import { getCurrentWindow } from '@tauri-apps/api/window';
-import { UnlistenFn } from '@tauri-apps/api/event';
-import { tauriHandleClose, tauriHandleOnCloseWindow } from '@/utils/window';
-import { isTauriAppPlatform } from '@/services/environment';
 import { uniqueId } from '@/utils/misc';
 import { eventDispatcher } from '@/utils/event';
 import { transitionAway } from '@/utils/viewTransition';
-import {
-  closeReaderWindowOrGoToLibrary,
-  ensureMainLibraryWindow,
-  navigateToLibrary,
-} from '@/utils/nav';
+import { navigateToLibrary } from '@/utils/nav';
 import { getLockedPanX } from '../utils/lockedPan';
 import { BOOK_IDS_SEPARATOR } from '@/services/constants';
 import { saveBookMetadataEdit } from '@/services/bookMetadataEdit';
@@ -82,16 +72,10 @@ const ReaderContent: React.FC<{ ids?: string; settings: SystemSettings }> = ({ i
   const pendingNotebookTransitionRef = useRef<(() => Promise<void>) | null>(null);
 
   useBookShortcuts({ sideBarBookKey, bookKeys });
-  const isAndroidApp = appService?.isAndroidApp === true;
   // Settings > Behavior > Device > Gamepad Support. Off when the device's own
   // remapper already binds the controller to keys (issue #5979).
   const gamepadEnabled = useSettingsStore((state) => state.settings.gamepadEnabled) !== false;
-  const androidGamepadConnected = useAndroidGamepadConnection(isAndroidApp && gamepadEnabled);
-  // Android's native bridge gates the Web Gamepad API so Chromium polls only
-  // while a controller exists. Other platforms retain the existing behavior.
-  useGamepad({
-    enabled: appService !== null && gamepadEnabled && (!isAndroidApp || androidGamepadConnected),
-  });
+  useGamepad({ enabled: appService !== null && gamepadEnabled });
 
   useEffect(() => {
     if (isInitiating.current) return;
@@ -119,10 +103,7 @@ const ReaderContent: React.FC<{ ids?: string; settings: SystemSettings }> = ({ i
           setErrorLoading(true);
           eventDispatcher.dispatch('toast', {
             message: _('Unable to open book'),
-            callback: async () => {
-              const service = await envConfig.getAppService();
-              await closeReaderWindowOrGoToLibrary(service, router);
-            },
+            callback: () => navigateToLibrary(router, '', undefined, true),
             timeout: 2000,
             type: 'error',
           });
@@ -189,13 +170,6 @@ const ReaderContent: React.FC<{ ids?: string; settings: SystemSettings }> = ({ i
       }
     }
 
-    let unlistenOnCloseWindow: Promise<UnlistenFn>;
-    if (appService?.hasWindow) {
-      unlistenOnCloseWindow = tauriHandleOnCloseWindow(handleCloseBooks).catch((error) => {
-        console.info('Failed to register close-window listener:', error);
-        return () => {};
-      });
-    }
     window.addEventListener('beforeunload', handleCloseBooks);
     eventDispatcher.on('beforereload', handleCloseBooks);
     eventDispatcher.on('close-reader', handleCloseReaderToLibrary);
@@ -205,10 +179,9 @@ const ReaderContent: React.FC<{ ids?: string; settings: SystemSettings }> = ({ i
       eventDispatcher.off('beforereload', handleCloseBooks);
       eventDispatcher.off('close-reader', handleCloseReaderToLibrary);
       eventDispatcher.off('quit-app', handleCloseBooks);
-      unlistenOnCloseWindow?.then((fn) => fn());
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bookKeys, appService?.hasWindow]);
+  }, [bookKeys]);
 
   const saveBookConfig = async (bookKey: string) => {
     const config = getConfig(bookKey);
@@ -325,29 +298,17 @@ const ReaderContent: React.FC<{ ids?: string; settings: SystemSettings }> = ({ i
   };
 
   const handleCloseBooksToLibrary = async () => {
-    // SPA navigation in the main window (or on web) keeps the webview alive:
-    // TTS may continue headless. Non-main Tauri windows close their webview
-    // below, but their per-window TTS dies with the window either way.
+    // SPA navigation keeps the page alive: TTS may continue headless.
     await runNotebookTransition(bookKeys, async () => {
-      if (isTauriAppPlatform() && getCurrentWindow().label !== 'main') {
+      await leaveToLibrary(async () => {
         await closeBooks(true);
-        if (appService) {
-          await ensureMainLibraryWindow(appService);
-        }
-        await getCurrentWindow().close();
-      } else {
-        await leaveToLibrary(async () => {
-          await closeBooks(true);
-          navigateBackToLibrary();
-        });
-      }
+        navigateBackToLibrary();
+      });
     });
   };
 
   const handleCloseBook = async (bookKey: string) => {
-    // Header X / pane close: an SPA-side close on web and the main window.
-    // The Tauri reader-window branches below destroy their webview, which
-    // takes the per-window TTS with it either way.
+    // Header X / pane close: an SPA-side close.
     const closeBook = async () => {
       await saveConfigAndCloseBook(bookKey, true);
       if (sideBarBookKey === bookKey) {
@@ -357,8 +318,8 @@ const ReaderContent: React.FC<{ ids?: string; settings: SystemSettings }> = ({ i
     };
     await runNotebookTransition([bookKey], async () => {
       const isLastBook = bookKeys.every((key) => key === bookKey);
-      // Without windows, closing the last book always returns to the library.
-      if (isLastBook && !appService?.hasWindow) {
+      // Closing the last book always returns to the library.
+      if (isLastBook) {
         await leaveToLibrary(async () => {
           await closeBook();
           saveSettingsAndGoToLibrary();
@@ -366,24 +327,6 @@ const ReaderContent: React.FC<{ ids?: string; settings: SystemSettings }> = ({ i
         return;
       }
       await closeBook();
-      if (isLastBook) {
-        const openWithFiles = (await parseOpenWithFiles(appService)) || [];
-        if (appService?.hasWindow) {
-          if (openWithFiles.length > 0) {
-            void tauriHandleOnCloseWindow(handleCloseBooks).catch((error) => {
-              console.info('Failed to register close-window listener:', error);
-            });
-            await tauriHandleClose();
-            return;
-          }
-          const currentWindow = getCurrentWindow();
-          if (currentWindow.label.startsWith('reader')) {
-            await currentWindow.close();
-            return;
-          }
-        }
-        saveSettingsAndGoToLibrary();
-      }
     });
   };
 

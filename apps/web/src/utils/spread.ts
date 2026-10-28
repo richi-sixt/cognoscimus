@@ -1,9 +1,7 @@
-import { invoke } from '@tauri-apps/api/core';
 import { Inflate } from 'fflate';
 import type { Entry } from '@zip.js/zip.js';
 
 import type { BookDoc, SectionItem } from '@/libs/document';
-import { isTauriAppPlatform } from '@/services/environment';
 import { RemoteFile } from '@/utils/file';
 import { getImageSize } from '@/utils/image';
 
@@ -50,19 +48,9 @@ const readPageSize = async (file: File, entry: Entry): Promise<[number, number] 
 
 type Section = Pick<SectionItem, 'id' | 'pageSpread'>;
 
-// The native app measures the pages in Rust. On the web an in-memory file is
-// read here; a streamed one is left alone, as each page would cost a request.
-const getPageSizes = async (
-  file: File,
-  entries: Entry[],
-  nativeFilePath?: string,
-): Promise<PageSizes> => {
-  if (isTauriAppPlatform()) {
-    if (!nativeFilePath) return {};
-    return invoke<PageSizes>('get_comic_page_sizes', { filePath: nativeFilePath }).catch(
-      () => ({}),
-    );
-  }
+// An in-memory file is read here; a streamed one is left alone, as each page
+// would cost a request.
+const getPageSizes = async (file: File, entries: Entry[]): Promise<PageSizes> => {
   if (file instanceof RemoteFile) return {};
   const sizes: PageSizes = {};
   for (const entry of entries) {
@@ -74,8 +62,8 @@ const getPageSizes = async (
 };
 
 /** Paths of the pages in a comic archive that are wider than they are tall. */
-export const measureWidePages = async (file: File, entries: Entry[], nativeFilePath?: string) =>
-  Object.entries(await getPageSizes(file, entries, nativeFilePath))
+export const measureWidePages = async (file: File, entries: Entry[]) =>
+  Object.entries(await getPageSizes(file, entries))
     .filter(([, [width, height]]) => width > height)
     .map(([path]) => path);
 

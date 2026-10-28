@@ -48,7 +48,6 @@ type LibrarySearchAppService = Pick<
   | 'deleteDatabase'
   | 'getBookFileSize'
   | 'loadBookContent'
-  | 'resolveNativeBookFilePath'
   | 'loadBookNav'
   | 'openDatabase'
 >;
@@ -325,16 +324,9 @@ export const createLibrarySearchSession = (appService: LibrarySearchAppService) 
     if (existing) dispose(existing);
 
     const pending = (async () => {
-      const [content, nativeFilePath] = await Promise.all([
-        appService.loadBookContent(book),
-        appService.resolveNativeBookFilePath(book),
-      ]);
+      const content = await appService.loadBookContent(book);
       try {
-        const bookDoc = (
-          await new DocumentLoader(content.file, {
-            nativeFilePath: nativeFilePath ?? undefined,
-          }).open()
-        ).book as SearchableBookDoc;
+        const bookDoc = (await new DocumentLoader(content.file).open()).book as SearchableBookDoc;
         return { file: content.file, bookDoc };
       } catch (error) {
         await closeBook(null, content.file);
@@ -717,14 +709,9 @@ export async function* searchLibraryBooks(
           file = cached.file;
           bookDoc = cached.bookDoc;
         } else {
-          const [content, nativeFilePath] = await Promise.all([
-            appService.loadBookContent(book),
-            appService.resolveNativeBookFilePath(book),
-          ]);
+          const content = await appService.loadBookContent(book);
           file = content.file;
-          bookDoc = (
-            await new DocumentLoader(file, { nativeFilePath: nativeFilePath ?? undefined }).open()
-          ).book as SearchableBookDoc;
+          bookDoc = (await new DocumentLoader(file).open()).book as SearchableBookDoc;
         }
         if (signal?.aborted) return;
 

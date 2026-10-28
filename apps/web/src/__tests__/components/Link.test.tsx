@@ -1,37 +1,14 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-
-const { mockOpenUrl } = vi.hoisted(() => ({
-  mockOpenUrl: vi.fn(),
-}));
-
-vi.mock('@/services/environment', () => ({
-  isTauriAppPlatform: () => true,
-}));
-
-vi.mock('@tauri-apps/plugin-opener', () => ({
-  openUrl: mockOpenUrl,
-}));
-
+import { cleanup, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it } from 'vitest';
 import Link from '@/components/Link';
 
-afterEach(() => {
-  cleanup();
-  vi.restoreAllMocks();
-  mockOpenUrl.mockReset();
-});
+afterEach(cleanup);
 
 describe('Link', () => {
-  it('contains native opener failures', async () => {
-    const error = new Error('native opener unavailable');
-    const consoleInfo = vi.spyOn(console, 'info').mockImplementation(() => {});
-    mockOpenUrl.mockRejectedValueOnce(error);
-
+  it('opens in a new tab without leaking the opener', () => {
     render(<Link href='https://example.com'>Open</Link>);
-    fireEvent.click(screen.getByRole('link', { name: 'Open' }));
-
-    await waitFor(() => {
-      expect(consoleInfo).toHaveBeenCalledWith('Failed to open external link:', error);
-    });
+    const link = screen.getByRole('link', { name: 'Open' });
+    expect(link.getAttribute('target')).toBe('_blank');
+    expect(link.getAttribute('rel')).toBe('noopener noreferrer');
   });
 });

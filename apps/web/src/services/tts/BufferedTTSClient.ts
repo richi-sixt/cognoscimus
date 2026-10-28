@@ -1,6 +1,5 @@
 import { getUserLocale } from '@/utils/misc';
 import { isSameLang } from '@/utils/lang';
-import { NativeAudioPlayer } from './NativeAudioPlayer';
 import { TTSClient, TTSCapabilities, TTSMessageEvent } from './TTSClient';
 import { TTSWordBoundary } from './wordBoundary';
 import { MULTILINGUAL_LANG, TTSGranularity, TTSMark, TTSVoice, TTSVoicesGroup } from './types';
@@ -121,12 +120,7 @@ export class BufferedTTSClient implements TTSClient {
   #sentenceGapSec = DEFAULT_SENTENCE_GAP_SEC;
   #paragraphGapSec = DEFAULT_PARAGRAPH_GAP_SEC;
 
-  // iOS plays natively (app-process AVPlayer): audio in the app's own audio
-  // session makes Now Playing, pause-slot retention, AirPods routing, and the
-  // mute switch behave like a music app — the WebAudio path renders in
-  // WebKit's GPU process under a session the app cannot own. Everywhere else
-  // the gapless WSOLA WebAudio pipeline stays.
-  #player: WebAudioPlayer | NativeAudioPlayer;
+  #player: WebAudioPlayer;
   #activeGeneration: number | null = null;
   #activeQueue: AsyncQueue<SpeakQueueEvent> | null = null;
   #chunkMeta: ChunkMeta[] = [];
@@ -153,7 +147,7 @@ export class BufferedTTSClient implements TTSClient {
     this.name = provider.id;
     this.controller = controller;
     this.appService = appService;
-    this.#player = appService?.isIOSApp ? new NativeAudioPlayer() : new WebAudioPlayer();
+    this.#player = new WebAudioPlayer();
   }
 
   async init(): Promise<boolean> {
@@ -508,39 +502,6 @@ export class BufferedTTSClient implements TTSClient {
         this.#consecutiveSkips = 0;
         this.#recordDurations(voiceId, mark.text, audio.boundaries);
 
-        if (this.#player instanceof NativeAudioPlayer) {
-          // Native playout: no decode/WSOLA here — the raw MP3 goes to the
-          // AVPlayer, which stops it at the end of speech and time-stretches at
-          // the pitch-preserving native rate. Only the tail is cut, so the file
-          // still starts where it always did: word boundaries stay in original
-          // media time, matching the player's media clock, and trimStartSec is
-          // 0 by construction.
-          const ready = await this.#player.waitUntilReady(generation);
-          if (!ready || signal.aborted) return;
-          const index = chunkMeta.length;
-          const meta: ChunkMeta = {
-            mark,
-            boundaries: audio.boundaries,
-            trimStartSec: 0,
-            trimmedDurationSec: 0,
-            req,
-          };
-          // Push before enqueue: the chunk-start event can arrive as soon as
-          // the native side starts the item.
-          chunkMeta.push(meta);
-          try {
-            const durationSec = await this.#player.scheduleRawChunk(generation, index, audio.data, {
-              gapSec: gapAfterSentence(this.#sentenceGapSec, mark.text),
-            });
-            meta.trimmedDurationSec = durationSec;
-            this.#recordDurations(voiceId, mark.text, audio.boundaries, durationSec);
-          } catch (error) {
-            console.warn('Failed to enqueue TTS audio for:', mark.text, error);
-            queue.push({ kind: 'chunk-skip', markName: mark.name });
-          }
-          continue;
-        }
-
         const webPlayer = this.#player;
         let prepared: PreparedChunk;
         try {
@@ -729,13 +690,10 @@ export class BufferedTTSClient implements TTSClient {
   }
 
   async setRate(rate: number) {
-    // Web path: applied client-side via WSOLA time-stretch at schedule time;
-    // takes effect on the next speak() session (the controller restarts
-    // playback on rate changes). Native path: applied live by the AVPlayer.
+    // Applied client-side via WSOLA time-stretch at schedule time; takes
+    // effect on the next speak() session (the controller restarts playback on
+    // rate changes).
     this.#rate = rate;
-    if (this.#player instanceof NativeAudioPlayer) {
-      await this.#player.setRate(rate);
-    }
   }
 
   async setPitch(pitch: number) {
@@ -944,13 +902,10 @@ export class BufferedTTSClient implements TTSClient {
       wordBoundaries: true,
       mediaClock: true,
       gapControl: true,
-      // The native player time-stretches live; the web path bakes the rate
-      // into the scheduled buffers, so it needs a session restart.
-      liveRateChange: this.#player instanceof NativeAudioPlayer,
-      // Only the web path carries an audio clock across sessions; the native
-      // queue starts each session fresh, so its paragraph pause stays with the
-      // controller.
-      scheduledGaps: !(this.#player instanceof NativeAudioPlayer),
+      // The rate is baked into the scheduled buffers, so a change needs a
+      // session restart.
+      liveRateChange: false,
+      scheduledGaps: true,
       windowedPrefetch: !!this.provider.prefetch,
       preloadsAudio: true,
     };

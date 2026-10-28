@@ -236,25 +236,6 @@ describe('MediaOverlayClient capabilities', () => {
     expect(createObjectURL).toHaveBeenCalledExactlyOnceWith(slice);
   });
 
-  test('plays a stored audio entry of a native book through the media proxy', async () => {
-    await setup();
-    (book as { getMediaSource?: unknown }).getMediaSource = vi.fn(async () => ({
-      path: '/books/narrated.epub',
-      start: 120,
-      end: 4216,
-    }));
-    client.attachBook(book);
-    mediaFileUrl.mockResolvedValueOnce('http://127.0.0.1:9/s/file/f1');
-
-    const iter = client.speak(section.ssmlForBlock(0)!, new AbortController().signal);
-    await iter.next();
-
-    expect(book.loadBlob).not.toHaveBeenCalled();
-    expect(mediaFileUrl).toHaveBeenCalledWith('/books/narrated.epub', 120, 4216, 'audio/mpeg');
-    expect(audio().src).toBe('http://127.0.0.1:9/s/file/f1');
-    expect(createObjectURL).not.toHaveBeenCalled();
-  });
-
   test('falls back to the blob when the media proxy cannot serve the book', async () => {
     await setup();
     (book as { getMediaSource?: unknown }).getMediaSource = vi.fn(async () => ({

@@ -6,7 +6,7 @@ import { useTheme } from '@/hooks/useTheme';
 
 export default function AuthErrorPage() {
   const router = useRouter();
-  useTheme({ systemUIVisible: false });
+  useTheme();
 
   useEffect(() => {
     const timer = setTimeout(() => {

@@ -10,15 +10,11 @@
 // pars in a paragraph are contiguous audio, and re-seeking between them would
 // put an audible seam in the middle of a narrated sentence.
 //
-// On mobile Tauri the clock is an in-process native player
-// (NativeNarrationPlayer). iOS needs it so TTSMediaBridge and narration share
-// one playback session; Android needs it so multi-hour local files can stream
-// from disk without buffering the whole audiobook through the WebView.
-// Desktop and web use a plain HTMLAudioElement.
+// The clock is a plain HTMLAudioElement.
 //
 // A source whose recording is split across several files (an Audiobookshelf
 // item's tracks) hands over a track list instead, and MultiTrackNarrationClock
-// presents those files as one timeline on top of the same per-platform player.
+// presents those files as one timeline on top of the same player.
 
 import type { BookDoc, BookMediaSource } from '@/libs/document';
 import type { AppService } from '@/types/system';
@@ -35,7 +31,6 @@ import {
   type NarrationTrackPlayer,
 } from './MultiTrackNarrationClock';
 import type { NarrationClock } from './NarrationClock';
-import { NativeNarrationPlayer } from './NativeNarrationPlayer';
 
 export const MEDIA_OVERLAY_CLIENT_NAME = 'media-overlay';
 export const MEDIA_OVERLAY_VOICE_ID = 'media-overlay';
@@ -95,7 +90,6 @@ export interface NarrationAudioSource {
   // The audio's bytes in place in the book file (see BookDoc.getMediaSource).
   getMediaSource?: (href: string, type: string) => Promise<BookMediaSource | null>;
   resolveUrl?: (href: string) => Promise<string | null>;
-  resolvePath?: (href: string) => Promise<string | null>;
   // A recording split across several streamable files, timed on one global
   // clock. Takes precedence over the single-file resolvers when it returns
   // tracks.
@@ -108,9 +102,8 @@ export interface NarrationAudioSource {
 }
 
 const seekClock = async (audio: NarrationClock, seconds: number): Promise<void> => {
-  // A native or multi-file seek is async (plugin invoke, file switch);
-  // assigning currentTime alone can race with play() and start from the
-  // previous playhead.
+  // A multi-file seek is async (file switch); assigning currentTime alone can
+  // race with play() and start from the previous playhead.
   if (audio.seek) await audio.seek(seconds);
   else audio.currentTime = seconds;
 };
@@ -119,33 +112,6 @@ const setClockRate = async (audio: NarrationClock, rate: number): Promise<void> 
   if (audio.setRate) await audio.setRate(rate);
   else audio.playbackRate = rate;
 };
-
-// The shared native player as a per-track player: each track loads by URL
-// under the same href, so the native session survives file switches.
-const nativeTrackPlayer = (player: NativeNarrationPlayer, href: string): NarrationTrackPlayer => ({
-  get currentTime() {
-    return player.currentTime;
-  },
-  set currentTime(seconds: number) {
-    player.currentTime = seconds;
-  },
-  get playbackRate() {
-    return player.playbackRate;
-  },
-  set playbackRate(rate: number) {
-    player.playbackRate = rate;
-  },
-  get paused() {
-    return player.paused;
-  },
-  load: (url, startAt) => player.loadPath(href, url, startAt),
-  play: () => player.play(),
-  pause: () => player.pause(),
-  seek: (seconds) => player.seek(seconds),
-  setRate: (rate) => player.setRate(rate),
-  addEventListener: (type, fn) => player.addEventListener(type, fn),
-  removeEventListener: (type, fn) => player.removeEventListener(type, fn),
-});
 
 // Consecutive pars sharing an audio file. Normally one run per block; a run
 // boundary means the publisher split the paragraph across files.
@@ -166,8 +132,6 @@ export class MediaOverlayClient implements TTSClient {
 
   #source: NarrationAudioSource | null = null;
   #section: MediaOverlaySection | null = null;
-  #native: boolean;
-  #player: NativeNarrationPlayer | null = null;
   #audio: NarrationClock | null = null;
   #audioHref: string | null = null;
   #objectUrl: string | null = null;
@@ -182,19 +146,11 @@ export class MediaOverlayClient implements TTSClient {
   #rate = 1;
   #lang = 'en';
 
-  constructor(controller?: TTSController, appService?: AppService | null) {
+  constructor(controller?: TTSController, _appService?: AppService | null) {
     this.controller = controller;
-    this.#native = !!(appService?.isAndroidApp || appService?.isIOSApp);
   }
 
   async init(): Promise<boolean> {
-    if (this.#native) {
-      // Re-entering narration after Edge/system must not orphan the existing
-      // player (and its staged chapter file / event listener).
-      if (!this.#player) this.#player = new NativeNarrationPlayer();
-      this.initialized = true;
-      return true;
-    }
     this.initialized = typeof Audio !== 'undefined';
     return this.initialized;
   }
@@ -255,21 +211,14 @@ export class MediaOverlayClient implements TTSClient {
 
     const tracks = await this.#source.resolveTracks?.(href).catch(() => null);
     if (tracks?.length) {
-      let player: NarrationTrackPlayer;
-      if (this.#native && this.#player) {
-        // Same reasoning as the native branch below: never #releaseAudio here.
-        this.#cancelHandover();
-        this.#audio?.destroy?.();
-        player = nativeTrackPlayer(this.#player, href);
-      } else {
-        this.#releaseAudio();
-        // A source with a blob loader may still resolve real URLs (BookOrbit
-        // does when the media proxy is up), and those stream and seek, so the
-        // blob clock is only for the tracks that are not URLs.
-        const loadTrack = this.#source.loadTrack;
-        const streamable = tracks.every((track) => /^https?:\/\//.test(track.url));
-        player = loadTrack && !streamable ? new BlobAudioClock(loadTrack) : new HtmlAudioClock();
-      }
+      this.#releaseAudio();
+      // A source with a blob loader may still resolve real URLs, and those
+      // stream and seek, so the blob clock is only for the tracks that are
+      // not URLs.
+      const loadTrack = this.#source.loadTrack;
+      const streamable = tracks.every((track) => /^https?:\/\//.test(track.url));
+      const player: NarrationTrackPlayer =
+        loadTrack && !streamable ? new BlobAudioClock(loadTrack) : new HtmlAudioClock();
       const clock = new MultiTrackNarrationClock(tracks, player);
       await clock.setRate(this.#rate);
       this.#audio = clock;
@@ -278,59 +227,12 @@ export class MediaOverlayClient implements TTSClient {
       return clock;
     }
 
-    if (this.#native && this.#player) {
-      const path = await this.#source.resolvePath?.(href).catch(() => null);
-      // Keep any prior native session's file until the new one is staged; load()
-      // replaces the AVPlayer item. Do not call #releaseAudio (that aborts).
-      this.#cancelHandover();
-      // The native player plays a stored entry in place from the book file.
-      // A book it can't open (a content:// URI on Android) still gets the
-      // entry staged as a copy.
-      const media = !path
-        ? await this.#source.getMediaSource?.(href, audioType(href)).catch(() => null)
-        : null;
-      const inPlace =
-        !!media &&
-        'path' in media &&
-        (await this.#player
-          .loadPath(href, media.path, 0, {
-            start: media.start,
-            end: media.end,
-            contentType: audioType(href),
-          })
-          .then(
-            () => true,
-            () => false,
-          ));
-      if (path) {
-        await this.#player.loadPath(href, path, 0);
-      } else if (!inPlace) {
-        const blob = audioBlobWithType(href, await this.#source.loadBlob(href));
-        await this.#player.load(href, blob, 0);
-      }
-      this.#player.playbackRate = this.#rate;
-      this.#player.pause();
-      this.#audio = this.#player;
-      this.#audioHref = href;
-      this.#objectUrl = null;
-      return this.#player;
-    }
-
     const directUrl = await this.#source.resolveUrl?.(href).catch(() => null);
-    // A book's one shared track can be most of the book (900 MB in #6989), so
-    // a stored audio entry plays in place rather than being copied out whole
-    // first: a slice of the book file, or the media proxy's window onto it.
     const media = directUrl
       ? null
       : await this.#source.getMediaSource?.(href, audioType(href)).catch(() => null);
-    const mediaUrl =
-      media && 'path' in media
-        ? await (await import('@/services/audiobook/mediaProxy'))
-            .getMediaFileUrl(media.path, media.start, media.end, audioType(href))
-            .catch(() => null)
-        : null;
     this.#releaseAudio();
-    let url = directUrl ?? mediaUrl;
+    let url = directUrl;
     if (!url) {
       const blob =
         media && 'blob' in media
@@ -375,9 +277,6 @@ export class MediaOverlayClient implements TTSClient {
     this.#audioHref = null;
     this.#objectUrl = null;
     this.#playedPar = null;
-    if (this.#native && this.#player) {
-      void this.#player.release();
-    }
   }
 
   // Drop the cached clock without tearing the client down. Needed when another
@@ -397,9 +296,6 @@ export class MediaOverlayClient implements TTSClient {
     if (this.#objectUrl) {
       URL.revokeObjectURL(this.#objectUrl);
       this.#objectUrl = null;
-    }
-    if (this.#native && this.#player) {
-      this.#player.invalidateSession();
     }
   }
 
@@ -604,14 +500,7 @@ export class MediaOverlayClient implements TTSClient {
 
   async setRate(rate: number): Promise<void> {
     this.#rate = rate;
-    // Await the native set-rate invoke: assigning playbackRate alone was
-    // fire-and-forget, so stop→setRate→start (and live changes) raced play()
-    // and left AVPlayer at the previous rate until the next voice switch.
-    if (this.#audio) {
-      await setClockRate(this.#audio, rate);
-    } else if (this.#native && this.#player) {
-      await this.#player.setRate(rate);
-    }
+    if (this.#audio) await setClockRate(this.#audio, rate);
   }
 
   async setPitch(_pitch: number): Promise<void> {
@@ -699,10 +588,7 @@ export class MediaOverlayClient implements TTSClient {
 
   async shutdown(): Promise<void> {
     this.initialized = false;
-    const player = this.#player;
-    this.#player = null;
     this.#releaseAudio();
-    if (player) await player.shutdown();
     this.#currentPar = null;
     this.#section = null;
     this.#source = null;

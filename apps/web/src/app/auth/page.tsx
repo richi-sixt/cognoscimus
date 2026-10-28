@@ -16,7 +16,7 @@ export default function AuthPage() {
   const { login } = useAuth();
   const [isMounted, setIsMounted] = useState(false);
 
-  useTheme({ systemUIVisible: false });
+  useTheme();
 
   useEffect(() => {
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {

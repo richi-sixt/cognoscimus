@@ -80,13 +80,6 @@ describe('Browser-only database WASM', () => {
     return (await import('../../next.config.mjs')).default;
   };
 
-  test('the Tauri build stubs the package the web database imports', async () => {
-    const tauri = await loadConfig('tauri');
-    expect(tauri.turbopack?.resolveAlias?.['@readest/turso-database-wasm/webpack']).toBe(
-      './src/utils/stub.ts',
-    );
-  });
-
   test('the web build keeps it', async () => {
     const web = await loadConfig('web');
     expect(web.turbopack?.resolveAlias?.['@readest/turso-database-wasm/webpack']).toBeUndefined();

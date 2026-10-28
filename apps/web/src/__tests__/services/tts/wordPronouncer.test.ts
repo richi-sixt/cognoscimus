@@ -69,14 +69,6 @@ describe('pronounceWord — client choice', () => {
     expect(onStatus).toHaveBeenLastCalledWith('ended');
   });
 
-  it('uses the native client on the mobile app', async () => {
-    await pronounceWord('hello', 'en', { appService: { isMobile: true } as never }, vi.fn());
-    await flush();
-
-    expect(h.nativeSpeak).toHaveBeenCalledTimes(1);
-    expect(h.webSpeak).not.toHaveBeenCalled();
-  });
-
   it('falls back to English when no language is given', async () => {
     await pronounceWord('hello', undefined, {}, vi.fn());
     await flush();

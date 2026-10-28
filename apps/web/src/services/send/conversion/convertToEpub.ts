@@ -388,8 +388,7 @@ async function buildArticleCover(
   // resolve to unfetchable `file://` siblings.
   const candidateImageUrl = [ruleImageUrl, metaImageUrl].find((u) => u && /^https?:/i.test(u));
   if (candidateImageUrl) {
-    authorImage =
-      (await fetchAuthorImage(candidateImageUrl, pageUrl).catch(() => null)) ?? undefined;
+    authorImage = (await fetchAuthorImage(candidateImageUrl).catch(() => null)) ?? undefined;
   }
 
   // Favicon is only fetched when we don't already have an author image —

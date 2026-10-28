@@ -24,7 +24,6 @@ vi.mock('@/store/deviceStore', () => ({
     releaseBackKeyInterception: vi.fn(),
   }),
 }));
-vi.mock('@tauri-apps/plugin-haptics', () => ({ impactFeedback: vi.fn() }));
 
 const { default: NoteEditorSheet } = await import(
   '@/app/reader/components/annotator/NoteEditorSheet'

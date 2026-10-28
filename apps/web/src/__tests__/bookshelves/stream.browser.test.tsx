@@ -314,14 +314,12 @@ describe('mixed bookshelf stream in Chromium', () => {
                   transferProgress={null}
                   setLoading={noop}
                   toggleSelection={noop}
-                  handleGroupBooks={noop}
                   handleBookDownload={transfer}
                   handleBookUpload={transfer}
                   handleBookDelete={transfer}
                   handleSetSelectMode={noop}
                   handleShowDetailsBook={noop}
                   handleLibraryNavigation={noop}
-                  handleUpdateReadingStatus={noop}
                   showTimeRemaining={false}
                 />
               )}
@@ -387,14 +385,12 @@ describe('mixed bookshelf stream in Chromium', () => {
                 transferProgress={null}
                 setLoading={noop}
                 toggleSelection={noop}
-                handleGroupBooks={noop}
                 handleBookDownload={transfer}
                 handleBookUpload={transfer}
                 handleBookDelete={transfer}
                 handleSetSelectMode={noop}
                 handleShowDetailsBook={noop}
                 handleLibraryNavigation={noop}
-                handleUpdateReadingStatus={noop}
                 showTimeRemaining={false}
               />
             )}

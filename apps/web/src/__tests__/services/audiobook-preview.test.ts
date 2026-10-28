@@ -7,12 +7,6 @@ const tauriMocks = vi.hoisted(() => ({
   getLocalMediaUrl: vi.fn(async (): Promise<string | null> => null),
 }));
 
-vi.mock('@tauri-apps/api/core', () => ({
-  addPluginListener: tauriMocks.addPluginListener,
-  convertFileSrc: vi.fn((path: string) => path),
-  invoke: tauriMocks.invoke,
-}));
-
 vi.mock('@/services/audiobook/mediaProxy', () => ({
   getLocalMediaUrl: tauriMocks.getLocalMediaUrl,
 }));
@@ -163,74 +157,6 @@ describe('AudiobookPreviewPlayer', () => {
     expect(createObjectURL).not.toHaveBeenCalled();
     expect(appService.openFile).not.toHaveBeenCalled();
     expect(appService.resolveFilePath).not.toHaveBeenCalled();
-  });
-
-  it('streams a stored file through the media proxy on desktop (#6848)', async () => {
-    tauriMocks.getLocalMediaUrl.mockResolvedValue('http://127.0.0.1:5/s/file/abc');
-    const appService = makeAppService({
-      appPlatform: 'tauri',
-      resolveFilePath: vi.fn().mockResolvedValue('/books/hash/audiobook/big.m4a'),
-    });
-    const player = new AudiobookPreviewPlayer(appService, vi.fn());
-
-    await player.toggle({
-      id: 'audio-0:0',
-      path: 'hash/audiobook/big.m4a',
-      base: 'Books',
-      start: 3,
-      end: 40,
-    });
-
-    expect(tauriMocks.getLocalMediaUrl).toHaveBeenCalledWith(
-      '/books/hash/audiobook/big.m4a',
-      'audio/mp4',
-    );
-    expect(FakeAudio.instances[0]!.src).toBe('http://127.0.0.1:5/s/file/abc');
-    expect(appService.openFile).not.toHaveBeenCalled();
-  });
-
-  it('falls back to the asset URL on desktop when the proxy cannot serve the file', async () => {
-    const appService = makeAppService({
-      appPlatform: 'tauri',
-      resolveFilePath: vi.fn().mockResolvedValue('/books/hash/audiobook/small.mp3'),
-    });
-    const player = new AudiobookPreviewPlayer(appService, vi.fn());
-
-    await player.toggle({
-      id: 'audio-0:0',
-      path: 'hash/audiobook/small.mp3',
-      base: 'Books',
-      start: 0,
-      end: 9,
-    });
-
-    expect(FakeAudio.instances[0]!.src).toBe('/books/hash/audiobook/small.mp3');
-  });
-
-  it('hands a remote clip URL to the native player on mobile', async () => {
-    const appService = makeAppService({ appPlatform: 'tauri', isMobileApp: true });
-    const player = new AudiobookPreviewPlayer(appService, vi.fn());
-
-    await player.toggle({ id: 'abs:0', url: 'http://abs/track?token=t', start: 7, end: 40 });
-
-    expect(tauriMocks.invoke).toHaveBeenCalledWith('plugin:native-tts|playout_control', {
-      payload: { action: 'load', path: 'http://abs/track?token=t', positionMs: 7000 },
-    });
-    expect(appService.resolveFilePath).not.toHaveBeenCalled();
-  });
-
-  it('unregisters the native playback listener when a mobile preview stops', async () => {
-    const appService = makeAppService({
-      appPlatform: 'tauri',
-      isMobileApp: true,
-      resolveFilePath: vi.fn().mockResolvedValue('/books/book.m4b'),
-    });
-    const player = new AudiobookPreviewPlayer(appService, vi.fn());
-
-    await player.toggle({ id: 'chapter-1', path: 'book.m4b', start: 0, end: 30 });
-    await player.stop();
-
-    expect(tauriMocks.unregister).toHaveBeenCalledOnce();
   });
 
   it('requests an Audiobookshelf clip with CORS on the web app', async () => {

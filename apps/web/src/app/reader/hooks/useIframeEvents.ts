@@ -9,8 +9,6 @@ import {
   cancelLayeredTurnTouch,
   endLayeredTurnTouch,
 } from '@/app/reader/utils/iframeEventHandlers';
-import { NATIVE_CAPTURED_TURN_ATTRIBUTE } from '@/app/reader/utils/turnGestureArena';
-import { getCapturedTurnStyle } from '@/app/reader/hooks/useCapturedTurn';
 import {
   dispatchTouchInterceptors,
   isLayeredTurnGestureActive,
@@ -173,16 +171,10 @@ export const useTouchEvent = (bookKey: string) => {
   const isLayeredTurnCandidate = () => {
     const viewSettings = getViewSettings(bookKey);
     if (!viewSettings) return false;
-    // `fixed-layout.js` animates nothing of its own and ignores `turn-style`,
-    // so a fixed-layout book is only a candidate where the Tauri captured
-    // pipeline drives its turn — and not while it pans (cognoscimus#6239).
-    if (getBookData(bookKey)?.isFixedLayout && !getCapturedTurnStyle(viewSettings, true)) {
-      return false;
-    }
+    // `fixed-layout.js` animates nothing of its own and ignores `turn-style`.
+    if (getBookData(bookKey)?.isFixedLayout) return false;
     const renderer = getView(bookKey)?.renderer;
-    const turnStyle =
-      renderer?.getAttribute?.('turn-style') ??
-      renderer?.getAttribute?.(NATIVE_CAPTURED_TURN_ATTRIBUTE);
+    const turnStyle = renderer?.getAttribute?.('turn-style');
     return (
       (turnStyle === 'slide' || turnStyle === 'curl' || turnStyle === 'push') &&
       viewSettings.animated &&

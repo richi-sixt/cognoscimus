@@ -3,7 +3,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MdArrowBack, MdChevronRight, MdSettings, MdVolumeUp } from 'react-icons/md';
 import clsx from 'clsx';
-import { openUrl } from '@tauri-apps/plugin-opener';
 
 import { useTranslation } from '@/hooks/useTranslation';
 import { useEnv } from '@/context/EnvContext';
@@ -14,7 +13,6 @@ import ImageViewer from '@/app/reader/components/ImageViewer';
 import { useCustomDictionaryStore } from '@/store/customDictionaryStore';
 import { getEnabledProviders } from '@/services/dictionaries/registry';
 import { buildLookupCandidates } from '@/services/dictionaries/lookupCandidates';
-import { isTauriAppPlatform } from '@/services/environment';
 import { cancelWordPronounce, pronounceWord } from '@/services/tts/wordPronouncer';
 import {
   getBuiltinWebSearch,
@@ -28,7 +26,6 @@ import type {
 } from '@/services/dictionaries/types';
 import type { Insets } from '@/types/misc';
 
-const isTauri = isTauriAppPlatform();
 const ZERO_INSETS: Insets = { top: 0, right: 0, bottom: 0, left: 0 };
 
 /**
@@ -72,7 +69,6 @@ export interface DictionaryResultsState {
   handleContainerClick: (e: React.MouseEvent) => void;
   toggleExpanded: (id: string) => void;
   resolveWebSearchUrl: (id: string) => string | undefined;
-  onWebSearchClickTauri: (e: React.MouseEvent<HTMLAnchorElement>, id: string) => void;
   noProvidersAtAll: boolean;
   /** Dictionary popup font-size multiplier (#4443); `1` = default sizes. */
   fontScale: number;
@@ -289,16 +285,6 @@ export function useDictionaryResults({
         });
       return;
     }
-
-    // External links: on Tauri we route http(s) anchors through `openUrl`
-    // because target="_blank" doesn't work; on web the anchor handles it.
-    if (!isTauri || !anchor) return;
-    const rawHref = anchor.getAttribute('href');
-    if (!rawHref || !/^https?:\/\//i.test(rawHref)) return;
-    e.preventDefault();
-    void openUrl(rawHref).catch((err) => {
-      console.warn('Failed to open external URL', rawHref, err);
-    });
   }, []);
 
   // Lookup orchestration: fan out across all definition providers in
@@ -414,19 +400,6 @@ export function useDictionaryResults({
     [currentWord, settings.webSearches],
   );
 
-  const onWebSearchClickTauri = useCallback(
-    (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
-      if (!isTauri) return;
-      e.preventDefault();
-      const url = resolveWebSearchUrl(id);
-      if (!url) return;
-      void openUrl(url).catch((err) => {
-        console.warn('Failed to open external URL', url, err);
-      });
-    },
-    [resolveWebSearchUrl],
-  );
-
   const canGoBack = historyStack.length > 1;
   const noProvidersAtAll = providers.length === 0;
 
@@ -442,7 +415,6 @@ export function useDictionaryResults({
     handleContainerClick,
     toggleExpanded,
     resolveWebSearchUrl,
-    onWebSearchClickTauri,
     noProvidersAtAll,
     fontScale: settings.fontScale ?? 1,
     zoomedImageSrc,
@@ -538,7 +510,6 @@ export const DictionaryResultsBody: React.FC<DictionaryResultsBodyProps> = ({
   handleContainerClick,
   toggleExpanded,
   resolveWebSearchUrl,
-  onWebSearchClickTauri,
   noProvidersAtAll,
   fontScale,
   zoomedImageSrc,
@@ -637,9 +608,8 @@ export const DictionaryResultsBody: React.FC<DictionaryResultsBodyProps> = ({
             <li key={p.id}>
               <a
                 href={url ?? '#'}
-                target={isTauri ? undefined : '_blank'}
+                target='_blank'
                 rel='noopener noreferrer'
-                onClick={(e) => onWebSearchClickTauri(e, p.id)}
                 className='hover:bg-base-200/40 flex w-full items-center justify-between rounded-md px-2 py-3 text-left text-sm no-underline'
               >
                 <span>{_(p.label)}</span>

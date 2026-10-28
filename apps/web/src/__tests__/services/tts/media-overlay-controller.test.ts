@@ -37,19 +37,6 @@ const makeMockClient = (name: string, mediaClock: boolean): TTSClient => ({
   getSpeakingLang: vi.fn().mockReturnValue('en'),
 });
 
-const mediaProxy = vi.hoisted(() => ({
-  getMediaProxyBase: vi.fn(async (): Promise<string | null> => null),
-  getLocalMediaUrl: vi.fn(async (): Promise<string | null> => null),
-}));
-vi.mock('@/services/audiobook/mediaProxy', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/services/audiobook/mediaProxy')>();
-  return {
-    ...actual,
-    getMediaProxyBase: mediaProxy.getMediaProxyBase,
-    getLocalMediaUrl: mediaProxy.getLocalMediaUrl,
-  };
-});
-
 vi.mock('@/services/tts/WebSpeechClient', () => ({
   WebSpeechClient: vi.fn().mockImplementation(function (this: Record<string, unknown>) {
     Object.assign(this, makeMockClient('web-speech', false));
@@ -245,48 +232,6 @@ describe('narration selection', () => {
     expect(view.book.sections[1]!.createDocument).toHaveBeenCalled();
     expect(view.tts!.start()).toContain('<mark name="0"/>');
     expect((await controller.getVoices('en'))[0]!.voices[0]!.name).toBe('External Narrator');
-  });
-
-  const pairedDesktopSource = async () => {
-    const view = makePairedView();
-    const appService = {
-      appPlatform: 'tauri',
-      isMobileApp: false,
-      openFile: vi.fn(async () => new File(['audio'], 'chapter.mp3')),
-      resolveFilePath: vi.fn(async () => '/books/hash/audiobook/chapter.mp3'),
-    } as unknown as AppService;
-    const controller = new TTSController(appService, view);
-    controller.pairedAudiobook = PAIRED_AUDIOBOOK;
-    const attachSource = vi.spyOn(controller.ttsMediaOverlayClient, 'attachSource');
-    await controller.init();
-    return { appService, source: attachSource.mock.calls.at(-1)?.[0] };
-  };
-
-  test('streams a paired audiobook through the media proxy on desktop Tauri (#6848)', async () => {
-    mediaProxy.getLocalMediaUrl.mockResolvedValueOnce('http://127.0.0.1:5/s/file/abc');
-    const { appService, source } = await pairedDesktopSource();
-
-    await expect(source?.resolveUrl?.(PAIRED_AUDIOBOOK.files[0]!.path)).resolves.toBe(
-      'http://127.0.0.1:5/s/file/abc',
-    );
-    expect(appService.resolveFilePath).toHaveBeenCalledWith(
-      PAIRED_AUDIOBOOK.files[0]!.path,
-      'Books',
-    );
-    expect(mediaProxy.getLocalMediaUrl).toHaveBeenCalledWith(
-      '/books/hash/audiobook/chapter.mp3',
-      'audio/mpeg',
-    );
-    expect(appService.openFile).not.toHaveBeenCalled();
-  });
-
-  test('falls back to the asset URL when the media proxy cannot serve the paired file', async () => {
-    const { appService, source } = await pairedDesktopSource();
-
-    await expect(source?.resolveUrl?.(PAIRED_AUDIOBOOK.files[0]!.path)).resolves.toBe(
-      'asset:///books/hash/audiobook/chapter.mp3',
-    );
-    expect(appService.openFile).not.toHaveBeenCalled();
   });
 
   test('starts paired narration at the current text position without drawing a chapter highlight', async () => {

@@ -20,9 +20,6 @@ export interface InkTarget {
   anchoring: InkAnchoring | null;
 }
 import { PointerHandwritingBackend } from './pointerBackend';
-import { BooxHandwritingBackend, queryPenCapabilities } from './booxBackend';
-import { isTauriAppPlatform } from '@/services/environment';
-import { getOSPlatform } from '@/utils/misc';
 
 export interface HandwritingOptions {
   tool: InkTool;
@@ -74,9 +71,8 @@ export const nextInkSession = () =>
   `ink-${Date.now().toString(36)}${(strokeCounter++).toString(36)}`;
 
 /**
- * Owns one page's live drawing session: picks BOOX raw drawing or the
- * generic pointer backend per detectPenBackend, and turns whichever
- * backend's point batches into InkStroke edits on the given editor. React
+ * Owns one page's live drawing session: picks the pointer backend per
+ * detectPenBackend, and turns the backend's point batches into InkStroke edits on the given editor. React
  * components never talk to a backend directly.
  */
 export class HandwritingService {
@@ -92,7 +88,6 @@ export class HandwritingService {
   private options: HandwritingOptions;
   private backend: PenBackend | null = null;
   private pointer = new PointerHandwritingBackend();
-  private boox = new BooxHandwritingBackend();
   private live: InkPoint[] = [];
   private liveErase = false;
   /** Last eraser sample, so consecutive batches erase along a connected path. */
@@ -153,16 +148,12 @@ export class HandwritingService {
 
   updateRect(rect: PageRect) {
     this.rect = rect;
-    this.restartBoox();
   }
 
   /**
    * Change the pen mid-session. Only affects strokes started afterwards —
-   * committed ink keeps the color and width it was drawn with.
-   *
-   * The BOOX pen reads its color and width from native start-time arguments,
-   * so it has to be re-issued; the pointer backend reads this.options per
-   * stroke and needs nothing.
+   * committed ink keeps the color and width it was drawn with. The pointer
+   * backend reads this.options per stroke and needs nothing.
    */
   setOptions(options: Partial<HandwritingOptions>) {
     // The eraser tracks the tool: a few pen widths, or one marker band.
@@ -176,16 +167,7 @@ export class HandwritingService {
         DEFAULT_OPTIONS.eraseRadiusFraction,
       ),
     };
-    this.restartBoox();
     this.onRender?.();
-  }
-
-  /** The BOOX pen takes its region and pen at start time only. */
-  private restartBoox() {
-    if (this.backend !== 'boox') return;
-    void this.boox
-      .update(this.rect, this.options.widthFraction * this.rect.width, this.options.color)
-      .catch((err) => console.warn('Failed to update BOOX pen:', err));
   }
 
   /**
@@ -271,8 +253,6 @@ export class HandwritingService {
 
   async attach(el: HTMLElement) {
     this.backend = await detectPenBackend({
-      queryNative:
-        isTauriAppPlatform() && getOSPlatform() === 'android' ? () => queryPenCapabilities() : null,
       hasPointerEvents: typeof window !== 'undefined' && 'PointerEvent' in window,
     });
 
@@ -281,15 +261,7 @@ export class HandwritingService {
       return [p.x, p.y];
     };
 
-    if (this.backend === 'boox') {
-      this.boox.onBatch((points, kind, erase) => this.onBatch(points, kind, erase));
-      await this.boox.start(
-        this.rect,
-        toPage,
-        this.options.widthFraction * this.rect.width,
-        this.options.color,
-      );
-    } else if (this.backend === 'pointer') {
+    if (this.backend === 'pointer') {
       this.pointer.onBatch((points, kind, erase) => this.onBatch(points, kind, erase));
       this.pointer.attach(el, toPage);
     }
@@ -297,7 +269,6 @@ export class HandwritingService {
 
   async detach() {
     this.pointer.detach();
-    if (this.backend === 'boox') await this.boox.stop();
   }
 
   setEraseMode(erase: boolean) {

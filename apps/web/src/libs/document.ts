@@ -113,7 +113,7 @@ export type BookMetadata = {
   absDuration?: number;
 };
 
-export type BookMediaSource = { blob: Blob } | { path: string; start: number; end: number };
+export type BookMediaSource = { blob: Blob };
 
 export interface BookDoc {
   metadata: BookMetadata;
@@ -191,15 +191,6 @@ export const MIMETYPES: Record<BookFormat, string[]> = {
 
 export interface DocumentLoaderOptions {
   /**
-   * Absolute filesystem path of `file`, used by Tauri builds to invoke the
-   * Rust EPUB pre-parser (`parse_epub_full`). When omitted (web platform,
-   * synthetic File, tests) the loader silently falls back to the
-   * zip.js-only path. Callers SHOULD pass it whenever they have one --
-   * the foliate-js init() drops from ~1.5s to ~0.3s on iOS for a typical
-   * EPUB when the prefetch cache is hit.
-   */
-  nativeFilePath?: string;
-  /**
    * Lay out each wide page of a comic (a double-page spread stored as one
    * image) as a spread of its own. The pages are measured up front, reading
    * every page's header, unless `known` holds what an earlier open found; and
@@ -266,9 +257,7 @@ export { WorkerMessageHandler };`,
   pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerURL;
 }
 
-// Read the ZIP central directory, resolving entry metadata. Kept standalone
-// so the read can be started BEFORE the (slower) Rust prefetch RPC and the
-// two overlap instead of serializing in front of EPUB.init().
+// Read the ZIP central directory, resolving entry metadata.
 type Entry = import('@zip.js/zip.js').Entry;
 
 async function openZipEntries(file: File): Promise<Entry[]> {
@@ -280,12 +269,10 @@ async function openZipEntries(file: File): Promise<Entry[]> {
 
 export class DocumentLoader {
   private file: File;
-  private nativeFilePath?: string;
   private widePages?: WidePagesOptions;
 
   constructor(file: File, options: DocumentLoaderOptions = {}) {
     this.file = file;
-    this.nativeFilePath = options.nativeFilePath;
     this.widePages = options.widePages;
   }
 
@@ -337,13 +324,7 @@ export class DocumentLoader {
     );
   }
 
-  private async makeZipLoader(
-    entriesPromise: Promise<Entry[]> | null,
-    prefetch?: {
-      textCache?: Map<string, string>;
-      sizes?: Map<string, number>;
-    },
-  ) {
+  private async makeZipLoader(entriesPromise: Promise<Entry[]> | null) {
     const getComment = async (): Promise<string | null> => {
       const EOCD_SIGNATURE = [0x50, 0x4b, 0x05, 0x06];
       const maxEOCDSearch = 1024 * 64;
@@ -371,8 +352,7 @@ export class DocumentLoader {
 
     const { TextWriter, BlobWriter } = await import('@zip.js/zip.js');
     // The central-directory read may already be in flight (started by the
-    // caller before the Rust prefetch, see open()); fall back to starting
-    // it here for formats that never prefetch (CBZ/FBZ).
+    // caller, see open()); fall back to starting it here.
     const entries = await (entriesPromise ?? openZipEntries(this.file));
     const map = new Map(entries.map((entry) => [entry.filename, entry]));
     const lowercaseMap = new Map<string, Entry | null>();
@@ -413,22 +393,8 @@ export class DocumentLoader {
       if (header.byteLength < 30 || header.getUint32(0, true) !== 0x04034b50) return null;
       const start = entry.offset + 30 + header.getUint16(26, true) + header.getUint16(28, true);
       const end = start + entry.uncompressedSize;
-      // A plain File slices lazily; NativeFile and RemoteFile read the slice
-      // into memory, so for them the app plays the entry from disk.
-      if (!('open' in this.file)) return { blob: this.file.slice(start, end, type) };
-      return this.nativeFilePath ? { path: this.nativeFilePath, start, end } : null;
+      return { blob: this.file.slice(start, end, type) };
     };
-
-    // Prefetch fast-path: foliate-js's EPUB.init() reads container.xml,
-    // the OPF, the EPUB3 nav and (if present) the NCX via this very
-    // `loadText`. On Tauri we already have those bytes in memory from
-    // the Rust `parse_epub_full` command, so we hand them back without
-    // touching zip.js. Anything not in the cache falls through to the
-    // original zip.js path (CSS/HTML/font assets the reader pulls
-    // lazily as the user actually reads stay on the slow path, which
-    // is fine -- they're also tiny per-call and async).
-    const textCache = prefetch?.textCache;
-    const sizesOverride = prefetch?.sizes;
 
     // In-flight dedupe for spine-text loads.
     //
@@ -464,17 +430,8 @@ export class DocumentLoader {
       return wrapped;
     };
 
-    const loadText = textCache
-      ? (name: string, ...args: [string?]) => {
-          const cached = textCache.get(name);
-          if (cached !== undefined) return Promise.resolve(cached);
-          return dedupedZipLoadText(name, ...args);
-        }
-      : dedupedZipLoadText;
-
-    const getSize = sizesOverride
-      ? (name: string) => sizesOverride.get(name) ?? getEntry(name)?.uncompressedSize ?? 0
-      : (name: string) => getEntry(name)?.uncompressedSize ?? 0;
+    const loadText = dedupedZipLoadText;
+    const getSize = (name: string) => getEntry(name)?.uncompressedSize ?? 0;
 
     return {
       entries,
@@ -585,25 +542,12 @@ export class DocumentLoader {
         // for them. We probe `isEPUBLike()` (= isZip but not CBZ/FBZ)
         // so the prefetch RPC only fires when it can actually be used.
         const isEPUBLike = !this.isCBZ() && !this.isFBZ();
-        // The central-directory read has no data dependency on the Rust
-        // prefetch (which only feeds loadText's textCache/sizes), so start
-        // it first and let the two overlap. On Android a multi-MB central
-        // directory means N chunked scheme round trips, all of which used
-        // to sit in front of EPUB.init().
         const entriesPromise = isEPUBLike ? openZipEntries(this.file) : null;
-        // Avoid an unhandled rejection while the Rust prefetch below is still
-        // awaited; the rejection still surfaces via the await in makeZipLoader
-        // and the catch in open().
+        // Avoid an unhandled rejection while the loader is still awaited; the
+        // rejection still surfaces via the await in makeZipLoader and the catch
+        // in open().
         entriesPromise?.catch(() => undefined);
-        let prefetch: { textCache: Map<string, string>; sizes: Map<string, number> } | undefined;
-        if (isEPUBLike && this.nativeFilePath) {
-          const { tryNativePrefetchEpub } = await import('@/utils/tauriEpubBridge');
-          const native = await tryNativePrefetchEpub(this.nativeFilePath);
-          if (native) {
-            prefetch = { textCache: native.textCache, sizes: native.sizes };
-          }
-        }
-        const loader = await this.makeZipLoader(entriesPromise, prefetch);
+        const loader = await this.makeZipLoader(entriesPromise);
         const { entries } = loader;
 
         if (this.isCBZ()) {
@@ -613,10 +557,7 @@ export class DocumentLoader {
             const { known, onFound } = this.widePages;
             const pages = trackWidePages(loader, onFound);
             book = await makeComicBook(pages.loader, this.file);
-            pages.attach(
-              book.sections,
-              known ?? (await measureWidePages(this.file, entries, this.nativeFilePath)),
-            );
+            pages.attach(book.sections, known ?? (await measureWidePages(this.file, entries)));
           } else {
             book = await makeComicBook(loader, this.file);
           }

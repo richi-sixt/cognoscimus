@@ -1,7 +1,7 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { deleteBook, uploadBook } from '@/services/cloudService';
 import { Book, BookFormat } from '@/types/book';
-import { BaseDir, FileSystem } from '@/types/system';
+import { FileSystem } from '@/types/system';
 
 // Mock external dependencies
 vi.mock('@/utils/book', () => ({
@@ -404,9 +404,8 @@ describe('cloudService', () => {
         deletedAt: 100,
         fileSyncDeletionRequestedAt: 100,
       });
-      const resolveFilePath = vi.fn(async (path: string, base: BaseDir) => `${base}:${path}`);
 
-      await uploadBook(mockFs, resolveFilePath, book);
+      await uploadBook(mockFs, book);
 
       expect(book.deletedAt).toBeNull();
       expect(book.fileSyncDeletionRequestedAt).toBeNull();
@@ -419,9 +418,8 @@ describe('cloudService', () => {
       vi.mocked(mockFs.exists).mockImplementation(async (path, base) => {
         return base === 'Books' && path === managedPath;
       });
-      const resolveFilePath = vi.fn(async (path: string, base: BaseDir) => `${base}:${path}`);
 
-      await uploadBook(mockFs, resolveFilePath, book);
+      await uploadBook(mockFs, book);
 
       expect(mockFs.exists).toHaveBeenCalledWith(managedPath, 'Books');
       expect(mockFs.exists).not.toHaveBeenCalledWith('/Users/me/Library/missing.epub', 'None');
@@ -445,11 +443,8 @@ describe('cloudService', () => {
       vi.mocked(mockFs.exists).mockImplementation(async (path, base) => {
         return base === 'Books' && path === coverPath;
       });
-      const resolveFilePath = vi.fn(async (path: string, base: BaseDir) => `${base}:${path}`);
 
-      await expect(uploadBook(mockFs, resolveFilePath, book)).rejects.toThrow(
-        'Book file not uploaded',
-      );
+      await expect(uploadBook(mockFs, book)).rejects.toThrow('Book file not uploaded');
 
       const { uploadFile } = await import('@/libs/storage');
       expect(uploadFile).not.toHaveBeenCalled();

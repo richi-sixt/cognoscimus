@@ -14,6 +14,8 @@ export interface LandingContent {
   features: { title: string; text: string }[];
   license: string;
   languageLabel: string;
+  contact: string;
+  upstreamUrl: string;
 }
 
 export const LANDING_CONTENT: Record<LandingLang, LandingContent> = {
@@ -46,6 +48,8 @@ export const LANDING_CONTENT: Record<LandingLang, LandingContent> = {
     license:
       'Cognoscimus is a modified version of Readest, © Bilingify LLC, licensed under the GNU AGPL v3.0.',
     languageLabel: 'Language',
+    contact: 'Contact',
+    upstreamUrl: 'https://readest.com',
   },
   de: {
     headline: 'Deine Bücher, nach deinen Regeln.',
@@ -76,9 +80,15 @@ export const LANDING_CONTENT: Record<LandingLang, LandingContent> = {
     license:
       'Cognoscimus ist eine veränderte Version von Readest, © Bilingify LLC, lizenziert unter der GNU AGPL v3.0.',
     languageLabel: 'Sprache',
+    contact: 'Kontakt',
+    upstreamUrl: 'https://readest.com/de',
   },
 };
 
 export const SOURCE_URL = 'https://github.com/richi-sixt/cognoscimus';
-export const UPSTREAM_URL = 'https://github.com/readest/readest';
+
+// The contact address is kept in two parts and put together in the browser only
+// (see Landing.tsx), so it never appears in the HTML that crawlers fetch.
+export const CONTACT_USER = 'cognoscimus';
+export const CONTACT_DOMAIN = 'sixt.services';
 export const LICENSE_URL = 'https://www.gnu.org/licenses/agpl-3.0.html';

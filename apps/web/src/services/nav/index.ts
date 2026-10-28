@@ -18,11 +18,9 @@ import { enrichTocFromNavElements } from './enrichment';
  *
  * The original perf commit fanned every section out via Promise.all under
  * the assumption that `section.loadText()` is a cheap in-memory inflate.
- * That holds for pure-web targets (the EPUB Blob is an in-memory File
- * backed by IndexedDB, slice/arrayBuffer is synchronous), but on Tauri
- * each loadText drives a `@tauri-apps/plugin-fs` open/read/close round
- * trip across the JS<->Rust IPC bridge: see `utils/file.ts::NativeFile`.
- * Past a per-platform threshold the bridge or the fd pool saturates,
+ * That holds when the EPUB Blob is an in-memory File backed by IndexedDB
+ * (slice/arrayBuffer is synchronous), but a remote file costs a request per
+ * read. Past a threshold the connection pool saturates,
  * individual reads reject, and the zip.js TextWriter driving that
  * entry's inflate transitions to ERRORED, surfacing as
  *   "Cannot close a ERRORED writable stream"

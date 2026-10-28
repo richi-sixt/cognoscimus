@@ -14,9 +14,6 @@ import {
   isPencilNativeKey,
   KeyCandidate,
 } from '@/utils/keybinding';
-import { getCachedEinkRefreshSupported, refreshEinkScreen } from '@/utils/bridge';
-import { isTauriAppPlatform } from '@/services/environment';
-import { tauriGetWindowLogicalPosition } from '@/utils/window';
 import { getReadingRulerMoveDirection } from '../utils/readingRuler';
 import { isPageOverflowing } from '../utils/pageOverflow';
 import { useTouchInterceptor } from './useTouchInterceptor';
@@ -124,71 +121,6 @@ const snapScrolledDistanceToLines = (
   }
 };
 
-// Page turns since the last deep full refresh, per open view. Keyed by the
-// FoliateView so the count is scoped to the book and dropped when it closes.
-// Drives the automatic e-ink refresh that fires every `einkAutoRefreshInterval`
-// pages — the only ghosting-cleanup path usable on readers without spare buttons.
-const einkPageTurnsSinceRefresh = new WeakMap<FoliateView, number>();
-
-const resetEinkRefreshCounter = (view: FoliateView | null) => {
-  if (view) einkPageTurnsSinceRefresh.set(view, 0);
-};
-
-const noteEinkPageTurn = (
-  view: FoliateView,
-  viewSettings: ViewSettings,
-  navigation: Promise<void>,
-) => {
-  const interval = viewSettings.einkAutoRefreshInterval;
-  if (!viewSettings.isEink || !interval || interval <= 0) return;
-  // Skip only when the startup capability probe authoritatively settled false
-  // (the interval can reach a non-e-ink device via synced per-book config, so
-  // the bridge call there is a guaranteed no-op). `null` (probe not yet run)
-  // keeps going. Deliberately NOT latched on refresh outcomes: { success:false }
-  // also comes back for transient conditions on a fully supported device
-  // (detached window, zero-sized view, one-off vendor exception), so a single
-  // miss must not permanently disable auto-refresh or hide the user's option.
-  if (getCachedEinkRefreshSupported() === false) return;
-  // Counts page turns routed through viewPagination: tap/click zones, wheel,
-  // volume keys, hardware page-turner keys, and the on-screen nav buttons. Not
-  // counted (they call view.next/prev or renderer.next/prev directly, bypassing
-  // this path): PageUp/PageDown and Shift+Arrow selection-extension shortcuts,
-  // the footer prev/next buttons, section jumps, the native swipe the paginator
-  // commits on its own, and the hands-free turners — auto page turn (corner
-  // dwell), TTS page-follow, and auto-scroll's section hop. So auto full
-  // refresh tracks manual turns only; a hands-free session won't trigger it.
-  // Intentionally no start/end boundary skip either: renderer.atEnd / atStart
-  // are section-page based, so on fixed-layout / one-page-per-section books
-  // they read true on nearly every real turn and would starve the counter. A
-  // no-op turn that cannot move just refreshes on schedule with nothing
-  // changed — the lesser cost versus never refreshing.
-  const turns = (einkPageTurnsSinceRefresh.get(view) ?? 0) + 1;
-  if (turns >= interval) {
-    resetEinkRefreshCounter(view);
-    // Fire only after the turn settles: the native hook deep-refreshes whatever
-    // is on the panel right now, so refreshing before view.next/prev commits
-    // would flash the outgoing page while the incoming one lands as an ordinary
-    // update and keeps its ghosting. Both fulfill and reject re-surface the
-    // current frame — a turn that cannot move (atStart/atEnd) should still clear
-    // on schedule rather than silently skip a cycle.
-    // No platform gate here (unlike the manual binding): the interval is set
-    // only on Android but a synced per-book config can carry it elsewhere, and
-    // off-Android the bridge rejects — swallowed here as an intentional no-op.
-    // A resolved { success: false } is only reachable on a supported device whose
-    // vendor hook failed at refresh time, so it's a real 'advertised but not
-    // refreshing' case worth a field log; a rejection (off-Android) stays silent.
-    const refresh = () =>
-      refreshEinkScreen()
-        .then((result) => {
-          if (!result.success) console.debug('auto e-ink full refresh no-op:', result.error);
-        })
-        .catch(() => {});
-    navigation.then(refresh, refresh);
-  } else {
-    einkPageTurnsSinceRefresh.set(view, turns);
-  }
-};
-
 export const viewPagination = (
   view: FoliateView | null,
   viewSettings: ViewSettings | null | undefined,
@@ -234,9 +166,7 @@ export const viewPagination = (
         // non-scrolled panning path below, which deliberately does not count).
         // So every scrolled turn reaching here is one page — counting all of
         // them keeps "Every N pages" at N viewports.
-        const navigation = forward ? view.next(snapped) : view.prev(snapped);
-        noteEinkPageTurn(view, viewSettings, navigation);
-        return navigation;
+        return forward ? view.next(snapped) : view.prev(snapped);
       }
     }
   } else if (mode === 'pan' && isPanningView(view, viewSettings)) {
@@ -245,9 +175,7 @@ export const viewPagination = (
     } else if (hasVerticalPanning(view, viewSettings) && (side === 'up' || side === 'down')) {
       return view.pan(0, side === 'up' ? -panDistance : panDistance);
     } else {
-      const navigation = side === 'left' || side === 'up' ? view.prev() : view.next();
-      noteEinkPageTurn(view, viewSettings, navigation);
-      return navigation;
+      return side === 'left' || side === 'up' ? view.prev() : view.next();
     }
   } else {
     switch (mode) {
@@ -260,9 +188,7 @@ export const viewPagination = (
       case 'pan':
       case 'page':
       default: {
-        const navigation = side === 'left' || side === 'up' ? view.prev() : view.next();
-        noteEinkPageTurn(view, viewSettings, navigation);
-        return navigation;
+        return side === 'left' || side === 'up' ? view.prev() : view.next();
       }
     }
   }
@@ -320,21 +246,7 @@ export const usePagination = (
           if (viewElement) {
             const { screenX } = msg.data;
             const viewRect = viewElement.getBoundingClientRect();
-            let windowStartX;
-            // Currently for tauri APP the window.screenX is always 0
-            if (isTauriAppPlatform()) {
-              if (appService?.isMobile) {
-                windowStartX = 0;
-              } else {
-                const windowPosition = (await tauriGetWindowLogicalPosition()) as {
-                  x: number;
-                  y: number;
-                };
-                windowStartX = windowPosition.x;
-              }
-            } else {
-              windowStartX = window.screenX;
-            }
+            const windowStartX = window.screenX;
             // A page-filling image or table in a two-page spread fills only its
             // column, so the zones are measured on that column; the spread's
             // own center falls on the gutter (#6745).
@@ -516,23 +428,8 @@ export const usePagination = (
     // (for example Ctrl+End) remain suppressed, but must not turn again.
     if (!execute) return true;
 
-    // E-ink full screen refresh (Android only) — clears ghosting without
-    // turning the page. The native bridge no-ops on non-e-ink hardware.
-    if (action === 'refresh') {
-      // On a device the capability probe authoritatively ruled out, don't claim
-      // the key at all: refreshEinkScreen would no-op yet still swallow the
-      // button, and the "Refresh Page" row is hidden there, so a stale binding
-      // could no longer be cleared from the UI. Returning false lets the key fall
-      // through to its normal behavior, making the stale binding inert. Unsettled
-      // (null) still claims the chord so a transient probe gap mid-read can't leak
-      // the key.
-      if (getCachedEinkRefreshSupported() === false) return false;
-      if (appService?.isAndroidApp) {
-        refreshEinkScreen().catch(() => {});
-        resetEinkRefreshCounter(viewRef.current);
-      }
-      return true;
-    }
+    // E-ink full refresh needs a native device hook; there is none on the web.
+    if (action === 'refresh') return false;
 
     const viewSettings = getViewSettings(bookKey);
     const side = action === 'pagePrev' || action === 'sectionPrev' ? 'up' : 'down';

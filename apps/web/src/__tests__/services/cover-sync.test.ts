@@ -100,8 +100,6 @@ describe('computeCoverHash (issue #4544)', () => {
 });
 
 describe('uploadBookCover (issue #4544)', () => {
-  const resolveFilePath = vi.fn().mockResolvedValue('/abs/abc123/cover.png');
-
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -109,7 +107,7 @@ describe('uploadBookCover (issue #4544)', () => {
   test('uploads only the cover to books/<hash>/cover.png and does not touch uploadedAt', async () => {
     const fs = createMockFs();
     const book = createMockBook({ uploadedAt: 1000 });
-    await uploadBookCover(fs, resolveFilePath, book);
+    await uploadBookCover(fs, book);
     expect(uploadFile).toHaveBeenCalledTimes(1);
     // The cloud key is built inside uploadFileToCloud via
     // fs.openFile(lfp, base, cfp). Assert the cover key was passed through.
@@ -123,7 +121,7 @@ describe('uploadBookCover (issue #4544)', () => {
 
   test('no-ops when the cover is absent', async () => {
     const fs = createMockFs({ exists: vi.fn().mockResolvedValue(false) });
-    await uploadBookCover(fs, resolveFilePath, createMockBook());
+    await uploadBookCover(fs, createMockBook());
     expect(uploadFile).not.toHaveBeenCalled();
   });
 });

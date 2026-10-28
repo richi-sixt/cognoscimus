@@ -92,9 +92,6 @@ vi.mock('@/services/tts/wordPronouncer', () => ({
 }));
 
 const mockOpenUrl = vi.fn().mockResolvedValue(undefined);
-vi.mock('@tauri-apps/plugin-opener', () => ({
-  openUrl: (...args: unknown[]) => mockOpenUrl(...args),
-}));
 
 // Blob -> data URL conversion needs a real `fetch` for `blob:` URLs, which
 // jsdom doesn't provide; the viewer only cares that it receives a data URL.

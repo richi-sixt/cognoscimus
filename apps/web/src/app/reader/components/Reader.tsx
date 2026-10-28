@@ -19,14 +19,10 @@ import { useScreenBrightness } from '@/app/reader/hooks/useScreenBrightness';
 import { useTransferQueue } from '@/hooks/useTransferQueue';
 import { useReplicaPull } from '@/hooks/useReplicaPull';
 import { eventDispatcher } from '@/utils/event';
-import { interceptWindowOpen } from '@/utils/open';
 import { mountAdditionalFonts } from '@/styles/fonts';
-import { isTauriAppPlatform } from '@/services/environment';
-import { getSysFontsList, setSystemUIVisibility } from '@/utils/bridge';
 import { AboutWindow } from '@/components/AboutWindow';
 import ReadingStatsDialog from '@/components/stats/ReadingStatsDialog';
 import { KeyboardShortcutsHelp } from '@/components/KeyboardShortcutsHelp';
-import { UpdaterWindow } from '@/components/UpdaterWindow';
 import { ProofreadRulesManager } from './ProofreadRules';
 import { Toast } from '@/components/Toast';
 import { getLocale } from '@/utils/misc';
@@ -60,21 +56,18 @@ const Reader: React.FC<{ ids?: string }> = ({ ids }) => {
   const { settings } = useSettingsStore();
   const { libraryLoaded } = useLibrary();
   const { sideBarBookKey } = useSidebarStore();
-  const { hoveredBookKey } = useReaderStore();
-  const { showSystemUI, dismissSystemUI } = useThemeStore();
   const { acquireBackKeyInterception, releaseBackKeyInterception } = useDeviceControlStore();
   const { isSideBarVisible, isSideBarPinned } = useSidebarStore();
   const { getIsSideBarVisible, setSideBarVisible } = useSidebarStore();
   const { isNotebookVisible, isNotebookPinned } = useNotebookStore();
   const { getIsNotebookVisible, setNotebookVisible } = useNotebookStore();
-  const { isDarkMode, systemUIAlwaysHidden, isRoundedWindow } = useThemeStore();
+  const { isRoundedWindow } = useThemeStore();
 
-  const { onUpdateInsets } = useTheme({
-    systemUIVisible: settings.alwaysShowStatusBar,
+  useTheme({
     appThemeColor: 'base-100',
     themeScope: 'reader',
   });
-  useScreenWakeLock(settings.screenWakeLock, appService?.hasWindow, appService?.isIOSApp);
+  useScreenWakeLock(settings.screenWakeLock);
   useScreenBrightness();
   useTransferQueue(libraryLoaded, 5000);
   // Reader needs dictionaries for word-lookup, fonts for rendering, and
@@ -86,10 +79,6 @@ const Reader: React.FC<{ ids?: string }> = ({ ids }) => {
 
   useEffect(() => {
     mountAdditionalFonts(document);
-    interceptWindowOpen();
-    if (isTauriAppPlatform()) {
-      setTimeout(getSysFontsList, 3000);
-    }
     initDayjs(getLocale());
   }, []);
 
@@ -139,24 +128,6 @@ const Reader: React.FC<{ ids?: string }> = ({ ids }) => {
     isNotebookVisible,
   ]);
 
-  useEffect(() => {
-    if (!appService?.isMobileApp) return;
-    const systemUIVisible = !!hoveredBookKey || settings.alwaysShowStatusBar;
-    const visible = !!(systemUIVisible && !systemUIAlwaysHidden);
-    setSystemUIVisibility({ visible, darkMode: isDarkMode }).then(() => {
-      // iPhone Duo's status bar carries a side inset of its own (its strip):
-      // re-read it so the toolbar chrome clears the strip. Other devices never
-      // re-read here.
-      if (useThemeStore.getState().isIPhoneDuo) onUpdateInsets();
-    });
-    if (visible) {
-      showSystemUI();
-    } else {
-      dismissSystemUI();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hoveredBookKey]);
-
   return libraryLoaded && settings.globalReadSettings ? (
     <div
       className={clsx(
@@ -169,7 +140,6 @@ const Reader: React.FC<{ ids?: string }> = ({ ids }) => {
         <AboutWindow />
         <ReadingStatsDialog />
         <KeyboardShortcutsHelp />
-        <UpdaterWindow />
         <ProofreadRulesManager />
         <Toast />
       </Suspense>

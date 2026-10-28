@@ -32,9 +32,6 @@ import { getBaseFilename, getFilename, stripDuplicateMarker } from '@/utils/path
 import { BookDoc, DocumentLoader } from '@/libs/document';
 import { hasMediaOverlays } from '@/services/tts/mediaOverlay';
 import { getAudiobookDirectory, isAudiobookFilePath } from '@/services/audiobook/storage';
-import { tryNativeParseEpub } from '@/utils/tauriEpubBridge';
-import { tryNativeParseMobi } from '@/utils/tauriMobiBridge';
-import { tryNativeParsePdf } from '@/utils/tauriPdfBridge';
 import { DEFAULT_BOOK_SEARCH_CONFIG, DEFAULT_FIXED_LAYOUT_VIEW_SETTINGS } from './constants';
 import { isContentURI, isValidURL, makeSafeFilename } from '@/utils/misc';
 import { deserializeConfig, serializeConfig, serializeRawConfig } from '@/utils/serializer';
@@ -43,7 +40,6 @@ import { TxtToEpubConverter } from '@/utils/txt';
 import { svg2png } from '@/utils/svg';
 import { normalizeMetadataIsbn } from '@/utils/isbn';
 import { BookFileNotFoundError } from './errors';
-import { fetch as tauriFetch } from '@tauri-apps/plugin-http';
 import {
   isBookFileContentSource,
   resolveBookContentSource,
@@ -285,36 +281,10 @@ export async function generateCoverImageUrl(ctx: CoverContext, book: Book): Prom
     : getCoverImageUrl(ctx, book);
 }
 
-function imageToArrayBuffer(
-  ctx: CoverContext,
-  imageUrl?: string,
-  imageFile?: string,
-): Promise<ArrayBuffer> {
-  return new Promise((resolve, reject) => {
-    if (!imageUrl && !imageFile) {
-      reject(new Error('No image URL or file provided'));
-      return;
-    }
-    if (ctx.appPlatform === 'web' && imageUrl && imageUrl.startsWith('blob:')) {
-      fetch(imageUrl)
-        .then((response) => response.arrayBuffer())
-        .then(resolve)
-        .catch(reject);
-    } else if (ctx.appPlatform === 'tauri' && imageFile) {
-      ctx.fs
-        .openFile(imageFile, 'None')
-        .then((file) => file.arrayBuffer())
-        .then(resolve)
-        .catch(reject);
-    } else if (ctx.appPlatform === 'tauri' && imageUrl) {
-      tauriFetch(imageUrl, { method: 'GET' })
-        .then((response) => response.arrayBuffer())
-        .then(resolve)
-        .catch(reject);
-    } else {
-      reject(new Error('Unsupported platform or missing image data'));
-    }
-  });
+async function imageToArrayBuffer(imageUrl?: string): Promise<ArrayBuffer> {
+  if (!imageUrl) throw new Error('No image URL provided');
+  const response = await fetch(imageUrl);
+  return response.arrayBuffer();
 }
 
 export async function updateCoverImage(
@@ -326,7 +296,7 @@ export async function updateCoverImage(
   if (imageUrl === '_blank') {
     await ctx.fs.removeFile(getCoverFilename(book), 'Books');
   } else if (imageUrl || imageFile) {
-    const arrayBuffer = await imageToArrayBuffer(ctx, imageUrl, imageFile);
+    const arrayBuffer = await imageToArrayBuffer(imageUrl);
     await ctx.fs.writeFile(getCoverFilename(book), 'Books', arrayBuffer);
   }
 }
@@ -557,9 +527,6 @@ export async function importBook(
   try {
     let format: BookFormat;
     let filename: string;
-    // When the Rust EPUB parser succeeds it gives us the partialMD5 for free,
-    // so we can short-circuit the JS hashing pass below.
-    let nativeHash: string | undefined;
 
     if (transient && typeof file !== 'string') {
       throw new Error('Transient import is only supported for file paths');
@@ -601,53 +568,7 @@ export async function importBook(
         if (!fileobj || fileobj.size === 0) {
           throw new Error('Invalid or empty book file');
         }
-        // Q1 fast path: when running under Tauri with a real file
-        // path, let Rust contribute the mechanical parts of the
-        // import work — partialMD5 over the file, the downscaled
-        // cover, and (for EPUB) the raw OPF bytes. Metadata
-        // extraction itself runs through foliate-js so the import
-        // path produces the same `Book.metadata` shape the reader
-        // path does (`refines` chains / ONIX5 / language maps / EPUB
-        // `belongs-to-collection` for EPUB; PalmDB UID identifier
-        // for MOBI), without any `DocumentLoader.open()` overhead —
-        // the importer never reads sections / toc / fixed-layout
-        // detection, so spending CPU on a zip central-directory
-        // scan, nav/ncx inflate, or PDB record-table walk would be
-        // pure waste here.
-        //
-        // The bridges are no-ops on web / non-eligible paths, so
-        // the cost when none matches is just a few cheap regex
-        // tests.
-        let nativeBookDoc: BookDoc | undefined;
-        let nativeFormat: BookFormat | undefined;
-        if (typeof file === 'string' && !/\.txt$/i.test(filename)) {
-          const nativePdf = await tryNativeParsePdf(file, fileobj, osPlatform);
-          if (nativePdf) {
-            nativeBookDoc = nativePdf.bookDoc;
-            nativeFormat = 'PDF' as BookFormat;
-            nativeHash = nativePdf.partialMd5;
-          } else {
-            const nativeEpub = await tryNativeParseEpub(file);
-            if (nativeEpub) {
-              nativeBookDoc = nativeEpub.bookDoc;
-              nativeFormat = 'EPUB' as BookFormat;
-              nativeHash = nativeEpub.partialMd5;
-            } else {
-              const nativeMobi = await tryNativeParseMobi(file, fileobj);
-              if (nativeMobi) {
-                nativeBookDoc = nativeMobi.bookDoc;
-                nativeFormat = nativeMobi.format;
-                nativeHash = nativeMobi.partialMd5;
-              }
-            }
-          }
-        }
-        if (nativeBookDoc && nativeFormat) {
-          loadedBook = nativeBookDoc;
-          format = nativeFormat;
-        } else {
-          ({ book: loadedBook, format } = await new DocumentLoader(fileobj).open());
-        }
+        ({ book: loadedBook, format } = await new DocumentLoader(fileobj).open());
       }
       if (!loadedBook) {
         throw new Error('Unsupported or corrupted book file');
@@ -661,7 +582,7 @@ export async function importBook(
       throw new Error(`Failed to open the book file: ${(error as Error).message || error}`);
     }
 
-    const hash = nativeHash ?? (await partialMD5(fileobj!));
+    const hash = await partialMD5(fileobj!);
 
     // PDF metadata is often generic boilerplate (e.g. every PowerPoint export
     // is titled "PowerPoint Presentation" by the same author), so metadata
@@ -1114,30 +1035,6 @@ async function openBookFileContent(
 export async function loadBookContent(fs: FileSystem, book: Book): Promise<BookContent> {
   const { file } = await openBookFileContent(fs, book);
   return { book, file };
-}
-
-/**
- * Best-effort resolution of an absolute, on-disk filesystem path for a book.
- *
- * Returns null when the book is not stored on disk (e.g. in-memory blob,
- * remote URL) or the path cannot be resolved. The returned path is
- * suitable for handing to native (Rust) commands that read the file
- * directly via std::fs.
- */
-export async function resolveNativeBookFilePath(
-  fs: FileSystem,
-  resolveFilePath: (path: string, base: BaseDir) => Promise<string>,
-  book: Book,
-): Promise<string | null> {
-  try {
-    const source = await resolveBookContentSource(fs, book);
-    if (source.kind !== 'managed' && source.kind !== 'external') return null;
-    const fp = await resolveFilePath(source.path, source.base);
-    if (!fp) return null;
-    return fp.startsWith('file://') ? decodeURI(fp.slice('file://'.length)) : fp;
-  } catch {
-    return null;
-  }
 }
 
 export async function loadBookConfig(

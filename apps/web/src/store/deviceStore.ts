@@ -1,24 +1,8 @@
 import { create } from 'zustand';
-import { interceptKeys, getScreenBrightness, setScreenBrightness } from '@/utils/bridge';
-import { eventDispatcher } from '@/utils/event';
-import { NativeTouchEventType } from '@/types/system';
 
-declare global {
-  interface Window {
-    onNativeKeyDown?: (keyName: string, keyCode?: number) => void;
-    onNativeTouch?: (event: NativeTouchEventType) => void;
-  }
-}
-
-const handleNativeKeyDown = (keyName: string, keyCode?: number) => {
-  // Back is handled synchronously so dialogs can consume it before it
-  // bubbles; every other key (volume, media, learn-mode captures) is
-  // dispatched asynchronously through the same channel.
-  if (keyName === 'Back') {
-    return eventDispatcher.dispatchSync('native-key-down', { keyName, keyCode });
-  }
-  return eventDispatcher.dispatch('native-key-down', { keyName, keyCode });
-};
+// The browser has no native device to control: no hardware keys to intercept
+// and no system brightness to set. The store keeps its shape so the reader
+// code that asks for those things stays unchanged, and every action is a no-op.
 
 type DeviceControlState = {
   volumeKeysIntercepted: boolean;
@@ -44,7 +28,7 @@ type DeviceControlState = {
   listenToNativeTouchEvents: () => void;
 };
 
-export const useDeviceControlStore = create<DeviceControlState>((set, get) => ({
+export const useDeviceControlStore = create<DeviceControlState>((set) => ({
   lastScreenBrightness: null,
   volumeKeysIntercepted: false,
   backKeyIntercepted: false,
@@ -53,98 +37,19 @@ export const useDeviceControlStore = create<DeviceControlState>((set, get) => ({
   pageTurnerKeysIntercepted: false,
   pageTurnerKeysInterceptionCount: 0,
 
-  acquireVolumeKeyInterception: () => {
-    const { volumeKeysInterceptionCount } = get();
-    if (volumeKeysInterceptionCount == 0) {
-      window.onNativeKeyDown = handleNativeKeyDown;
-      interceptKeys({ volumeKeys: true });
-      set({ volumeKeysIntercepted: true });
-    }
-    set({ volumeKeysInterceptionCount: volumeKeysInterceptionCount + 1 });
-  },
+  acquireVolumeKeyInterception: () => {},
+  releaseVolumeKeyInterception: () => {},
+  acquireBackKeyInterception: () => {},
+  releaseBackKeyInterception: () => {},
+  acquirePageTurnerKeyInterception: () => {},
+  releasePageTurnerKeyInterception: () => {},
+  setKeyLearnMode: () => {},
+  ensureKeyForwarding: () => {},
+  listenToNativeTouchEvents: () => {},
 
-  releaseVolumeKeyInterception: () => {
-    const { volumeKeysInterceptionCount } = get();
-    if (volumeKeysInterceptionCount <= 1) {
-      interceptKeys({ volumeKeys: false });
-      set({ volumeKeysIntercepted: false, volumeKeysInterceptionCount: 0 });
-    } else {
-      set({ volumeKeysInterceptionCount: volumeKeysInterceptionCount - 1 });
-    }
-  },
-
-  acquireBackKeyInterception: () => {
-    const { backKeyInterceptionCount } = get();
-    if (backKeyInterceptionCount == 0) {
-      window.onNativeKeyDown = handleNativeKeyDown;
-      interceptKeys({ backKey: true });
-      set({ backKeyIntercepted: true });
-    }
-    set({ backKeyInterceptionCount: backKeyInterceptionCount + 1 });
-  },
-
-  releaseBackKeyInterception: () => {
-    const { backKeyInterceptionCount } = get();
-    if (backKeyInterceptionCount <= 1) {
-      interceptKeys({ backKey: false });
-      set({ backKeyIntercepted: false, backKeyInterceptionCount: 0 });
-    } else {
-      set({ backKeyInterceptionCount: backKeyInterceptionCount - 1 });
-    }
-  },
-
-  acquirePageTurnerKeyInterception: () => {
-    const { pageTurnerKeysInterceptionCount } = get();
-    if (pageTurnerKeysInterceptionCount == 0) {
-      window.onNativeKeyDown = handleNativeKeyDown;
-      interceptKeys({ pageTurnerKeys: true });
-      set({ pageTurnerKeysIntercepted: true });
-    }
-    set({ pageTurnerKeysInterceptionCount: pageTurnerKeysInterceptionCount + 1 });
-  },
-
-  releasePageTurnerKeyInterception: () => {
-    const { pageTurnerKeysInterceptionCount } = get();
-    if (pageTurnerKeysInterceptionCount <= 1) {
-      interceptKeys({ pageTurnerKeys: false });
-      set({ pageTurnerKeysIntercepted: false, pageTurnerKeysInterceptionCount: 0 });
-    } else {
-      set({ pageTurnerKeysInterceptionCount: pageTurnerKeysInterceptionCount - 1 });
-    }
-  },
-
-  // Learn mode is a stateless UI toggle (used while capturing a binding),
-  // not reference-counted like the acquire/release interception actions.
-  setKeyLearnMode: (enabled: boolean) => {
-    window.onNativeKeyDown = handleNativeKeyDown;
-    interceptKeys({ learnMode: enabled });
-  },
-
-  // Apple Pencil gestures are forwarded by the iOS bridge without any
-  // interception being acquired (#5501), so the JS-side forwarding handler
-  // must be installable on its own.
-  ensureKeyForwarding: () => {
-    window.onNativeKeyDown = handleNativeKeyDown;
-  },
-
-  listenToNativeTouchEvents: () => {
-    window.onNativeTouch = (event: NativeTouchEventType) => {
-      return eventDispatcher.dispatch('native-touch', event);
-    };
-  },
-
-  getScreenBrightness: async () => {
-    const res = await getScreenBrightness();
-    return res.brightness;
-  },
-
-  setScreenBrightness: async (brightness: number, persist = false) => {
+  getScreenBrightness: async () => 1,
+  setScreenBrightness: async (brightness: number) => {
     set({ lastScreenBrightness: brightness >= 0 ? brightness : null });
-    await setScreenBrightness({ brightness, persist });
   },
-
-  syncScreenBrightness: async () => {
-    const { brightness } = await getScreenBrightness();
-    set({ lastScreenBrightness: brightness >= 0 && brightness <= 1 ? brightness : null });
-  },
+  syncScreenBrightness: async () => {},
 }));

@@ -60,12 +60,9 @@ const createNarratedEpub = async () => {
 };
 
 describe('BookDoc.getMediaSource', () => {
-  // The web reader passes a library path too; its File is still in memory.
   it('slices a stored entry out of the book file instead of copying it', async () => {
     const { file } = await createNarratedEpub();
-    const { book } = await new DocumentLoader(file, {
-      nativeFilePath: 'Cognoscimus/Books/abc/narrated.epub',
-    }).open();
+    const { book } = await new DocumentLoader(file).open();
     const loadBlob = vi.spyOn(book, 'loadBlob' as never);
 
     const media = await book.getMediaSource!('OPS/audio/book.mp3', 'audio/mpeg');
@@ -75,22 +72,6 @@ describe('BookDoc.getMediaSource', () => {
     expect(blob.type).toBe('audio/mpeg');
     expect(new Uint8Array(await blob.arrayBuffer())).toEqual(AUDIO);
     expect(loadBlob).not.toHaveBeenCalled();
-  });
-
-  // NativeFile and RemoteFile read a slice into memory, so the app gets the
-  // entry's place on disk instead.
-  it('gives the byte window of a stored entry in a native book file', async () => {
-    const { bytes, file } = await createNarratedEpub();
-    const nativeFile = Object.assign(file, { open: async () => file, close: async () => {} });
-    const { book } = await new DocumentLoader(nativeFile, {
-      nativeFilePath: '/books/narrated.epub',
-    }).open();
-
-    const media = await book.getMediaSource!('OPS/audio/book.mp3', 'audio/mpeg');
-
-    expect(media).toMatchObject({ path: '/books/narrated.epub' });
-    const { start, end } = media as { start: number; end: number };
-    expect(bytes.slice(start, end)).toEqual(AUDIO);
   });
 
   it('has no media source for a compressed entry', async () => {

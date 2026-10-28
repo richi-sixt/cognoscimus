@@ -26,10 +26,6 @@ vi.mock('@/hooks/useTranslation', () => ({
   useTranslation: () => (key: string) => key,
 }));
 
-vi.mock('@/utils/settingsSync', () => ({
-  broadcastGlobalSettings: vi.fn(),
-}));
-
 import { SyncCategoriesSection } from '@/app/user/components/SyncCategoriesSection';
 
 const base = {

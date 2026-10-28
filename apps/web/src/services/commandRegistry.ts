@@ -665,11 +665,6 @@ const actionItems = [
     keywords: ['fullscreen', 'full', 'screen', 'maximize', 'window'],
   },
   {
-    id: 'action.alwaysOnTop',
-    labelKey: _('Always on Top'),
-    keywords: ['always', 'top', 'pin', 'window', 'float'],
-  },
-  {
     id: 'action.screenWakeLock',
     labelKey: _('Keep Screen Awake'),
     keywords: ['screen', 'wake', 'lock', 'awake', 'sleep', 'display'],
@@ -678,11 +673,6 @@ const actionItems = [
     id: 'action.reload',
     labelKey: _('Reload Page'),
     keywords: ['reload', 'refresh', 'page'],
-  },
-  {
-    id: 'action.openLastBooks',
-    labelKey: _('Open Last Book on Start'),
-    keywords: ['open', 'last', 'book', 'start', 'resume'],
   },
   {
     id: 'action.about',
@@ -696,17 +686,15 @@ export interface CommandRegistryOptions {
   openSettingsPanel: (panel: SettingsPanelType, itemId?: string) => void;
   toggleTheme: () => void;
   toggleFullscreen: () => void;
-  toggleAlwaysOnTop: () => void;
   toggleScreenWakeLock: () => void;
   reloadPage: () => void;
-  toggleOpenLastBooks: () => void;
   showAbout: () => void;
-  isDesktop: boolean;
+  canFullscreen: boolean;
   // TODO: add reader-specific actions when reader is open (tts, bookmark, etc.)
 }
 
 export const buildCommandRegistry = (options: CommandRegistryOptions): CommandItem[] => {
-  const { _, openSettingsPanel, isDesktop } = options;
+  const { _, openSettingsPanel, canFullscreen } = options;
   const items: CommandItem[] = [];
 
   // helper to create settings item
@@ -795,15 +783,7 @@ export const buildCommandRegistry = (options: CommandRegistryOptions): CommandIt
     createActionItem({
       id: 'action.fullscreen',
       action: options.toggleFullscreen,
-      isAvailable: () => isDesktop,
-    }),
-  );
-
-  items.push(
-    createActionItem({
-      id: 'action.alwaysOnTop',
-      action: options.toggleAlwaysOnTop,
-      isAvailable: () => isDesktop,
+      isAvailable: () => canFullscreen,
     }),
   );
 
@@ -819,14 +799,6 @@ export const buildCommandRegistry = (options: CommandRegistryOptions): CommandIt
       id: 'action.reload',
       icon: MdRefresh,
       action: options.reloadPage,
-    }),
-  );
-
-  items.push(
-    createActionItem({
-      id: 'action.openLastBooks',
-      action: options.toggleOpenLastBooks,
-      isAvailable: () => isDesktop,
     }),
   );
 

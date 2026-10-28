@@ -6,17 +6,15 @@
 // the cache working.
 //
 // The store also gets a pack filesystem so fully cached sections compact
-// into one MP3 pack file each: plugin-fs under AppCache on Tauri platforms,
-// OPFS in the browser (where supported). Compaction runs debounced after
+// into one MP3 pack file each, stored in OPFS (where supported). Compaction runs debounced after
 // manifest updates and once more at session close.
 
-import { isTauriAppPlatform } from '@/services/environment';
 import type { DatabaseService } from '@/types/database';
 import type { AppService } from '@/types/system';
 import type { TTSCacheEntry, TTSCacheStore } from './cache';
 import { sweepTTSCaches, touchTTSCacheMeta } from './cacheSweep';
 import { createOpfsPackFs } from './opfsPackFs';
-import { SqliteTTSCacheStore, TTSPackFs } from './sqliteCacheStore';
+import { SqliteTTSCacheStore } from './sqliteCacheStore';
 
 const CONFIG_KEY = 'cognoscimus-tts-cache';
 const DEFAULT_BUDGET_MB = 200;
@@ -55,59 +53,6 @@ export const setTTSCacheConfig = (config: TTSCacheConfig): void => {
     // Storage full or unavailable; the default config keeps applying.
   }
 };
-
-// Pack file IO under AppCache via plugin-fs (native platforms only). The
-// plugin modules load lazily so the web bundle never pulls them in.
-const createNativePackFs = (dir: string): TTSPackFs => ({
-  async write(name, data) {
-    const { writeFile, BaseDirectory } = await import('@tauri-apps/plugin-fs');
-    await writeFile(`${dir}/${name}`, data, { baseDir: BaseDirectory.AppCache });
-  },
-  async rename(from, to) {
-    const { rename, BaseDirectory } = await import('@tauri-apps/plugin-fs');
-    await rename(`${dir}/${from}`, `${dir}/${to}`, {
-      oldPathBaseDir: BaseDirectory.AppCache,
-      newPathBaseDir: BaseDirectory.AppCache,
-    });
-  },
-  async readRange(name, offset, length) {
-    const { open, BaseDirectory, SeekMode } = await import('@tauri-apps/plugin-fs');
-    const file = await open(`${dir}/${name}`, { read: true, baseDir: BaseDirectory.AppCache });
-    try {
-      await file.seek(offset, SeekMode.Start);
-      const buffer = new Uint8Array(length);
-      let read = 0;
-      while (read < length) {
-        const n = await file.read(buffer.subarray(read));
-        if (!n) break;
-        read += n;
-      }
-      if (read !== length) throw new Error(`short pack read: ${read}/${length}`);
-      return buffer.buffer as ArrayBuffer;
-    } finally {
-      await file.close();
-    }
-  },
-  async readSidecar(name) {
-    try {
-      const { readTextFile, BaseDirectory } = await import('@tauri-apps/plugin-fs');
-      const text = await readTextFile(`${dir}/${name}`, { baseDir: BaseDirectory.AppCache });
-      const parsed = JSON.parse(text);
-      return parsed && Array.isArray(parsed.entries) ? parsed : null;
-    } catch {
-      return null;
-    }
-  },
-  async remove(name) {
-    const { remove, BaseDirectory } = await import('@tauri-apps/plugin-fs');
-    await remove(`${dir}/${name}`, { baseDir: BaseDirectory.AppCache });
-  },
-  async list() {
-    const { readDir, BaseDirectory } = await import('@tauri-apps/plugin-fs');
-    const entries = await readDir(dir, { baseDir: BaseDirectory.AppCache });
-    return entries.filter((entry) => entry.isFile).map((entry) => entry.name);
-  },
-});
 
 // The per-book store every synthetic engine of one reader shares: each opens
 // the same `cache.db`, and OPFS sync access handles are exclusive, so two
@@ -154,14 +99,7 @@ export class BookTTSCacheStore implements TTSCacheStore {
       try {
         const dir = `tts-cache/${bookHash}`;
         await this.#appService.createDir(dir, 'Cache', true);
-        let packFs: TTSPackFs | undefined;
-        if (isTauriAppPlatform()) {
-          const packsDir = `${dir}/packs`;
-          await this.#appService.createDir(packsDir, 'Cache', true);
-          packFs = createNativePackFs(packsDir);
-        } else {
-          packFs = await createOpfsPackFs(`${dir}/packs`);
-        }
+        const packFs = await createOpfsPackFs(`${dir}/packs`);
         // 'tts-cache' has no registered migrations; the store owns its DDL.
         const db = await this.#appService.openDatabase('tts-cache', `${dir}/cache.db`, 'Cache');
         const store = new SqliteTTSCacheStore(db, { budgetBytes: this.#budgetBytes, packFs });
@@ -386,12 +324,7 @@ export const clearBookTTSDownloads = async (
     return;
   }
 
-  let packFs: TTSPackFs | undefined;
-  if (isTauriAppPlatform()) {
-    packFs = createNativePackFs(`${dir}/packs`);
-  } else {
-    packFs = await createOpfsPackFs(`${dir}/packs`);
-  }
+  const packFs = await createOpfsPackFs(`${dir}/packs`);
   const db = await appService.openDatabase('tts-cache', dbPath, 'Cache');
   const budgetBytes = Math.max(1, getTTSCacheConfig().budgetMB * 1024 * 1024);
   const store = new SqliteTTSCacheStore(db, { budgetBytes, packFs });

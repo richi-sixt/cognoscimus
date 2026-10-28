@@ -1,36 +1,12 @@
 import { useEffect, useRef } from 'react';
-import { getCurrentWindow } from '@tauri-apps/api/window';
-import { isTauriAppPlatform, isWebAppPlatform } from '@/services/environment';
-import { setScreenWakeLock } from '@/utils/bridge';
 
-// Serialize native updates across effect cleanup/remounts: a late release must
-// finish before a new reader acquires the app-wide iOS idle timer.
-let nativeWakeLockUpdate = Promise.resolve();
-
-export const useScreenWakeLock = (lock: boolean, hasWindow?: boolean, isIOSApp = false) => {
+export const useScreenWakeLock = (lock: boolean) => {
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
 
   useEffect(() => {
-    if (isTauriAppPlatform() && isIOSApp) {
-      if (!lock) return;
-      const updateNativeWakeLock = (enabled: boolean) => {
-        nativeWakeLockUpdate = nativeWakeLockUpdate
-          .then(() => setScreenWakeLock(enabled))
-          .catch((err) => console.info('Failed to update native wake lock:', err));
-      };
-      const handleVisibilityChange = () => updateNativeWakeLock(!document.hidden);
-      handleVisibilityChange();
-      document.addEventListener('visibilitychange', handleVisibilityChange);
-      return () => {
-        document.removeEventListener('visibilitychange', handleVisibilityChange);
-        updateNativeWakeLock(false);
-      };
-    }
-
     let cancelled = false;
     let shouldHoldWakeLock = lock;
     let requestPending = false;
-    let unlistenOnFocusChanged: Promise<() => void> | null = null;
 
     const requestWakeLock = async () => {
       shouldHoldWakeLock = true;
@@ -78,35 +54,15 @@ export const useScreenWakeLock = (lock: boolean, hasWindow?: boolean, isIOSApp =
 
     if (lock) {
       requestWakeLock();
+      document.addEventListener('visibilitychange', handleVisibilityChange);
     } else if (wakeLockRef.current) {
       releaseWakeLock();
-    }
-
-    const useDocumentVisibility = isWebAppPlatform() || hasWindow === false;
-    if (useDocumentVisibility && lock) {
-      document.addEventListener('visibilitychange', handleVisibilityChange);
-    } else if (isTauriAppPlatform() && hasWindow && lock) {
-      unlistenOnFocusChanged = getCurrentWindow()
-        .onFocusChanged(({ payload: focused }) => {
-          if (focused) {
-            requestWakeLock();
-          } else {
-            releaseWakeLock();
-          }
-        })
-        .catch((error) => {
-          console.info('Failed to register window focus listener:', error);
-          return () => {};
-        });
     }
 
     return () => {
       cancelled = true;
       releaseWakeLock();
-      if (useDocumentVisibility && lock) {
-        document.removeEventListener('visibilitychange', handleVisibilityChange);
-      }
-      void unlistenOnFocusChanged?.then((unlisten) => unlisten());
+      if (lock) document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [lock, hasWindow, isIOSApp]);
+  }, [lock]);
 };

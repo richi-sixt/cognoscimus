@@ -13,10 +13,7 @@
  */
 import type { DictionaryProvider, WebSearchEntry } from '../types';
 import { substituteUrlTemplate } from '../webSearchTemplates';
-import { isTauriAppPlatform } from '@/services/environment';
 import { stubTranslation as _ } from '@/utils/misc';
-
-const isTauri = isTauriAppPlatform();
 
 export interface CreateWebSearchProviderArgs {
   template: WebSearchEntry;
@@ -58,9 +55,7 @@ export const createWebSearchProvider = ({
     linkWrapper.className = 'mt-3';
     const link = document.createElement('a');
     link.href = url;
-    // Skip target="_blank" on Tauri; the popup's click delegation routes
-    // through `openUrl`. iOS WebView's _blank handling fails otherwise.
-    if (!isTauri) link.target = '_blank';
+    link.target = '_blank';
     link.rel = 'noopener noreferrer';
     link.className =
       'btn btn-sm btn-primary normal-case text-primary-content not-eink:no-underline';

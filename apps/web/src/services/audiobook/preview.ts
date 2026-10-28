@@ -1,9 +1,4 @@
-import { convertFileSrc } from '@tauri-apps/api/core';
-
 import type { AppService, BaseDir } from '@/types/system';
-import { NativeNarrationPlayer } from '@/services/tts/mediaOverlay/NativeNarrationPlayer';
-import { audioType } from '@/services/tts/mediaOverlay/MediaOverlayClient';
-import { getLocalMediaUrl } from './mediaProxy';
 import { mediaCrossOrigin } from './AudiobookClock';
 
 const PREVIEW_SECONDS = 15;
@@ -26,7 +21,6 @@ export class AudiobookPreviewPlayer {
   #onStopped: (id: string) => void;
   #activeId: string | null = null;
   #audio: HTMLAudioElement | null = null;
-  #nativePlayer: NativeNarrationPlayer | null = null;
   #objectUrl: string | null = null;
   #ownedFile: ClosablePreviewFile | null = null;
   #timer: ReturnType<typeof setTimeout> | null = null;
@@ -60,39 +54,27 @@ export class AudiobookPreviewPlayer {
 
     this.#activeId = clip.id;
     try {
-      const mobileNative = this.#appService.appPlatform === 'tauri' && this.#appService.isMobileApp;
-      if (mobileNative && (clip.url || clip.path)) {
-        this.#nativePlayer ??= new NativeNarrationPlayer();
-        const path =
-          clip.url ?? (await this.#appService.resolveFilePath(clip.path!, clip.base ?? 'None'));
-        await this.#nativePlayer.loadPath(clip.id, path, clip.start);
-        await this.#nativePlayer.play();
+      const audio = new Audio();
+      let url: string;
+      if (clip.url) {
+        url = clip.url;
       } else {
-        const audio = new Audio();
-        let url: string;
-        if (clip.url) {
-          url = clip.url;
-        } else if (this.#appService.appPlatform === 'tauri' && clip.path) {
-          const path = await this.#appService.resolveFilePath(clip.path, clip.base ?? 'None');
-          url = (await getLocalMediaUrl(path, audioType(path))) ?? convertFileSrc(path);
-        } else {
-          let file = clip.file;
-          if (!file && clip.path) {
-            file = await this.#appService.openFile(clip.path, clip.base ?? 'None');
-            this.#ownedFile = file as ClosablePreviewFile;
-          }
-          if (!file) throw new Error('Audiobook preview source is unavailable');
-          url = URL.createObjectURL(file);
-          this.#objectUrl = url;
+        let file = clip.file;
+        if (!file && clip.path) {
+          file = await this.#appService.openFile(clip.path, clip.base ?? 'None');
+          this.#ownedFile = file as ClosablePreviewFile;
         }
-        audio.crossOrigin = mediaCrossOrigin(url);
-        audio.src = url;
-        audio.currentTime = clip.start;
-        this.#endedListener = () => void this.stop();
-        audio.addEventListener('ended', this.#endedListener);
-        this.#audio = audio;
-        await audio.play();
+        if (!file) throw new Error('Audiobook preview source is unavailable');
+        url = URL.createObjectURL(file);
+        this.#objectUrl = url;
       }
+      audio.crossOrigin = mediaCrossOrigin(url);
+      audio.src = url;
+      audio.currentTime = clip.start;
+      this.#endedListener = () => void this.stop();
+      audio.addEventListener('ended', this.#endedListener);
+      this.#audio = audio;
+      await audio.play();
 
       const duration = Math.min(PREVIEW_SECONDS, Math.max(0, clip.end - clip.start));
       if (duration > 0) {
@@ -114,9 +96,6 @@ export class AudiobookPreviewPlayer {
     this.#activeId = null;
     if (this.#timer) clearTimeout(this.#timer);
     this.#timer = null;
-    const nativePlayer = this.#nativePlayer;
-    this.#nativePlayer = null;
-    await nativePlayer?.shutdown();
     if (this.#audio) {
       this.#audio.pause();
       if (this.#endedListener) this.#audio.removeEventListener('ended', this.#endedListener);

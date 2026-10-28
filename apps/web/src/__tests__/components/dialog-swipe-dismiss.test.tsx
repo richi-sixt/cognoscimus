@@ -30,9 +30,6 @@ vi.mock('@/store/deviceStore', () => ({
     releaseBackKeyInterception: vi.fn(),
   }),
 }));
-vi.mock('@tauri-apps/plugin-haptics', () => ({ impactFeedback: vi.fn() }));
-
-const { impactFeedback } = await import('@tauri-apps/plugin-haptics');
 
 const { default: Dialog } = await import('@/components/Dialog');
 
@@ -85,7 +82,6 @@ describe('Dialog swipe-to-dismiss', () => {
     swipeDown(screen.getByTestId('entry'));
 
     expect(onClose).toHaveBeenCalledTimes(1);
-    expect(impactFeedback).toHaveBeenCalledExactlyOnceWith('light');
   });
 
   it('still dismisses on a downward swipe from the drag handle', () => {
@@ -95,7 +91,6 @@ describe('Dialog swipe-to-dismiss', () => {
     swipeDown(document.querySelector('.drag-handle') as HTMLElement);
 
     expect(onClose).toHaveBeenCalledTimes(1);
-    expect(impactFeedback).toHaveBeenCalledExactlyOnceWith('light');
   });
 
   it('leaves the gesture to a scroller that is already scrolled', () => {
@@ -128,7 +123,6 @@ describe('Dialog swipe-to-dismiss', () => {
     swipeDown(screen.getByTestId('entry'));
 
     expect(onClose).not.toHaveBeenCalled();
-    expect(impactFeedback).not.toHaveBeenCalled();
     expect(document.querySelector('.drag-shield')).toBeNull();
   });
 
@@ -145,7 +139,6 @@ describe('Dialog swipe-to-dismiss', () => {
     swipeDown(document.querySelector('.dialog-header') as HTMLElement);
 
     expect(onClose).toHaveBeenCalledTimes(1);
-    expect(impactFeedback).toHaveBeenCalledExactlyOnceWith('light');
   });
 
   it('leaves horizontal scrollable content alone', () => {
@@ -161,7 +154,6 @@ describe('Dialog swipe-to-dismiss', () => {
     swipeDown(screen.getByTestId('entry'));
 
     expect(onClose).not.toHaveBeenCalled();
-    expect(impactFeedback).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -180,7 +172,6 @@ describe('Dialog swipe-to-dismiss', () => {
       window.dispatchEvent(touchEvent('touchend', 100, 299));
     });
     expect(onClose).not.toHaveBeenCalled();
-    expect(impactFeedback).not.toHaveBeenCalled();
   });
 
   it('leaves the gesture to a text field', () => {
@@ -225,7 +216,6 @@ describe('Dialog swipe-to-dismiss', () => {
     expect(onClose).not.toHaveBeenCalled();
     expect(document.querySelector('.drag-shield')).toBeNull();
     // Back to its resting snap, not left wherever the finger was.
-    expect(impactFeedback).not.toHaveBeenCalled();
     expect(modal.style.height).toBe('75%');
     expect(modal.style.transform).toBe('');
   });

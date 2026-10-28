@@ -13,7 +13,6 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { getGridTemplate, getInsetEdges } from '@/utils/grid';
 import { expectsColumnSpread } from '@/utils/config';
 import { getPageAreaInsets, getReadingScreenInsets, getSpreadColumnGap } from '@/utils/insets';
-import { tauriSetWindowTitle } from '@/utils/window';
 import { useContentInsets } from '../hooks/useContentInsets';
 import { usePageOverflow } from '../hooks/usePageOverflow';
 import { type BottomCornerRadii, getCellCornerRadii, NO_CORNERS } from '../utils/footerBand';
@@ -71,7 +70,6 @@ interface BooksGridProps {
  */
 interface BookCellProps {
   bookKey: string;
-  index: number;
   gridInsets: Insets;
   // The cell's live insets, for the toolbar chrome that shows with the status
   // bar; gridInsets are the reading page's (see getReadingScreenInsets). The
@@ -93,7 +91,6 @@ interface BookCellProps {
 
 const BookCellInner: React.FC<BookCellProps> = ({
   bookKey,
-  index,
   gridInsets: cellInsets,
   chromeInsets: chromeCellInsets,
   spansWidth,
@@ -204,7 +201,6 @@ const BookCellInner: React.FC<BookCellProps> = ({
         gridInsets={chromeGridInsets}
         screenInsets={screenInsets}
         bookTitle={book.title}
-        isTopLeft={index === 0}
         isHoveredAnim={isHoveredAnim}
         onCloseBook={onCloseBook}
         onGoToLibrary={onGoToLibrary}
@@ -382,14 +378,8 @@ const BooksGrid: React.FC<BooksGridProps> = ({ bookKeys, onCloseBook, onGoToLibr
     const bookData = getBookData(sideBarBookKey);
     if (!bookData || !bookData.book) return;
     document.title = bookData.book.title;
-    // The OS window title is invisible but is what Alt+Tab and screen readers
-    // announce, so name the book there too — otherwise every window is just
-    // "Cognoscimus" and blind users cannot tell them apart.
-    if (appService?.hasWindow) {
-      tauriSetWindowTitle(bookData.book.title);
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sideBarBookKey, appService?.hasWindow]);
+  }, [sideBarBookKey]);
 
   // Memoize the per-book grid insets array — its identity is the input
   // to BookCell.gridInsets, and BookCell is React.memo'd. As long as
@@ -469,7 +459,6 @@ const BooksGrid: React.FC<BooksGridProps> = ({ bookKeys, onCloseBook, onGoToLibr
         <BookCell
           key={bookKey}
           bookKey={bookKey}
-          index={index}
           gridInsets={perBookGridInsets[index]!}
           chromeInsets={perBookChromeInsets[index]!}
           spansWidth={cellSpansWidth(index, bookKeys.length, aspectRatio)}

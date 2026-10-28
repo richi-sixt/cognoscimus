@@ -142,16 +142,6 @@ describe('QuoteCardDialog (#5830)', () => {
     expect(lastStyle().fontFamily).toBe(fontFamilies.sans);
   });
 
-  test('shares the PNG through the system share sheet', async () => {
-    await open();
-    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Share' })));
-    expect(h.saveFile).toHaveBeenCalledWith(
-      'The Holy Bible_ KJV-quote.png',
-      expect.any(ArrayBuffer),
-      expect.objectContaining({ mimeType: 'image/png', share: true }),
-    );
-  });
-
   test('saves to the gallery on Android and offers no Copy Image there', async () => {
     h.isAndroidApp = true;
     h.isMobileApp = true;

@@ -237,20 +237,10 @@ export const useReaderStore = create<ReaderStore>((set, get) => ({
           bookDoc = await openFeedBookDoc(fs, book.hash, feedUrl, book.title);
           file = null;
         } else {
-          // resolveNativeBookFilePath only reads `book` (it feeds the Rust
-          // EPUB prefetch), so it can race the content load instead of
-          // queueing behind it.
-          const [content, nativeFilePath] = await Promise.all([
-            appService.loadBookContent(book) as Promise<BookContent>,
-            appService.resolveNativeBookFilePath(book).catch((err: unknown) => {
-              console.warn('resolveNativeBookFilePath failed', err);
-              return null;
-            }),
-          ]);
+          const content = (await appService.loadBookContent(book)) as BookContent;
           file = content.file;
           const config = await configPromise;
           const doc = await new DocumentLoader(file, {
-            nativeFilePath: nativeFilePath ?? undefined,
             widePages: makeWidePages(config),
           }).open();
           bookDoc = doc.book;

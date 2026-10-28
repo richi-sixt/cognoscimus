@@ -1,12 +1,10 @@
 import { AppService } from '@/types/system';
 import { genSSMLRaw } from '@/utils/ssml';
 import { TTSClient } from './TTSClient';
-import { NativeTTSClient } from './NativeTTSClient';
 import { WebSpeechClient } from './WebSpeechClient';
 
-// Speaks a single dictionary word through the platform speech engine: Web
-// Speech on desktop/web, the native TTS plugin on the mobile app. It never
-// spins up the reader's full TTSController session.
+// Speaks a single dictionary word through Web Speech. It never spins up the
+// reader's full TTSController session.
 
 export type PronounceStatus = 'playing' | 'ended' | 'error';
 
@@ -36,7 +34,7 @@ export const cancelWordPronounce = (): void => {
 export const pronounceWord = async (
   word: string,
   lang: string | undefined,
-  options: PronounceWordOptions,
+  _options: PronounceWordOptions,
   onStatus?: (status: PronounceStatus) => void,
 ): Promise<void> => {
   const token = ++requestToken;
@@ -54,11 +52,7 @@ export const pronounceWord = async (
   // Stop whatever is currently playing.
   stopActive();
 
-  // Web Speech is the reader's built-in engine on desktop/web; on the mobile
-  // app the native TTS plugin is what actually produces audio.
-  const client: TTSClient = options.appService?.isMobile
-    ? new NativeTTSClient()
-    : new WebSpeechClient();
+  const client: TTSClient = new WebSpeechClient();
   activeClient = client;
   const controller = new AbortController();
   activeAbort = controller;

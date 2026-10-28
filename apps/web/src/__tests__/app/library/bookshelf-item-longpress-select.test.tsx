@@ -16,15 +16,6 @@ import type { Book, BooksGroup } from '@/types/book';
  * twice by a single press.
  */
 
-vi.mock('@tauri-apps/api/menu', () => ({
-  Menu: { new: vi.fn(async () => ({ popup: vi.fn(), close: vi.fn() })) },
-  MenuItem: { new: vi.fn(async (options: { text: string }) => ({ ...options, close: vi.fn() })) },
-}));
-
-vi.mock('@tauri-apps/plugin-opener', () => ({
-  revealItemInDir: vi.fn(),
-}));
-
 const appService = vi.hoisted(() => ({
   hasContextMenu: false,
   isLinuxApp: false,
@@ -88,14 +79,12 @@ const Harness = ({ onToggle }: { onToggle: (id: string) => void }) => {
         setSelected((prev) => !prev);
         onToggle(id);
       }}
-      handleGroupBooks={vi.fn()}
       handleBookDownload={vi.fn(async () => true)}
       handleBookUpload={vi.fn(async () => true)}
       handleBookDelete={vi.fn(async () => true)}
       handleSetSelectMode={setIsSelectMode}
       handleShowDetailsBook={vi.fn()}
       handleLibraryNavigation={vi.fn()}
-      handleUpdateReadingStatus={vi.fn()}
       showTimeRemaining={false}
     />
   );
@@ -132,23 +121,6 @@ describe('long-press selection on Android (issue #5596)', () => {
     expect(onToggle).toHaveBeenCalledTimes(1);
 
     // Lifting the finger must not count as a tap either.
-    fireEvent.pointerUp(item, { pointerId: 1, clientX: 50, clientY: 50 });
-    act(() => void vi.advanceTimersByTime(500));
-    expect(onToggle).toHaveBeenCalledTimes(1);
-  });
-
-  it('selects once when the WebView fires contextmenu before the long-press timer', () => {
-    const onToggle = vi.fn();
-    render(<Harness onToggle={onToggle} />);
-    const item = getItem();
-
-    fireEvent.pointerDown(item, { pointerId: 1, clientX: 50, clientY: 50 });
-    act(() => void vi.advanceTimersByTime(300));
-    fireEvent.contextMenu(item, { clientX: 50, clientY: 50 });
-    act(() => void vi.advanceTimersByTime(500));
-
-    expect(onToggle).toHaveBeenCalledTimes(1);
-
     fireEvent.pointerUp(item, { pointerId: 1, clientX: 50, clientY: 50 });
     act(() => void vi.advanceTimersByTime(500));
     expect(onToggle).toHaveBeenCalledTimes(1);
@@ -192,14 +164,12 @@ describe('long-press selection on Android (issue #5596)', () => {
           transferProgress={null}
           setLoading={vi.fn()}
           toggleSelection={() => onSelection(group.books.map((member) => member.hash))}
-          handleGroupBooks={vi.fn()}
           handleBookDownload={vi.fn(async () => true)}
           handleBookUpload={vi.fn(async () => true)}
           handleBookDelete={vi.fn(async () => true)}
           handleSetSelectMode={vi.fn()}
           handleShowDetailsBook={vi.fn()}
           handleLibraryNavigation={vi.fn()}
-          handleUpdateReadingStatus={vi.fn()}
           showTimeRemaining={false}
         />
       );

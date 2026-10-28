@@ -7,7 +7,6 @@ import { useBookDataStore } from '@/store/bookDataStore';
 import { getOSPlatform } from '@/utils/misc';
 import { eventDispatcher } from '@/utils/event';
 import { LONG_HOLD_THRESHOLD } from '@/services/constants';
-import { setSelectionSuppressed } from '@/utils/bridge';
 import { LINK_TOUCH_HOLD_CLASS, TEXT_SELECTED_CLASS } from '@/utils/style';
 import {
   focusCaretWindowPos,
@@ -185,23 +184,6 @@ export const useTextSelector = (
     segments: CrossDocSegment[];
     frozen: boolean;
   } | null>(null);
-
-  // #5427: whether the native layer is currently refusing the system
-  // selection toolbar (MainActivity hands out a no-op ActionMode while set).
-  const selectionMenuSuppressedRef = useRef(false);
-
-  // Chromium can (re)show the floating selection ActionMode through paths
-  // that never fire a cancelable contextmenu event (handle-drag release,
-  // window focus regain, TextClassifier callbacks), so handleContextmenu's
-  // preventDefault alone cannot keep it off Cognoscimus's own toolbar. Keep the
-  // native gate set exactly while reader text is selected — with no reader
-  // selection the flag is off, so system Cut/Copy/Paste menus in editable
-  // fields keep working.
-  const syncSelectionMenuSuppression = (suppressed: boolean) => {
-    if (selectionMenuSuppressedRef.current === suppressed) return;
-    selectionMenuSuppressedRef.current = suppressed;
-    setSelectionSuppressed({ target: 'menu', suppressed }).catch(() => {});
-  };
 
   const guardProgrammaticSelection = () => {
     if (programmaticClearTimer.current) clearTimeout(programmaticClearTimer.current);
@@ -1233,8 +1215,6 @@ export const useTextSelector = (
     // long-press that creates one must not, or a finger that then rests at the
     // page edge would flip pages.
     if (isValidSelection(sel) && pointerDragActive.current) selectionDragging.current = true;
-
-    if (isAndroid) syncSelectionMenuSuppression(isValidSelection(sel));
 
     // First selection of an Android touch gesture: remember the anchor and
     // whether it is prone to the hyphen bounds bug (#1553), before any

@@ -138,25 +138,6 @@ describe('CustomDictionaries — system-dictionary lock', () => {
     expect(toggles.every((t) => !t.disabled)).toBe(true);
     expect(toggles.some((t) => t.title === LOCKED_TITLE)).toBe(false);
   });
-
-  it('locks other toggles when System Dictionary is supported and enabled', () => {
-    // macOS: supported. Enabling System Dictionary is exclusive, so the other
-    // providers stay read-only while the System row itself remains toggleable.
-    platform.supported = true;
-    platform.available = true;
-    seedSettings(enabledSystemSettings);
-
-    const { container } = render(<CustomDictionaries onBack={() => {}} />);
-    const toggles = getToggles(container);
-
-    // All three rows visible (System Dictionary first per providerOrder).
-    expect(toggles).toHaveLength(3);
-    const [systemToggle, ...otherToggles] = toggles;
-    expect(systemToggle!.disabled).toBe(false);
-    expect(systemToggle!.title).not.toBe(LOCKED_TITLE);
-    expect(otherToggles.every((t) => t.disabled)).toBe(true);
-    expect(otherToggles.every((t) => t.title === LOCKED_TITLE)).toBe(true);
-  });
 });
 
 describe('CustomDictionaries — import progress', () => {

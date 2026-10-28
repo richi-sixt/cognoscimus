@@ -95,7 +95,6 @@ describe('sidebar toggler stays put when the sidebar opens', () => {
           <HeaderBar
             bookKey='book-1'
             bookTitle='Book'
-            isTopLeft
             isHoveredAnim={false}
             gridInsets={insets}
             screenInsets={insets}

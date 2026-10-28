@@ -33,7 +33,6 @@ vi.mock('@/store/deviceStore', () => ({
     releaseBackKeyInterception: vi.fn(),
   }),
 }));
-vi.mock('@tauri-apps/plugin-haptics', () => ({ impactFeedback: vi.fn() }));
 const { default: BookshelvesDialog } = await import('@/app/library/components/BookshelvesDialog');
 await import('@/styles/globals.css');
 beforeEach(() => {

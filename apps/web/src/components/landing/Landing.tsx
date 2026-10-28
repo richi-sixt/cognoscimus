@@ -4,10 +4,11 @@ import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { useTheme } from '@/hooks/useTheme';
 import {
+  CONTACT_DOMAIN,
+  CONTACT_USER,
   LANDING_CONTENT,
   LICENSE_URL,
   SOURCE_URL,
-  UPSTREAM_URL,
   type LandingLang,
 } from './content';
 
@@ -17,8 +18,11 @@ import {
 const Landing = () => {
   useTheme({ systemUIVisible: false });
   const [lang, setLang] = useState<LandingLang>('en');
+  const [contact, setContact] = useState<string | null>(null);
 
   useEffect(() => {
+    // Put together here, after mounting: the address is not in the server HTML.
+    setContact(`${CONTACT_USER}${String.fromCharCode(64)}${CONTACT_DOMAIN}`);
     const saved = (() => {
       try {
         return localStorage.getItem('landingLang');
@@ -78,9 +82,6 @@ const Landing = () => {
             <a href='/auth' className='btn btn-primary rounded-lg'>
               {c.signIn}
             </a>
-            <a href={SOURCE_URL} className='btn btn-ghost rounded-lg'>
-              {c.source}
-            </a>
           </div>
           <p className='text-base-content/60 text-sm'>{c.invite}</p>
         </section>
@@ -113,12 +114,17 @@ const Landing = () => {
             <a href={SOURCE_URL} className='underline'>
               {c.source}
             </a>
-            <a href={UPSTREAM_URL} className='underline'>
+            <a href={c.upstreamUrl} className='underline'>
               Readest
             </a>
             <a href={LICENSE_URL} className='underline'>
               AGPL v3.0
             </a>
+            {contact && (
+              <a href={`mailto:${contact}`} className='underline'>
+                {c.contact}
+              </a>
+            )}
           </nav>
         </div>
       </footer>

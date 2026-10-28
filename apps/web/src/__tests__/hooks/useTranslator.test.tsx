@@ -78,15 +78,6 @@ describe('custom translators in the registry and useTranslator', () => {
     expect(names.slice(-2)).toEqual(['custom:llm', 'custom:dl']);
   });
 
-  it('greys out the DeepL type on web and enables it in the app', () => {
-    const web = getTranslators().find((t) => t.name === 'custom:dl')!;
-    expect(web.disabled).toBe(true);
-    expect(getTranslatorDisplayLabel(web, true, true, (s) => s)).toBe('My DeepL (App only)');
-    isTauriMock.mockReturnValue(true);
-    useCustomTranslatorStore.setState({ translators: [llm, { ...deepl, updatedAt: 2 }] });
-    expect(getTranslators().find((t) => t.name === 'custom:dl')!.disabled).toBe(false);
-  });
-
   it('caches custom translations under a prompt-aware key and forwards the book context', async () => {
     generateTextMock.mockResolvedValue({ text: 'Bonjour' });
     const { result } = renderHook(() =>

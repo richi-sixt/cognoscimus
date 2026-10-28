@@ -20,7 +20,7 @@ const SharedWithMePage = () => {
   const _ = useTranslation();
   const router = useAppRouter();
   const { appService } = useEnv();
-  useTheme({ systemUIVisible: false });
+  useTheme();
 
   const [grants, setGrants] = useState<BookGrant[] | null>(null);
   const [error, setError] = useState<string | null>(null);

@@ -89,7 +89,6 @@ export async function deleteBook(
 
 export async function uploadFileToCloud(
   fs: FileSystem,
-  resolveFilePath: (path: string, base: BaseDir) => Promise<string>,
   lfp: string,
   cfp: string,
   base: BaseDir,
@@ -98,8 +97,7 @@ export async function uploadFileToCloud(
 ): Promise<void> {
   console.log('Uploading file:', lfp, 'to', cfp);
   const file = await fs.openFile(lfp, base, cfp);
-  const localFullpath = await resolveFilePath(lfp, base);
-  await uploadFile(file, localFullpath, handleProgress, hash);
+  await uploadFile(file, handleProgress, hash);
   const f = file as ClosableFile;
   if (f && f.close) {
     await f.close();
@@ -111,7 +109,6 @@ export async function uploadFileToCloud(
 // caller-supplied logical name (server-validated; see replicaSchemas.ts).
 export async function uploadReplicaFileToCloud(
   fs: FileSystem,
-  resolveFilePath: (path: string, base: BaseDir) => Promise<string>,
   opts: {
     kind: string;
     replicaId: string;
@@ -124,8 +121,7 @@ export async function uploadReplicaFileToCloud(
   const cfp = `${CLOUD_REPLICAS_SUBDIR}/${opts.kind}/${opts.replicaId}/${opts.filename}`;
   console.log('Uploading replica file:', opts.lfp, 'to', cfp);
   const file = await fs.openFile(opts.lfp, opts.base, opts.filename);
-  const localFullpath = await resolveFilePath(opts.lfp, opts.base);
-  await uploadReplicaFile(file, localFullpath, cfp, opts.kind, opts.replicaId, opts.onProgress);
+  await uploadReplicaFile(file, cfp, opts.kind, opts.replicaId, opts.onProgress);
   const f = file as ClosableFile;
   if (f && f.close) {
     await f.close();
@@ -173,7 +169,6 @@ export async function deleteReplicaBundleFromCloud(
 
 export async function uploadBook(
   fs: FileSystem,
-  resolveFilePath: (path: string, base: BaseDir) => Promise<string>,
   book: Book,
   onProgress?: ProgressHandler,
 ): Promise<void> {
@@ -201,20 +196,12 @@ export async function uploadBook(
   if (coverExist) {
     const lfp = getCoverFilename(book);
     const cfp = `${CLOUD_BOOKS_SUBDIR}/${getCoverFilename(book)}`;
-    await uploadFileToCloud(fs, resolveFilePath, lfp, cfp, 'Books', handleProgress, book.hash);
+    await uploadFileToCloud(fs, lfp, cfp, 'Books', handleProgress, book.hash);
     completedFiles.count++;
   }
 
   const cfp = `${CLOUD_BOOKS_SUBDIR}/${getRemoteBookFilename(book)}`;
-  await uploadFileToCloud(
-    fs,
-    resolveFilePath,
-    bookSource.path,
-    cfp,
-    bookSource.base,
-    handleProgress,
-    book.hash,
-  );
+  await uploadFileToCloud(fs, bookSource.path, cfp, bookSource.base, handleProgress, book.hash);
   completedFiles.count++;
 
   book.deletedAt = null;
@@ -232,7 +219,6 @@ export async function uploadBook(
 // re-download on peers.
 export async function uploadBookCover(
   fs: FileSystem,
-  resolveFilePath: (path: string, base: BaseDir) => Promise<string>,
   book: Book,
   onProgress?: ProgressHandler,
 ): Promise<void> {
@@ -241,7 +227,7 @@ export async function uploadBookCover(
   const handleProgress = createProgressHandler(1, completedFiles, onProgress);
   const lfp = getCoverFilename(book);
   const cfp = `${CLOUD_BOOKS_SUBDIR}/${getCoverFilename(book)}`;
-  await uploadFileToCloud(fs, resolveFilePath, lfp, cfp, 'Books', handleProgress, book.hash);
+  await uploadFileToCloud(fs, lfp, cfp, 'Books', handleProgress, book.hash);
 }
 
 export async function downloadCloudFile(

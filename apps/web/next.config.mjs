@@ -5,14 +5,9 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const isDev = process.env['NODE_ENV'] === 'development';
-const appPlatform = process.env['NEXT_PUBLIC_APP_PLATFORM'];
-
-const exportOutput = appPlatform !== 'web' && !isDev;
 // Opt-in standalone output, set only by the Docker production build
-// (Dockerfile). Every other path keeps the original behavior: Tauri `export`,
-// local `build-web` (output undefined), dev, and the Cloudflare/OpenNext
-// deploy — which forces standalone itself via NEXT_PRIVATE_STANDALONE.
-const standaloneOutput = !exportOutput && process.env['BUILD_STANDALONE'] === 'true';
+// (Dockerfile). Every other path keeps the default server output.
+const standaloneOutput = process.env['BUILD_STANDALONE'] === 'true';
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -24,20 +19,13 @@ const nextConfig = {
   typescript: { ignoreBuildErrors: process.env['SKIP_TYPECHECK'] === 'true' },
   // Lets a test build run beside a live `next dev`, which owns `.next`.
   distDir: process.env['NEXT_DIST_DIR'] || '.next',
-  // Ensure Next.js uses SSG instead of SSR
-  // https://nextjs.org/docs/pages/building-your-application/deploying/static-exports
   // The Docker production image opts into a self-contained `.next/standalone`
   // tree (see Dockerfile) so it can ship only the traced runtime; all other
-  // web builds fall back to the default server output.
-  output: exportOutput ? 'export' : standaloneOutput ? 'standalone' : undefined,
-  // Emit browser source maps for the Tauri export build so Sentry can
-  // symbolicate crashes. `scripts/upload-sourcemaps.mjs` uploads them after the
-  // build and strips the .map files, so they never ship inside the app bundle.
-  productionBrowserSourceMaps: exportOutput,
+  // builds fall back to the default server output.
+  output: standaloneOutput ? 'standalone' : undefined,
   // Monorepo: trace from the repo root so workspace packages land in the
   // standalone tree. Only relevant to — and only set for — the Docker build.
   outputFileTracingRoot: standaloneOutput ? path.join(__dirname, '../../') : undefined,
-  pageExtensions: exportOutput ? ['jsx', 'tsx'] : ['js', 'jsx', 'ts', 'tsx'],
   // Note: This feature is required to use the Next.js Image component in SSG mode.
   // See https://nextjs.org/docs/messages/export-image-api for different workarounds.
   images: {
@@ -85,11 +73,10 @@ const nextConfig = {
       // Without an alias, webpack walks up from that source location and
       // can't find fflate (only installed in this app's node_modules).
       fflate: path.resolve(__dirname, 'node_modules/fflate'),
-      ...(appPlatform !== 'web' ? { '@readest/turso-database-wasm/webpack': false } : {}),
       // music-metadata only parses user-picked files in the browser; its
       // file-type dependency leaves a webpackIgnore'd `import('strtok3')` in
       // the server bundle that the OpenNext esbuild pass cannot resolve.
-      ...(isServer && appPlatform === 'web'
+      ...(isServer
         ? {
             '@readest/turso-database-wasm/webpack': false,
             'jieba-wasm': false,
@@ -105,12 +92,6 @@ const nextConfig = {
       // Turbopack rejects absolute paths in resolveAlias ("server relative
       // imports not implemented") — use a project-relative path.
       fflate: './node_modules/fflate',
-      // Only the web build stores its database in turso's WASM build; Tauri
-      // embeds every file in `out/`, so emitting the unused WASM there would
-      // ship it inside the app.
-      ...(appPlatform !== 'web'
-        ? { '@readest/turso-database-wasm/webpack': './src/utils/stub.ts' }
-        : {}),
     },
   },
   transpilePackages: [
@@ -121,7 +102,6 @@ const nextConfig = {
           'i18next-browser-languagedetector',
           'react-i18next',
           'i18next',
-          '@tauri-apps',
           'highlight.js',
           'foliate-js',
           'marked',

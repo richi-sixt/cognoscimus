@@ -1,6 +1,3 @@
-import { FileHandle, open, BaseDirectory, SeekMode } from '@tauri-apps/plugin-fs';
-import { getOSPlatform } from './misc';
-
 class DeferredBlob extends Blob {
   #dataPromise: Promise<ArrayBuffer>;
   #type: string;
@@ -55,232 +52,6 @@ export interface ClosableFile extends File {
   close(): Promise<void>;
 }
 
-export class NativeFile extends File implements ClosableFile {
-  #handle: FileHandle | null = null;
-  #fp: string;
-  #name: string;
-  #baseDir: BaseDirectory | null;
-  #lastModified: number = 0;
-  #size: number = -1;
-  #type: string = '';
-
-  static MAX_CACHE_CHUNK_SIZE = 1024 * 1024;
-  static MAX_CACHE_ITEMS_SIZE = 50;
-  #order: number[] = [];
-  #cache: Map<number, ArrayBuffer> = new Map();
-  #pendingReads: Map<string, Promise<ArrayBuffer>> = new Map();
-
-  constructor(fp: string, name?: string, baseDir: BaseDirectory | null = null, type = '') {
-    super([], name || fp, { type });
-    this.#fp = fp;
-    this.#baseDir = baseDir;
-    this.#name = name || fp;
-  }
-
-  async open() {
-    this.#handle = await open(this.#fp, this.#baseDir ? { baseDir: this.#baseDir } : undefined);
-    const stats = await this.#handle.stat();
-    this.#size = stats.size;
-    this.#lastModified = stats.mtime ? stats.mtime.getTime() : Date.now();
-    return this;
-  }
-
-  async close() {
-    if (this.#handle) {
-      await this.#handle.close();
-      this.#handle = null;
-    }
-    this.#cache.clear();
-    this.#order = [];
-  }
-
-  override get name() {
-    return this.#name;
-  }
-
-  override get type() {
-    return this.#type;
-  }
-
-  override get size() {
-    return this.#size;
-  }
-
-  override get lastModified() {
-    return this.#lastModified;
-  }
-
-  getNativeLocation(): { path: string; baseDir: BaseDirectory | null } {
-    return { path: this.#fp, baseDir: this.#baseDir };
-  }
-
-  async stat() {
-    return this.#handle?.stat();
-  }
-
-  async seek(offset: number, whence: SeekMode): Promise<number> {
-    if (!this.#handle) {
-      throw new Error('File handle is not open');
-    }
-    return this.#handle.seek(offset, whence);
-  }
-
-  // exclusive reading of the end: [start, end)
-  async readData(start: number, end: number): Promise<ArrayBuffer> {
-    start = Math.max(0, start);
-    end = Math.max(start, Math.min(this.size, end));
-    const size = end - start;
-
-    if (size > NativeFile.MAX_CACHE_CHUNK_SIZE) {
-      const handle = await open(this.#fp, this.#baseDir ? { baseDir: this.#baseDir } : undefined);
-      try {
-        await handle.seek(start, SeekMode.Start);
-        const buffer = new Uint8Array(size);
-        await handle.read(buffer);
-        return buffer.buffer;
-      } finally {
-        await handle.close();
-      }
-    }
-
-    const cachedChunkStart = Array.from(this.#cache.keys()).find((chunkStart) => {
-      const buffer = this.#cache.get(chunkStart)!;
-      return start >= chunkStart && end <= chunkStart + buffer.byteLength;
-    });
-
-    if (cachedChunkStart !== undefined) {
-      this.#updateAccessOrder(cachedChunkStart);
-      const buffer = this.#cache.get(cachedChunkStart)!;
-      const offset = start - cachedChunkStart;
-      return buffer.slice(offset, offset + size);
-    }
-
-    const readKey = `${start}-${end}`;
-    const pendingRead = this.#pendingReads.get(readKey);
-
-    if (pendingRead) {
-      return pendingRead;
-    }
-
-    const readPromise = this.#readAndCacheChunkSafe(start, size);
-    this.#pendingReads.set(readKey, readPromise);
-
-    try {
-      return await readPromise;
-    } finally {
-      this.#pendingReads.delete(readKey);
-    }
-  }
-
-  async #readAndCacheChunkSafe(start: number, size: number): Promise<ArrayBuffer> {
-    const handle = await open(this.#fp, this.#baseDir ? { baseDir: this.#baseDir } : undefined);
-    try {
-      const chunkStart = Math.max(0, start - 1024);
-      const chunkEnd = Math.min(this.size, start + NativeFile.MAX_CACHE_CHUNK_SIZE);
-      const chunkSize = chunkEnd - chunkStart;
-
-      await handle.seek(chunkStart, SeekMode.Start);
-      const buffer = new Uint8Array(chunkSize);
-      await handle.read(buffer);
-
-      // Only one thread reaches here per unique range
-      this.#cache.set(chunkStart, buffer.buffer);
-      this.#updateAccessOrder(chunkStart);
-      this.#ensureCacheSize();
-
-      const offset = start - chunkStart;
-      return buffer.buffer.slice(offset, offset + size);
-    } finally {
-      await handle.close();
-    }
-  }
-
-  #updateAccessOrder(chunkStart: number) {
-    const index = this.#order.indexOf(chunkStart);
-    if (index > -1) {
-      this.#order.splice(index, 1);
-    }
-    this.#order.unshift(chunkStart);
-  }
-
-  #ensureCacheSize() {
-    while (this.#cache.size > NativeFile.MAX_CACHE_ITEMS_SIZE) {
-      const oldestKey = this.#order.pop();
-      if (oldestKey !== undefined) {
-        this.#cache.delete(oldestKey);
-      }
-    }
-  }
-
-  override slice(start = 0, end = this.size, contentType = this.type): Blob {
-    // console.log(`Slicing: ${start}-${end}, size: ${end - start}`);
-    const dataPromise = this.readData(start, end);
-    return new DeferredBlob(dataPromise, contentType);
-  }
-
-  override stream(): ReadableStream<Uint8Array<ArrayBuffer>> {
-    const CHUNK_SIZE = 1024 * 1024;
-    let offset = 0;
-    let streamHandle: FileHandle | null = null;
-    let streamClosed = false;
-
-    const ensureHandle = async () => {
-      if (streamHandle) return streamHandle;
-      streamHandle = await open(this.#fp, this.#baseDir ? { baseDir: this.#baseDir } : undefined);
-      streamClosed = false;
-      return streamHandle;
-    };
-
-    const closeHandle = async () => {
-      if (!streamHandle || streamClosed) return;
-      await streamHandle.close();
-      streamClosed = true;
-      streamHandle = null;
-    };
-
-    return new ReadableStream<Uint8Array<ArrayBuffer>>({
-      pull: async (controller) => {
-        const handle = await ensureHandle();
-
-        if (offset >= this.size) {
-          await closeHandle();
-          controller.close();
-          return;
-        }
-
-        const end = Math.min(offset + CHUNK_SIZE, this.size);
-        const buffer = new Uint8Array(end - offset);
-
-        await handle.seek(offset, SeekMode.Start);
-        const bytesRead = await handle.read(buffer);
-
-        if (bytesRead === null || bytesRead === 0) {
-          await closeHandle();
-          controller.close();
-          return;
-        }
-
-        controller.enqueue(buffer.subarray(0, bytesRead));
-        offset += bytesRead;
-      },
-
-      cancel: async () => {
-        await closeHandle();
-      },
-    });
-  }
-
-  override async text() {
-    const blob = this.slice(0, this.size);
-    return blob.text();
-  }
-
-  override async arrayBuffer() {
-    const blob = this.slice(0, this.size);
-    return blob.arrayBuffer();
-  }
-}
-
 export class RemoteFile extends File implements ClosableFile {
   url: string;
   #fetch: typeof fetch;
@@ -291,13 +62,9 @@ export class RemoteFile extends File implements ClosableFile {
   #order: number[] = [];
   #cache: Map<number, ArrayBuffer> = new Map(); // LRU cache
   #pendingFetches: Map<string, Promise<ArrayBuffer>> = new Map();
-  // When true, byte ranges are carried in the URL query (?start=&end=) instead
-  // of a `Range` header — see fromNativePath().
-  #queryRange = false;
 
   static MAX_CACHE_CHUNK_SIZE = 1024 * 128;
   static MAX_CACHE_ITEMS_SIZE: number = 128;
-  static RANGE_SCHEME_ORIGIN = 'http://rangefile.localhost';
   // Bounded concurrency for multi-chunk fetchRange() reads (see fetchRange).
   static MAX_PARALLEL_RANGE_FETCHES = 4;
 
@@ -309,26 +76,6 @@ export class RemoteFile extends File implements ClosableFile {
     this.#name = name || basename;
     this.#type = type;
     this.#lastModified = lastModified;
-  }
-
-  /**
-   * Read a local file path through the `rangefile` custom URI scheme, carrying
-   * the byte range in the URL query (`?path=&start=&end=`) rather than a
-   * `Range` request header.
-   *
-   * On Android the WebView re-applies a `Range` header's offset to the body
-   * returned from an intercepted custom protocol (Chromium 40739128;
-   * tauri-apps/tauri#12019, #3725), corrupting any non-zero-start read — so the
-   * asset protocol can't back `RemoteFile` there. A query-carried range has no
-   * `Range` header, so the WebView delivers the 200 body verbatim while the
-   * bytes still stream through the network stack (not the slow Tauri IPC
-   * bridge). The Rust handler is scope-gated by `asset_protocol_scope`.
-   */
-  static fromNativePath(absolutePath: string, name?: string): RemoteFile {
-    const url = `${RemoteFile.RANGE_SCHEME_ORIGIN}/?path=${encodeURIComponent(absolutePath)}`;
-    const file = new RemoteFile(url, name);
-    file.#queryRange = true;
-    return file;
   }
 
   /**
@@ -358,7 +105,7 @@ export class RemoteFile extends File implements ClosableFile {
     return this.#lastModified;
   }
 
-  async _open_with_head() {
+  async open() {
     const response = await this.#call(this.url, { method: 'HEAD' });
     if (!response.ok) {
       throw new Error(`Failed to fetch file size: ${response.status}`);
@@ -366,40 +113,6 @@ export class RemoteFile extends File implements ClosableFile {
     this.#size = Number(response.headers.get('content-length'));
     this.#type = response.headers.get('content-type') || '';
     return this;
-  }
-
-  async _open_with_range() {
-    const response = await this.#call(this.url, { headers: { Range: `bytes=${0}-${1023}` } });
-    if (!response.ok) {
-      throw new Error(`Failed to fetch file size: ${response.status}`);
-    }
-    this.#size = Number(response.headers.get('content-range')?.split('/')[1]);
-    this.#type = response.headers.get('content-type') || '';
-    return this;
-  }
-
-  async _open_with_query() {
-    // No `Range` header — the rangefile handler returns the file size in
-    // `X-Total-Size` and the requested bytes as a plain 200 body.
-    const response = await this.#call(`${this.url}&start=0&end=0`);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch file size: ${response.status}`);
-    }
-    this.#size = Number(response.headers.get('x-total-size'));
-    this.#type = response.headers.get('content-type') || '';
-    return this;
-  }
-
-  async open() {
-    if (this.#queryRange) {
-      return this._open_with_query();
-    }
-    // FIXME: currently HEAD request in asset protocol is not supported on Android
-    if (getOSPlatform() === 'android') {
-      return this._open_with_range();
-    } else {
-      return this._open_with_head();
-    }
   }
 
   async close(): Promise<void> {
@@ -411,9 +124,7 @@ export class RemoteFile extends File implements ClosableFile {
     start = Math.max(0, start);
     end = Math.min(this.size - 1, end);
     // console.log(`Fetching range: ${start}-${end}, size: ${end - start + 1}`);
-    const response = this.#queryRange
-      ? await this.#call(`${this.url}&start=${start}&end=${end}`)
-      : await this.#call(this.url, { headers: { Range: `bytes=${start}-${end}` } });
+    const response = await this.#call(this.url, { headers: { Range: `bytes=${start}-${end}` } });
     if (!response.ok) {
       throw new Error(`Failed to fetch range: ${response.status}`);
     }

@@ -9,7 +9,6 @@ import { useReaderStore } from '@/store/readerStore';
 import { useBookDataStore } from '@/store/bookDataStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { DOUBLE_CLICK_INTERVAL_THRESHOLD_MS } from '@/services/constants';
-import { setSelectionSuppressed } from '@/utils/bridge';
 import { eventDispatcher } from '@/utils/event';
 import {
   getParagraphActionForKey,
@@ -208,7 +207,6 @@ const ParagraphOverlay: React.FC<ParagraphOverlayProps> = ({
   const reportedRangeRef = useRef<Range | null>(null);
   // Whether the annotator holds a selection of ours that has not been cleared.
   const selectionActiveRef = useRef(false);
-  const menuSuppressedRef = useRef(false);
   const pendingTapRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -324,24 +322,12 @@ const ParagraphOverlay: React.FC<ParagraphOverlayProps> = ({
     return !!anchor && !!getCloneRoot()?.contains(anchor);
   }, [getCloneRoot]);
 
-  // Android floats its own menu over a selection; the book page keeps it off
-  // while its text is selected (useTextSelector), and so does the clone.
-  const syncNativeSelectionMenu = useCallback(
-    (suppressed: boolean) => {
-      if (!appService?.isAndroidApp || menuSuppressedRef.current === suppressed) return;
-      menuSuppressedRef.current = suppressed;
-      setSelectionSuppressed({ target: 'menu', suppressed }).catch(() => {});
-    },
-    [appService?.isAndroidApp],
-  );
-
   const clearReportedSelection = useCallback(() => {
     reportedRangeRef.current = null;
-    syncNativeSelectionMenu(false);
     if (!selectionActiveRef.current) return;
     selectionActiveRef.current = false;
     eventDispatcher.dispatch('footnote-selection', { key: bookKey });
-  }, [bookKey, syncNativeSelectionMenu]);
+  }, [bookKey]);
 
   // Surface a selection made in the clone to the annotator (#6200). The book's
   // selection listeners live on the section iframes and never see it, so it
@@ -556,7 +542,6 @@ const ParagraphOverlay: React.FC<ParagraphOverlayProps> = ({
     let timer: ReturnType<typeof setTimeout> | null = null;
     const handleSelectionChange = () => {
       const range = getCloneSelection();
-      syncNativeSelectionMenu(!!range);
       // Once the live selection has left the reported range, selecting the
       // same text again is a new selection (the toolbar may have gone in the
       // meantime, e.g. with a relocate).
@@ -577,13 +562,7 @@ const ParagraphOverlay: React.FC<ParagraphOverlayProps> = ({
       document.removeEventListener('pointerup', handlePointerUp);
       clearReportedSelection();
     };
-  }, [
-    isVisible,
-    getCloneSelection,
-    reportSelection,
-    clearReportedSelection,
-    syncNativeSelectionMenu,
-  ]);
+  }, [isVisible, getCloneSelection, reportSelection, clearReportedSelection]);
 
   useEffect(() => {
     return () => {

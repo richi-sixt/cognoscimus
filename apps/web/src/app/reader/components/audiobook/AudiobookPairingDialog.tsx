@@ -78,12 +78,6 @@ const closeFiles = async (files: File[]) => {
   );
 };
 
-const nativeFilePath = (file: File): string | undefined => {
-  const getNativeLocation = (file as File & { getNativeLocation?: () => { path: string } })
-    .getNativeLocation;
-  return getNativeLocation?.call(file).path;
-};
-
 const AudiobookPairingDialog = ({ bookKey, bookDoc, onClose }: AudiobookPairingDialogProps) => {
   const _ = useTranslation();
   const { envConfig, appService } = useEnv();
@@ -204,13 +198,7 @@ const AudiobookPairingDialog = ({ bookKey, bookDoc, onClose }: AudiobookPairingD
         nextFiles.push({
           file,
           metadata,
-          ...(nativeFilePath(file) || source.path
-            ? { previewPath: nativeFilePath(file) ?? source.path }
-            : {}),
-          // Native copy avoids routing a multi-hour audiobook through JS.
-          // iOS picker URLs are security-scoped, so openFile's cached
-          // NativeFile remains the safe copy source there.
-          ...(source.path && !appService.isIOSApp ? { sourcePath: source.path } : {}),
+          ...(source.path ? { previewPath: source.path, sourcePath: source.path } : {}),
         });
       }
       const chapters = nextFiles.flatMap(({ metadata }) => metadata.chapters);
@@ -268,8 +256,7 @@ const AudiobookPairingDialog = ({ bookKey, bookDoc, onClose }: AudiobookPairingD
     const stored = association?.files.find((file) => file.id === chapter.fileId);
     try {
       await eventDispatcher.dispatch('tts-stop', { bookKey });
-      let clip: Omit<AudiobookPreviewClip, 'id'>;
-      clip = {
+      const clip: Omit<AudiobookPreviewClip, 'id'> = {
         ...(prepared?.previewPath
           ? { path: prepared.previewPath, base: 'None' as const }
           : stored

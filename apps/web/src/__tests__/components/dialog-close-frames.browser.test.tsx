@@ -35,7 +35,6 @@ vi.mock('@/store/deviceStore', () => ({
     releaseBackKeyInterception: vi.fn(),
   }),
 }));
-vi.mock('@tauri-apps/plugin-haptics', () => ({ impactFeedback: vi.fn() }));
 
 const { default: Dialog } = await import('@/components/Dialog');
 await import('@/styles/globals.css');

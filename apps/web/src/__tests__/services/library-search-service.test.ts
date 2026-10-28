@@ -54,7 +54,6 @@ const makeService = (files: Map<string, File | null>) => {
       if (!file) throw new BookFileNotFoundError();
       return { book, file };
     }),
-    resolveNativeBookFilePath: vi.fn().mockResolvedValue(null),
     loadBookNav: vi.fn().mockResolvedValue(null),
     databaseExists: vi.fn(async (path: string) => searchDbs.has(path)),
     deleteDatabase: vi.fn(async (path: string) => {
@@ -84,7 +83,6 @@ const makeService = (files: Map<string, File | null>) => {
     | 'deleteDatabase'
     | 'getBookFileSize'
     | 'loadBookContent'
-    | 'resolveNativeBookFilePath'
     | 'loadBookNav'
     | 'openDatabase'
   >;

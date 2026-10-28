@@ -22,7 +22,6 @@ import { getLibraryFilename, getLibraryBackupFilename } from '@/utils/book';
 import { getDirPath, getFilename } from '@/utils/path';
 
 import { getOSPlatform } from '@/utils/misc';
-import { isStoragePermissionError, requestStoragePermission } from '@/utils/permission';
 import { ProgressHandler } from '@/utils/transfer';
 import { CustomTextureInfo } from '@/styles/textures';
 import { CustomFont, CustomFontInfo } from '@/styles/fonts';
@@ -44,7 +43,7 @@ import type { RssFeed } from '@/types/rss';
 
 export abstract class BaseAppService implements AppService {
   osPlatform: OsPlatform = getOSPlatform();
-  appPlatform: AppPlatform = 'tauri';
+  appPlatform: AppPlatform = 'web';
   localBooksDir = '';
   unavailableRootDir: string | null = null;
   isMobile = false;
@@ -444,15 +443,7 @@ export abstract class BaseAppService implements AppService {
     handleProgress: ProgressHandler,
     hash: string,
   ) {
-    return CloudSvc.uploadFileToCloud(
-      this.fs,
-      this.resolveFilePath.bind(this),
-      lfp,
-      cfp,
-      base,
-      handleProgress,
-      hash,
-    );
+    return CloudSvc.uploadFileToCloud(this.fs, lfp, cfp, base, handleProgress, hash);
   }
 
   async uploadReplicaFile(
@@ -463,7 +454,7 @@ export abstract class BaseAppService implements AppService {
     base: BaseDir,
     onProgress: ProgressHandler,
   ) {
-    return CloudSvc.uploadReplicaFileToCloud(this.fs, this.resolveFilePath.bind(this), {
+    return CloudSvc.uploadReplicaFileToCloud(this.fs, {
       kind,
       replicaId,
       filename,
@@ -515,12 +506,12 @@ export abstract class BaseAppService implements AppService {
 
   async uploadBook(book: Book, onProgress?: ProgressHandler): Promise<void> {
     if (book.grant) throw new Error('A shared book cannot be uploaded');
-    return CloudSvc.uploadBook(this.fs, this.resolveFilePath.bind(this), book, onProgress);
+    return CloudSvc.uploadBook(this.fs, book, onProgress);
   }
 
   async uploadBookCover(book: Book, onProgress?: ProgressHandler): Promise<void> {
     if (book.grant) throw new Error('A shared book cannot be uploaded');
-    return CloudSvc.uploadBookCover(this.fs, this.resolveFilePath.bind(this), book, onProgress);
+    return CloudSvc.uploadBookCover(this.fs, book, onProgress);
   }
 
   async downloadCloudFile(lfp: string, cfp: string, onProgress: ProgressHandler) {
@@ -576,10 +567,6 @@ export abstract class BaseAppService implements AppService {
     return BookSvc.loadBookContent(this.fs, book);
   }
 
-  async resolveNativeBookFilePath(book: Book): Promise<string | null> {
-    return BookSvc.resolveNativeBookFilePath(this.fs, this.resolveFilePath.bind(this), book);
-  }
-
   async loadBookConfig(book: Book, settings: SystemSettings): Promise<BookConfig> {
     return BookSvc.loadBookConfig(this.fs, book, settings);
   }
@@ -617,31 +604,7 @@ export abstract class BaseAppService implements AppService {
     // cover sources and do not have the Tauri thumbnail worker.
   }
 
-  // Prompt for storage permission at most once per session (see saveLibraryBooks).
-  private storagePermissionRequested = false;
-
   async saveLibraryBooks(books: Book[], options?: SaveLibraryBooksOptions): Promise<void> {
-    try {
-      return await LibrarySvc.saveLibraryBooks(this.fs, books, options);
-    } catch (error) {
-      // A custom library folder on Android shared storage needs All Files
-      // Access. Without it the write fails with EACCES and, because callers
-      // (sync, imports) don't await/catch this, it surfaced as an unhandled
-      // rejection crash (Sentry COGNOSCIMUS-A). Re-request the permission through
-      // the same flow used at import time and retry once. Only prompt once per
-      // session so background saves don't repeatedly yank the user to system
-      // settings; after that a still-denied save is logged, not crashed —
-      // the user was already shown the All Files Access screen.
-      if (!this.isAndroidApp || !isStoragePermissionError(error)) {
-        throw error;
-      }
-      if (!this.storagePermissionRequested) {
-        this.storagePermissionRequested = true;
-        if (await requestStoragePermission()) {
-          return await LibrarySvc.saveLibraryBooks(this.fs, books, options);
-        }
-      }
-      console.warn('[library] not saved: storage permission not granted', error);
-    }
+    return LibrarySvc.saveLibraryBooks(this.fs, books, options);
   }
 }

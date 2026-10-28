@@ -19,26 +19,15 @@ const item = (over: Partial<RssFeedItem>): RssFeedItem => ({
 describe('resolveArticleInput', () => {
   it('uses feed content without network when contentHtml is substantial', () => {
     const html = `<p>${'word '.repeat(60)}</p>`;
-    expect(resolveArticleInput(item({ contentHtml: html }), null)).toEqual({
+    expect(resolveArticleInput(item({ contentHtml: html }))).toEqual({
       kind: 'article',
       html,
       url: 'https://x.example.com/a',
     });
   });
 
-  it('falls back to page HTML when the feed has no full content', () => {
-    const page = '<html><body><article>full</article></body></html>';
-    expect(resolveArticleInput(item({ contentHtml: undefined }), page)).toEqual({
-      kind: 'page',
-      html: page,
-      url: 'https://x.example.com/a',
-    });
-  });
-
-  it('throws when there is neither feed content nor a fetched page', () => {
-    expect(() => resolveArticleInput(item({ contentHtml: undefined }), null)).toThrow(
-      /no full content/i,
-    );
+  it('throws when the feed has no full content', () => {
+    expect(() => resolveArticleInput(item({ contentHtml: undefined }))).toThrow(/no full content/i);
   });
 });
 
@@ -94,7 +83,6 @@ describe('openFeedArticle grouping', () => {
       appService: {} as never,
       settings: {} as never,
       isLoggedIn: false,
-      translate: (k: string) => k,
       convert: async () => ({ file: new File(['x'], 'a.epub'), title: 'T', author: '' }),
       ingest: (async (opts: { groupId?: string; groupName?: string }) => {
         captured = { groupId: opts.groupId, groupName: opts.groupName };

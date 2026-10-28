@@ -12,9 +12,7 @@ import { saveSysSettings, saveViewSettings } from '@/helpers/settings';
 import { PageTurnStyle } from '@/types/book';
 import { SettingsPanelPanelProp } from './SettingsDialog';
 import { annotationToolQuickActions } from '@/app/reader/components/annotator/AnnotationTools';
-import { applyPageTurnAttributes } from '@/app/reader/hooks/useCapturedTurn';
-import { isTauriAppPlatform } from '@/services/environment';
-import { DEFAULT_SYSTEM_SETTINGS } from '@/services/constants';
+import { applyPageTurnAttributes } from '@/app/reader/utils/pageTurnAttributes';
 import {
   BoxedList,
   NavigationRow,
@@ -27,7 +25,6 @@ import PageTurnerSettings from './PageTurnerSettings';
 import AnnotationToolbarCustomizer from './AnnotationToolbarCustomizer';
 import { DEFAULT_ANNOTATION_TOOLBAR_ITEMS } from '@/utils/annotationToolbar';
 import { canShareText } from '@/utils/share';
-import { useEinkRefreshSupported } from '@/hooks/useEinkRefreshSupported';
 import KeyboardShortcutsSettings from './KeyboardShortcutsSettings';
 
 const ControlPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegisterReset }) => {
@@ -71,13 +68,6 @@ const ControlPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegisterRes
   const [pageTurnStyle, setPageTurnStyle] = useState(viewSettings.pageTurnStyle || 'push');
   const [isEink, setIsEink] = useState(viewSettings.isEink);
   const [isColorEink, setIsColorEink] = useState(viewSettings.isColorEink);
-  const [einkAutoRefreshInterval, setEinkAutoRefreshInterval] = useState(
-    viewSettings.einkAutoRefreshInterval,
-  );
-  // Whether this device exposes a full-refresh mechanism we can drive. The
-  // "Auto Full Refresh" row is only offered when true, so it never appears on
-  // panels (or phones) where the deep refresh silently does nothing.
-  const einkRefreshSupported = useEinkRefreshSupported();
   const [autoScreenBrightness, setAutoScreenBrightness] = useState(settings.autoScreenBrightness);
   const [swipeBrightnessGesture, setSwipeBrightnessGesture] = useState(
     settings.swipeBrightnessGesture,
@@ -90,19 +80,17 @@ const ControlPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegisterRes
     settings.hideBookshelfPageButtons,
   );
   const [allowScript, setAllowScript] = useState(viewSettings.allowScript);
-  const [isAutoCheckUpdates, setIsAutoCheckUpdates] = useState(settings.autoCheckUpdates);
-  const [isNightlyChannel, setIsNightlyChannel] = useState(settings.updateChannel === 'nightly');
 
   const resetToDefaults = useResetViewSettings();
   const pageTurnerResetRef = useRef<() => void>(() => {});
-  const canShare = canShareText(appService);
+  const canShare = canShareText();
 
-  // The layered styles need an engine with full View Transitions support or
-  // the Tauri captured-turn fallback; engines like iOS 18 WebKit crash on
-  // the VT turns, so on the web they only get Push (cognoscimus#555).
+  // The layered styles need an engine with full View Transitions support;
+  // engines like iOS 18 WebKit crash on the VT turns, so they only get Push
+  // (cognoscimus#555).
   const turnStyleOptions = [
     { value: 'push', label: _('Push') },
-    ...(appService?.supportsViewTransitionGroup || isTauriAppPlatform()
+    ...(appService?.supportsViewTransitionGroup
       ? [
           { value: 'slide', label: _('Slide') },
           { value: 'curl', label: _('Page Curl') },
@@ -110,24 +98,6 @@ const ControlPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegisterRes
       : []),
   ];
 
-  const einkAutoRefreshIntervalOptions = [
-    { value: '0', label: _('Off') },
-    { value: '5', label: _('Every 5 pages') },
-    { value: '10', label: _('Every 10 pages') },
-    { value: '15', label: _('Every 15 pages') },
-    { value: '20', label: _('Every 20 pages') },
-  ];
-  // A synced value outside the offered set (written by another/newer client) has
-  // no matching <option>, so the controlled select would resolve selectedIndex -1
-  // and render blank, hiding the active interval. Surface it as an extra option —
-  // shown, never rewritten — so the display still matches what noteEinkPageTurn
-  // actually reads, without coercing or destroying the stored value.
-  const currentInterval = String(einkAutoRefreshInterval);
-  const einkAutoRefreshIntervalChoices = einkAutoRefreshIntervalOptions.some(
-    (opt) => opt.value === currentInterval,
-  )
-    ? einkAutoRefreshIntervalOptions
-    : [...einkAutoRefreshIntervalOptions, { value: currentInterval, label: currentInterval }];
   const handleReset = () => {
     resetToDefaults({
       scrolled: setScrolledMode,
@@ -142,7 +112,6 @@ const ControlPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegisterRes
       animated: setAnimated,
       pageTurnStyle: setPageTurnStyle,
       isEink: setIsEink,
-      einkAutoRefreshInterval: setEinkAutoRefreshInterval,
       allowScript: setAllowScript,
       fullscreenClickArea: setFullscreenClickArea,
       disableDoubleClick: setIsDisableDoubleClick,
@@ -158,13 +127,6 @@ const ControlPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegisterRes
       false,
       true,
     );
-    if (appService?.hasUpdater) {
-      const { autoCheckUpdates = true, updateChannel = 'stable' } = DEFAULT_SYSTEM_SETTINGS;
-      saveSysSettings(envConfig, 'autoCheckUpdates', autoCheckUpdates);
-      saveSysSettings(envConfig, 'updateChannel', updateChannel);
-      setIsAutoCheckUpdates(autoCheckUpdates);
-      setIsNightlyChannel(updateChannel === 'nightly');
-    }
     pageTurnerResetRef.current();
     // Keyboard/mouse bindings are NOT reset here — they are device-local and
     // have their own "Reset all" inside the Keyboard Shortcuts sub-page.
@@ -239,7 +201,7 @@ const ControlPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegisterRes
     const view = getView(bookKey);
     const freshSettings = getViewSettings(bookKey);
     if (view && freshSettings) {
-      applyPageTurnAttributes(view, freshSettings, !!bookData?.isFixedLayout);
+      applyPageTurnAttributes(view, freshSettings);
     }
   };
 
@@ -309,19 +271,6 @@ const ControlPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegisterRes
     saveViewSettings(envConfig, bookKey, 'isColorEink', isColorEink);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isColorEink]);
-
-  useEffect(() => {
-    if (einkAutoRefreshInterval === viewSettings.einkAutoRefreshInterval) return;
-    saveViewSettings(
-      envConfig,
-      bookKey,
-      'einkAutoRefreshInterval',
-      einkAutoRefreshInterval,
-      false,
-      false,
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [einkAutoRefreshInterval]);
 
   useEffect(() => {
     if (autoScreenBrightness === settings.autoScreenBrightness) return;
@@ -402,18 +351,6 @@ const ControlPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegisterRes
     saveViewSettings(envConfig, bookKey, 'copyToNotebook', copyToNotebook, false, false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [copyToNotebook]);
-
-  const toggleAutoCheckUpdates = () => {
-    const newValue = !isAutoCheckUpdates;
-    saveSysSettings(envConfig, 'autoCheckUpdates', newValue);
-    setIsAutoCheckUpdates(newValue);
-  };
-
-  const toggleNightlyChannel = () => {
-    const newValue = !isNightlyChannel;
-    saveSysSettings(envConfig, 'updateChannel', newValue ? 'nightly' : 'stable');
-    setIsNightlyChannel(newValue);
-  };
 
   const getQuickActionOptions = () => {
     return [
@@ -614,21 +551,6 @@ const ControlPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegisterRes
           onChange={() => setIsEink(!isEink)}
           data-setting-id='settings.control.einkMode'
         />
-        {appService?.isAndroidApp && einkRefreshSupported && (
-          <SettingsRow
-            label={_('Auto Full Refresh')}
-            disabled={!isEink}
-            data-setting-id='settings.control.autoFullRefresh'
-          >
-            <SettingsSelect
-              value={String(einkAutoRefreshInterval)}
-              onChange={(e) => setEinkAutoRefreshInterval(Number(e.target.value))}
-              ariaLabel={_('Auto Full Refresh')}
-              disabled={!isEink}
-              options={einkAutoRefreshIntervalChoices}
-            />
-          </SettingsRow>
-        )}
         <SettingsSwitchRow
           label={_('Color E-Ink Mode')}
           checked={isColorEink}
@@ -692,23 +614,6 @@ const ControlPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegisterRes
           data-setting-id='settings.control.gamepadEnabled'
         />
       </BoxedList>
-
-      {appService?.hasUpdater && (
-        <BoxedList title={_('Update')} data-setting-id='settings.control.checkUpdates'>
-          <SettingsSwitchRow
-            label={_('Check Updates on Start')}
-            checked={isAutoCheckUpdates}
-            onChange={toggleAutoCheckUpdates}
-          />
-          <SettingsSwitchRow
-            label={_('Nightly Builds')}
-            description={isNightlyChannel ? _('Early daily builds') : ''}
-            checked={isNightlyChannel}
-            onChange={toggleNightlyChannel}
-            data-setting-id='settings.control.nightlyChannel'
-          />
-        </BoxedList>
-      )}
 
       <BoxedList title={_('Security')} data-setting-id='settings.control.allowJavascript'>
         <SettingsSwitchRow

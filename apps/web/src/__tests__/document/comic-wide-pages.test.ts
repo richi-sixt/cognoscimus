@@ -2,19 +2,12 @@
 // Paired with the next page it shows at half size and shifts every later page
 // to the wrong side, so a wide page is laid out as a spread of its own.
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { invoke } from '@tauri-apps/api/core';
 
 import { DocumentLoader } from '@/libs/document';
 import type { BookDoc } from '@/libs/document';
-import { isTauriAppPlatform } from '@/services/environment';
 import { getImageSize } from '@/utils/image';
 import { setCoverSpread } from '@/utils/spread';
 
-vi.mock('@tauri-apps/api/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@tauri-apps/api/core')>()),
-  invoke: vi.fn(),
-}));
-vi.mock('@/services/environment', () => ({ isTauriAppPlatform: vi.fn(() => false) }));
 vi.mock('@/utils/image', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/utils/image')>();
   return { ...actual, getImageSize: vi.fn(actual.getImageSize) };
@@ -81,10 +74,7 @@ const pageSpreads = (book: BookDoc) =>
   Object.fromEntries(book.sections.map((section) => [section.id, section.pageSpread]));
 
 describe('CBZ double-page spreads (#6210)', () => {
-  afterEach(() => {
-    vi.mocked(isTauriAppPlatform).mockReturnValue(false);
-    vi.mocked(invoke).mockReset();
-  });
+  afterEach(() => {});
 
   it('lays out each wide page as a spread of its own', async () => {
     const file = await makeCbz([
@@ -154,23 +144,6 @@ describe('CBZ double-page spreads (#6210)', () => {
     const file = await makeCbz([['01.png', png(2400, 1800)]]);
     const { book } = await new DocumentLoader(file).open();
     expect(pageSpreads(book)).toEqual({ '01.png': undefined });
-  });
-
-  it('measures the pages natively when the app has the file path', async () => {
-    vi.mocked(isTauriAppPlatform).mockReturnValue(true);
-    vi.mocked(invoke).mockResolvedValue({ '01.png': [1200, 1829], '02.png': [2200, 1673] });
-    const file = await makeCbz([
-      ['01.png', png(1, 1)],
-      ['02.png', png(1, 1)],
-    ]);
-    const { book } = await new DocumentLoader(file, {
-      nativeFilePath: '/books/spreads.cbz',
-      widePages: {},
-    }).open();
-    expect(invoke).toHaveBeenCalledWith('get_comic_page_sizes', {
-      filePath: '/books/spreads.cbz',
-    });
-    expect(pageSpreads(book)).toEqual({ '01.png': undefined, '02.png': 'center' });
   });
 });
 

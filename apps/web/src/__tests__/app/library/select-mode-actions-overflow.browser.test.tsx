@@ -19,7 +19,6 @@ const renderActions = () =>
     <SelectModeActions
       selectedBooks={['0123456789abcdef0123456789abcdef']}
       safeAreaBottom={0}
-      sendEnabled
       canDownload
       onOpen={noop}
       onGroup={noop}
@@ -27,7 +26,6 @@ const renderActions = () =>
       onDetails={noop}
       onStatus={noop}
       onDownload={noop}
-      onSend={noop}
       onDelete={noop}
       onCancel={noop}
     />,

@@ -20,7 +20,6 @@ import type {
   WebSearchEntry,
 } from './types';
 import { BUILTIN_PROVIDER_IDS } from './types';
-import { isSystemDictionarySupported } from './systemDictionary';
 import { wiktionaryProvider } from './providers/wiktionaryProvider';
 import { wikipediaProvider } from './providers/wikipediaProvider';
 import { contextProvider } from './providers/contextProvider';
@@ -149,9 +148,7 @@ export const getEnabledProviders = ({
   const out: DictionaryProvider[] = [];
   for (const id of settings.providerOrder) {
     if (settings.providerEnabled[id] === false) continue;
-    // System-dictionary sentinel is intentionally skipped here — see
-    // `isSystemDictionaryEnabled` for the dispatch path used by the
-    // annotator's "Dictionary" button.
+    // The system-dictionary sentinel has no web implementation.
     if (id === BUILTIN_PROVIDER_IDS.systemDictionary) continue;
     if (id.startsWith('builtin:')) {
       const provider = getOrCreate(id, undefined, undefined, settings);
@@ -170,26 +167,6 @@ export const getEnabledProviders = ({
     if (provider) out.push(provider);
   }
   return out;
-};
-
-/**
- * True when the user has enabled the system-dictionary entry in
- * settings. The annotator checks this before opening the in-app popup
- * — when set, the selection is handed to the OS instead. Independent
- * of `getEnabledProviders` (which filters the sentinel out so no empty
- * tab appears) so callers don't need to look at order/list shape to
- * make the dispatch decision.
- *
- * Gated by platform support: `providerEnabled` is whole-field synced
- * across devices, so a flag set on (say) macOS would otherwise reach a
- * Windows device that has no handoff implementation, leaving the
- * annotator with no way to look up a word. Short-circuiting here keeps
- * the setting durable on the device where it makes sense while making
- * it a no-op everywhere else.
- */
-export const isSystemDictionaryEnabled = (settings: DictionarySettings): boolean => {
-  if (!isSystemDictionarySupported()) return false;
-  return settings.providerEnabled[BUILTIN_PROVIDER_IDS.systemDictionary] === true;
 };
 
 /** Drop a single provider from the cache (e.g. after dictionary deletion). */

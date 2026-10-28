@@ -1,4 +1,3 @@
-import { isTauriAppPlatform } from '@/services/environment';
 import type { CustomTranslator } from '@/types/translation';
 import type { TranslationProvider } from '../types';
 import { createDeepLTranslator } from './deepl';
@@ -16,8 +15,8 @@ export const buildCustomTranslator = (config: CustomTranslator): TranslationProv
       ? { ...createDeepLTranslator(config), requiresApp: true }
       : createOpenAICompatibleTranslator(config);
   provider.premiumRequired = true;
-  // The DeepL API sends no CORS headers, so it only works through tauriFetch.
-  provider.disabled = !!config.disabled || (!!provider.requiresApp && !isTauriAppPlatform());
+  // The DeepL API sends no CORS headers, so it cannot be called from a browser.
+  provider.disabled = !!config.disabled || !!provider.requiresApp;
   return provider;
 };
 

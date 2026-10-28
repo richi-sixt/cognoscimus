@@ -164,7 +164,7 @@ const QuoteCardDialog: React.FC<QuoteCardDialogProps> = ({
     if (shared === false) toast('error', _('Failed to share the image'));
   };
 
-  const canShare = canShareText(appService);
+  const canShare = canShareText();
   const canCopy = !appService?.isAndroidApp && typeof ClipboardItem !== 'undefined';
 
   return (

@@ -13,10 +13,8 @@ import { useThemeStore } from '@/store/themeStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import type { LibrarySearchConfig, LibrarySearchTarget } from '@/types/book';
 import { useLibraryStore } from '@/store/libraryStore';
-import { useTrafficLight } from '@/hooks/useTrafficLight';
 import { useResponsiveSize } from '@/hooks/useResponsiveSize';
 import useShortcuts from '@/hooks/useShortcuts';
-import WindowButtons from '@/components/WindowButtons';
 import Dropdown from '@/components/Dropdown';
 import SettingsMenu from './SettingsMenu';
 import ImportMenu from './ImportMenu';
@@ -70,7 +68,6 @@ const LibraryHeader: React.FC<LibraryHeaderProps> = ({
   const { currentBookshelf } = useLibraryStore();
 
   const headerRef = useRef<HTMLDivElement>(null);
-  const { isTrafficLightVisible } = useTrafficLight(headerRef);
   const iconSize18 = useResponsiveSize(18);
   const { safeAreaInsets: insets, isIPhoneDuo } = useThemeStore();
 
@@ -82,7 +79,6 @@ const LibraryHeader: React.FC<LibraryHeaderProps> = ({
     onSearchQueryChange(e.target.value);
   };
 
-  const windowButtonVisible = appService?.hasWindowBar && !isTrafficLightVisible;
   const currentBooksCount = currentBookshelf.length;
 
   if (!insets) return null;
@@ -94,8 +90,8 @@ const LibraryHeader: React.FC<LibraryHeaderProps> = ({
       ref={headerRef}
       className={clsx(
         'titlebar z-10 flex h-[52px] w-full items-center py-2 pr-4 sm:h-[44px]',
-        windowButtonVisible ? 'sm:pr-4' : 'sm:pr-6',
-        isTrafficLightVisible ? 'pl-16' : 'pl-0 sm:pl-2',
+        'sm:pr-6',
+        'pl-0 sm:pl-2',
       )}
       style={{
         marginTop: appService?.hasSafeAreaInset
@@ -254,15 +250,6 @@ const LibraryHeader: React.FC<LibraryHeaderProps> = ({
                 {isSelectAll ? _('Deselect') : _('Select All')}
               </span>
             </button>
-            {/* Mounted without buttons so the header still drags the window (#6917). */}
-            {appService?.hasWindowBar && (
-              <WindowButtons
-                headerRef={headerRef}
-                showMinimize={false}
-                showMaximize={false}
-                showClose={false}
-              />
-            )}
           </div>
         ) : (
           <div className='flex h-full items-center gap-x-2 sm:gap-x-4'>
@@ -282,14 +269,6 @@ const LibraryHeader: React.FC<LibraryHeaderProps> = ({
             >
               <SettingsMenu onPullLibrary={onPullLibrary} />
             </Dropdown>
-            {appService?.hasWindowBar && (
-              <WindowButtons
-                headerRef={headerRef}
-                showMinimize={windowButtonVisible}
-                showMaximize={windowButtonVisible}
-                showClose={windowButtonVisible}
-              />
-            )}
           </div>
         )}
       </div>

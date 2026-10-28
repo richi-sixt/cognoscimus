@@ -1,10 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { fetch as tauriFetch } from '@tauri-apps/plugin-http';
-import { isTauriAppPlatform } from '@/services/environment';
 
 // Mock environment module
 vi.mock('@/services/environment', () => ({
-  isTauriAppPlatform: vi.fn(() => false),
   getAPIBaseUrl: vi.fn(() => 'https://api.example.com'),
 }));
 
@@ -16,11 +13,6 @@ vi.mock('@/utils/misc', () => ({
 // handling against the real normalizers is part of what these tests verify.
 // A hand-rolled lang mock previously hid that normalizeToFullLang maximizes
 // bare subtags ('en' -> 'en-US'), which Bing rejects with statusCode 400.
-
-// Mock Tauri HTTP plugin
-vi.mock('@tauri-apps/plugin-http', () => ({
-  fetch: vi.fn(),
-}));
 
 // Stub Supabase so importing the full providers registry (which pulls in
 // deepl.ts → @/utils/access → @/utils/supabase) doesn't instantiate a real
@@ -55,10 +47,6 @@ vi.stubGlobal('fetch', mockFetch);
 describe('googleProvider', () => {
   beforeEach(() => {
     mockFetch.mockReset();
-    vi.mocked(tauriFetch).mockReset();
-    // Other suites flip the platform mock to Tauri; google must behave the same
-    // either way, so start each test from the default.
-    vi.mocked(isTauriAppPlatform).mockReturnValue(false);
     // The provider keeps a module-level concurrency counter, so each test needs
     // a fresh module.
     vi.resetModules();
@@ -147,27 +135,6 @@ describe('googleProvider', () => {
     expect(peakInFlight).toBeLessThanOrEqual(4);
     // Throttling must not drop work.
     expect(mockFetch).toHaveBeenCalledTimes(24);
-  });
-
-  it('goes through the webview stack even on Tauri, never the Rust HTTP plugin', async () => {
-    // Google refuses the Tauri HTTP plugin's requests: measured on an Android
-    // device, window.fetch answered 200 five times in a row while tauriFetch
-    // answered 429 for the same URL in the same run, and the block on the Rust
-    // client outlived a restart. The endpoint is CORS-open and already in the
-    // app's connect-src CSP, so the webview stack works on every platform.
-    vi.mocked(isTauriAppPlatform).mockReturnValue(true);
-    mockFetch.mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => [[['你好', 'Hello']]],
-    });
-
-    const { googleProvider } = await import('@/services/translators/providers/google');
-    const result = await googleProvider.translate(['Hello'], 'en', 'zh-CN');
-
-    expect(result).toEqual(['你好']);
-    expect(mockFetch).toHaveBeenCalledOnce();
-    expect(vi.mocked(tauriFetch)).not.toHaveBeenCalled();
   });
 
   it('surfaces a rate-limit rather than echoing the source text back', async () => {

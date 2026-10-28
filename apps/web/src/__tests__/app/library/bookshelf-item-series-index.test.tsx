@@ -4,8 +4,6 @@ import type { Book } from '@/types/book';
 
 const bookItem = vi.hoisted(() => vi.fn((_props: { seriesIndex?: number }) => null));
 
-vi.mock('@tauri-apps/api/menu', () => ({ Menu: { new: vi.fn() }, MenuItem: { new: vi.fn() } }));
-vi.mock('@tauri-apps/plugin-opener', () => ({ revealItemInDir: vi.fn() }));
 vi.mock('@/context/EnvContext', () => ({ useEnv: () => ({ envConfig: {}, appService: null }) }));
 vi.mock('@/store/settingsStore', () => ({ useSettingsStore: () => ({ settings: {} }) }));
 vi.mock('@/hooks/useTranslation', () => ({ useTranslation: () => (text: string) => text }));
@@ -43,14 +41,12 @@ const renderItem = (
       transferProgress={null}
       setLoading={vi.fn()}
       toggleSelection={vi.fn()}
-      handleGroupBooks={vi.fn()}
       handleBookUpload={vi.fn()}
       handleBookDownload={vi.fn()}
       handleBookDelete={vi.fn()}
       handleSetSelectMode={vi.fn()}
       handleShowDetailsBook={vi.fn()}
       handleLibraryNavigation={vi.fn()}
-      handleUpdateReadingStatus={vi.fn()}
       showTimeRemaining={false}
       showSeriesIndex={overrides.showSeriesIndex ?? true}
     />,

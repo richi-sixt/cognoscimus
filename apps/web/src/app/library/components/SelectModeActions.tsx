@@ -10,7 +10,6 @@ import {
   MdLabelOutline,
   MdOutlineArchive,
 } from 'react-icons/md';
-import { IoShareSocialOutline } from 'react-icons/io5';
 import { LuFolderPlus } from 'react-icons/lu';
 import { useKeyDownActions } from '@/hooks/useKeyDownActions';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -19,12 +18,6 @@ import { isMd5 } from '@/utils/md5';
 interface SelectModeActionsProps {
   selectedBooks: string[];
   safeAreaBottom: number;
-  // When false (Linux desktop, Windows desktop, web) the Send button is
-  // hidden entirely — those platforms can't surface a system share sheet
-  // so the affordance would be misleading. Note: this is *file send* (hands
-  // the book file to the OS share sheet), distinct from "Share Book" in
-  // the per-item context menu, which generates a remote share link.
-  sendEnabled?: boolean;
   // False when nothing in the selection can be pulled from the cloud — every
   // selected book is either already on this device or was never uploaded.
   canDownload?: boolean;
@@ -35,11 +28,6 @@ interface SelectModeActionsProps {
   onStatus: () => void;
   // Queues every cloud-only book in the selection, groups included (#5244).
   onDownload: () => void;
-  // The macOS / iPad share popover is anchored to the selected book's
-  // cover (located via its data-book-hash attribute), not to this
-  // button — the user's visual focus is on the cover they just tapped.
-  // On iOS / Android the share sheet is modal and ignores position.
-  onSend: () => void;
   onPack?: () => void;
   onDelete: () => void;
   onCancel: () => void;
@@ -52,7 +40,6 @@ interface SelectModeActionsProps {
 const SelectModeActions: React.FC<SelectModeActionsProps> = ({
   selectedBooks,
   safeAreaBottom,
-  sendEnabled = true,
   canDownload = false,
   onOpen,
   onGroup,
@@ -60,7 +47,6 @@ const SelectModeActions: React.FC<SelectModeActionsProps> = ({
   onDetails,
   onStatus,
   onDownload,
-  onSend,
   onPack,
   onDelete,
   onCancel,
@@ -169,18 +155,6 @@ const SelectModeActions: React.FC<SelectModeActionsProps> = ({
           <MdOutlineCloudDownload />
           <div>{_('Download')}</div>
         </button>
-        {sendEnabled && (
-          <button
-            onClick={onSend}
-            className={clsx(
-              'flex flex-col items-center justify-center gap-1',
-              (!hasSingleSelection || !hasValidBooks) && 'btn-disabled opacity-50',
-            )}
-          >
-            <IoShareSocialOutline />
-            <div>{_('Send')}</div>
-          </button>
-        )}
         {onPack && (
           <button
             onClick={onPack}

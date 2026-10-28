@@ -1,25 +1,20 @@
 import { useEffect, useState } from 'react';
 import { useEnv } from '@/context/EnvContext';
-import { impactFeedback } from '@tauri-apps/plugin-haptics';
 import { eventDispatcher } from '@/utils/event';
 import { SelectedFile } from '@/hooks/useFileSelector';
-import { isTauriAppPlatform } from '@/services/environment';
-import { getCurrentWebview } from '@tauri-apps/api/webview';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useSettingsStore } from '@/store/settingsStore';
 import { LibraryGroupByType } from '@/types/settings';
 import { ensureLibraryGroupByType } from '../utils/libraryUtils';
 import { BOOK_ACCEPT_FORMATS, SUPPORTED_BOOK_EXTS } from '@/services/constants';
 import { hasAllowedExtension } from '@/hooks/useFileSelector';
-import { getFilename } from '@/utils/path';
 import { useSearchParams } from 'next/navigation';
 
 const hasSupportedBookExt = (name: string) => {
   return hasAllowedExtension(name, SUPPORTED_BOOK_EXTS);
 };
 
-const itemName = (item: File | string) =>
-  typeof item === 'string' ? getFilename(item) : item.name;
+const itemName = (item: File) => item.name;
 
 export const useDragDropImport = () => {
   const _ = useTranslation();
@@ -31,28 +26,15 @@ export const useDragDropImport = () => {
   const { appService } = useEnv();
   const [isDragging, setIsDragging] = useState(false);
 
-  const handleDroppedFiles = async (droppedItems: File[] | string[]) => {
-    if (droppedItems.length === 0 || !appService) return;
-
-    const fileItems: (File | string)[] = [];
-    const directoryPaths: string[] = [];
-    for (const item of droppedItems) {
-      if (typeof item === 'string' && (await appService.isDirectory(item, 'None'))) {
-        directoryPaths.push(item);
-      } else {
-        fileItems.push(item);
-      }
-    }
+  const handleDroppedFiles = async (fileItems: File[]) => {
+    if (fileItems.length === 0 || !appService) return;
 
     const supportedItems = fileItems.filter((item) => hasSupportedBookExt(itemName(item)));
     const skippedItems = fileItems.filter((item) => !hasSupportedBookExt(itemName(item)));
 
-    const fileSelections: SelectedFile[] = supportedItems.map((item) => ({
-      file: typeof item === 'string' ? undefined : item,
-      path: typeof item === 'string' ? item : undefined,
-    }));
+    const fileSelections: SelectedFile[] = supportedItems.map((item) => ({ file: item }));
 
-    if (fileSelections.length === 0 && directoryPaths.length === 0) {
+    if (fileSelections.length === 0) {
       eventDispatcher.dispatch('toast', {
         message: _('No supported files found. Supported formats: {{formats}}', {
           formats: BOOK_ACCEPT_FORMATS,
@@ -77,19 +59,10 @@ export const useDragDropImport = () => {
       });
     }
 
-    if (appService.hasHaptics) {
-      impactFeedback('medium');
-    }
-
-    if (fileSelections.length > 0) {
-      eventDispatcher.dispatch('import-book-files', {
-        files: fileSelections,
-        groupId: group,
-      });
-    }
-    for (const dir of directoryPaths) {
-      eventDispatcher.dispatch('import-book-directory', { path: dir });
-    }
+    eventDispatcher.dispatch('import-book-files', {
+      files: fileSelections,
+      groupId: group,
+    });
   };
 
   const handleDragOver = (event: React.DragEvent<HTMLDivElement> | DragEvent) => {
@@ -121,22 +94,6 @@ export const useDragDropImport = () => {
       libraryPage?.addEventListener('dragover', handleDragOver as unknown as EventListener);
       libraryPage?.addEventListener('dragleave', handleDragLeave as unknown as EventListener);
       libraryPage?.addEventListener('drop', handleDrop as unknown as EventListener);
-    }
-
-    if (isTauriAppPlatform()) {
-      const unlisten = getCurrentWebview().onDragDropEvent((event) => {
-        if (event.payload.type === 'over') {
-          setIsDragging(true);
-        } else if (event.payload.type === 'drop') {
-          setIsDragging(false);
-          handleDroppedFiles(event.payload.paths);
-        } else {
-          setIsDragging(false);
-        }
-      });
-      return () => {
-        unlisten.then((fn) => fn());
-      };
     }
 
     return () => {

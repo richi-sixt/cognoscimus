@@ -90,7 +90,6 @@ const renderHeader = () =>
     <HeaderBar
       bookKey='book-1'
       bookTitle='Book'
-      isTopLeft={false}
       isHoveredAnim={false}
       gridInsets={insets}
       screenInsets={insets}

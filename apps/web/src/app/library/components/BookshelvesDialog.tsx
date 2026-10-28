@@ -514,14 +514,12 @@ export function BookshelvesEditor({
           transferProgress={null}
           setLoading={noop}
           toggleSelection={noop}
-          handleGroupBooks={noop}
           handleBookUpload={noopAsync}
           handleBookDownload={noopAsync}
           handleBookDelete={noopAsync}
           handleSetSelectMode={noop}
           handleShowDetailsBook={noop}
           handleLibraryNavigation={noop}
-          handleUpdateReadingStatus={noop}
           showTimeRemaining={
             shelf.sort.by === 'timeRemaining' || shelf.sort.thenBy === 'timeRemaining'
           }

@@ -81,7 +81,6 @@ export function FeedsView({ onClose }: FeedsViewProps) {
         appService,
         settings,
         isLoggedIn: !!user,
-        translate: _,
       },
       {
         openArticle: openFeedArticle,

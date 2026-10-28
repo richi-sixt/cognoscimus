@@ -147,7 +147,6 @@ describe('SelectModeActions download', () => {
       'Status',
       'Details',
       'Download',
-      'Send',
       'Delete',
       'Cancel',
     ]);

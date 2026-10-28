@@ -19,7 +19,7 @@ import { useSettingsStore } from '@/store/settingsStore';
 import { useCustomFontStore } from '@/store/customFontStore';
 import { useParallelViewStore } from '@/store/parallelViewStore';
 import { useMouseEvent, useTouchEvent, useOpenMediaEvent } from '../hooks/useIframeEvents';
-import { useCapturedTurn, applyPageTurnAttributes } from '../hooks/useCapturedTurn';
+import { applyPageTurnAttributes } from '../utils/pageTurnAttributes';
 import { useBrightnessGesture } from '../hooks/useBrightnessGesture';
 import { registerBookmarkPullDoc } from '../utils/bookmarkPullGesture';
 import BrightnessOverlay from './BrightnessOverlay';
@@ -72,7 +72,6 @@ import {
 import { getMaxInlineSize } from '@/utils/config';
 import { getLockedPanX } from '../utils/lockedPan';
 import { getDirFromUILanguage } from '@/utils/rtl';
-import { isTauriAppPlatform } from '@/services/environment';
 import { TransformContext } from '@/services/transformers/types';
 import { transformContent } from '@/services/transformService';
 import {
@@ -80,9 +79,7 @@ import {
   normalizeMediaType,
   sanitizeSvg,
 } from '@/services/transformers/sanitizer';
-import { lockScreenOrientation, setSelectionSuppressed } from '@/utils/bridge';
 import { useTextTranslation } from '../hooks/useTextTranslation';
-import { useBookCoverAutoSave } from '../hooks/useAutoSaveBookCover';
 import { manageSyntaxHighlighting } from '@/utils/highlightjs';
 import { isDialogueHighlightActive, manageDialogueHighlight } from '@/utils/dialogueHighlight';
 import { getViewInsets } from '@/utils/insets';
@@ -92,7 +89,6 @@ import { showTransientHighlight } from '../utils/transientHighlight';
 import { handleA11yNavigation } from '@/utils/a11y';
 import { isCJKLang } from '@/utils/lang';
 import { getLocale } from '@/utils/misc';
-import { eventDispatcher } from '@/utils/event';
 import { isFontType } from '@/utils/font';
 import { getScrollGapAttr } from '@/utils/webtoon';
 import { observeDynamicResources } from '@/utils/dynamicResources';
@@ -203,7 +199,6 @@ const FoliateViewer: React.FC<{
   useUICSS(bookKey);
   useProgressSync(bookKey);
   useProgressAutoSave(bookKey);
-  useBookCoverAutoSave(bookKey);
   useTextTranslation(bookKey, viewRef.current);
 
   // Coalesce setProgress writes within a single animation frame.
@@ -449,11 +444,6 @@ const FoliateViewer: React.FC<{
         if (section?.loadHref) observeDynamicResources(detail.doc, section.loadHref);
       }
 
-      // Inline scripts in tauri platforms are not executed by default
-      if (viewSettings.allowScript && isTauriAppPlatform()) {
-        evalInlineScripts(detail.doc);
-      }
-
       // only call on load if we have highlighting turned on.
       if (viewSettings.codeHighlighting) {
         manageSyntaxHighlighting(detail.doc, viewSettings);
@@ -520,22 +510,6 @@ const FoliateViewer: React.FC<{
         registerSpeedListeners(detail.doc);
         registerBookmarkPullDoc(bookKey, detail.doc);
       }
-    }
-  };
-
-  const evalInlineScripts = (doc: Document) => {
-    if (doc.defaultView && doc.defaultView.frameElement) {
-      const iframe = doc.defaultView.frameElement as HTMLIFrameElement;
-      const scripts = doc.querySelectorAll('script:not([src])');
-      scripts.forEach((script, index) => {
-        const scriptContent = script.textContent || script.innerHTML;
-        try {
-          console.warn('Evaluating inline scripts in iframe');
-          iframe.contentWindow?.eval(scriptContent);
-        } catch (error) {
-          console.error(`Error executing iframe script ${index + 1}:`, error);
-        }
-      });
     }
   };
 
@@ -677,8 +651,6 @@ const FoliateViewer: React.FC<{
 
   useOpenMediaEvent(bookKey, handleImagePress, handleTablePress);
 
-  useCapturedTurn(bookKey, viewRef);
-
   useFoliateEvents(viewRef.current, {
     onLoad: docLoadHandler,
     onStabilized: stabilizedHandler,
@@ -774,10 +746,6 @@ const FoliateViewer: React.FC<{
       const maxColumnCount = viewSettings.maxColumnCount!;
       const maxInlineSize = getMaxInlineSize(viewSettings);
       const maxBlockSize = viewSettings.maxBlockSize!;
-      const screenOrientation = viewSettings.screenOrientation!;
-      if (appService?.isMobileApp) {
-        await lockScreenOrientation({ orientation: screenOrientation });
-      }
       if (animated) {
         view.renderer.setAttribute('animated', '');
       } else {
@@ -790,7 +758,7 @@ const FoliateViewer: React.FC<{
         'autohide-cursor',
         !appService?.isMobile && !!useSettingsStore.getState().settings.autohideCursor,
       );
-      applyPageTurnAttributes(view, viewSettings, bookDoc.rendition?.layout === 'pre-paginated');
+      applyPageTurnAttributes(view, viewSettings);
       // iOS WebKit composites large/persistent page layers without the Android
       // high-DPR Blink freeze, so opt this renderer into the GPU-accelerated
       // page-turn path (persistent compositor layers + no main-thread
@@ -946,56 +914,6 @@ const FoliateViewer: React.FC<{
       }
     }
   };
-
-  // The suppression below covers the whole web view, footnote popup included,
-  // where instant highlighting has no hold gesture: a popup selection is made
-  // with the system long-press and highlighted by the quick action (#6804).
-  // The popup's overlay keeps touches off the book while it is open.
-  const [footnotePopupShown, setFootnotePopupShown] = useState(false);
-  useEffect(() => {
-    const onFootnotePopupShown = (event: CustomEvent) => {
-      const detail = event.detail as { key: string; shown: boolean };
-      if (detail.key === bookKey) setFootnotePopupShown(detail.shown);
-    };
-    eventDispatcher.on('footnote-popup-shown', onFootnotePopupShown);
-    return () => eventDispatcher.off('footnote-popup-shown', onFootnotePopupShown);
-  }, [bookKey]);
-
-  // iOS: the system long-press selection would race the instant-highlight
-  // hold — WebKit consults selectability before any touch handler runs, so
-  // JS-level suppression cannot win. Suppress it natively while the highlight
-  // quick action owns the gesture; restore when the mode turns off, a footnote
-  // popup opens, or the reader closes.
-  useEffect(() => {
-    if (!appService?.isIOSApp) return;
-    const suppressed =
-      !!viewSettings?.enableAnnotationQuickActions &&
-      viewSettings?.annotationQuickAction === 'highlight' &&
-      !footnotePopupShown;
-    setSelectionSuppressed({ target: 'gesture', suppressed }).catch(() => {});
-    return () => {
-      if (suppressed) {
-        setSelectionSuppressed({ target: 'gesture', suppressed: false }).catch(() => {});
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    appService?.isIOSApp,
-    viewSettings?.enableAnnotationQuickActions,
-    viewSettings?.annotationQuickAction,
-    footnotePopupShown,
-  ]);
-
-  // Android (#5427): useTextSelector keeps the system selection toolbar
-  // natively suppressed while reader text is selected. If the reader closes
-  // with a live selection, no selectionchange fires to lift the flag — reset
-  // it here so selection menus elsewhere in the app are not muted.
-  useEffect(() => {
-    if (!appService?.isAndroidApp) return;
-    return () => {
-      setSelectionSuppressed({ target: 'menu', suppressed: false }).catch(() => {});
-    };
-  }, [appService?.isAndroidApp]);
 
   useEffect(() => {
     if (viewRef.current && viewRef.current.renderer) {

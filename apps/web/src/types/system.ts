@@ -12,7 +12,7 @@ import type { ImportedDictionary } from '@/services/dictionaries/types';
 import type { ImportDictionariesResult } from '@/services/dictionaries/dictionaryService';
 import type { SelectedFile } from '@/hooks/useFileSelector';
 
-export type AppPlatform = 'web' | 'tauri' | 'node';
+export type AppPlatform = 'web' | 'node';
 export type OsPlatform = 'android' | 'ios' | 'macos' | 'windows' | 'linux' | 'unknown';
 // biome-ignore format: keep the union members compact on a single line
 export type BaseDir = | 'Books' | 'Settings' | 'Data' | 'Fonts' | 'Images' | 'Dictionaries' | 'Log' | 'Cache' | 'Temp' | 'None';
@@ -243,7 +243,6 @@ export interface AppService {
   loadBookNav(book: Book): Promise<BookNav | null>;
   saveBookNav(book: Book, nav: BookNav): Promise<void>;
   loadBookContent(book: Book): Promise<BookContent>;
-  resolveNativeBookFilePath(book: Book): Promise<string | null>;
   loadFeeds(): Promise<RssFeed[]>;
   saveFeeds(feeds: RssFeed[]): Promise<void>;
   loadLibraryBooks(): Promise<Book[]>;

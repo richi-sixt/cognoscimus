@@ -103,21 +103,6 @@ vi.mock('next/image', () => ({
   },
 }));
 
-vi.mock('@tauri-apps/plugin-deep-link', () => ({ onOpenUrl: vi.fn() }));
-vi.mock('@fabianlars/tauri-plugin-oauth', () => ({
-  start: vi.fn().mockResolvedValue(12345),
-  cancel: vi.fn(),
-  onUrl: vi.fn(),
-  onInvalidUrl: vi.fn(),
-}));
-vi.mock('@tauri-apps/plugin-opener', () => ({ openUrl: vi.fn() }));
-vi.mock('@tauri-apps/api/core', async (importOriginal) => ({
-  ...(await importOriginal<object>()),
-  invoke: vi.fn().mockResolvedValue('false'),
-}));
-vi.mock('@tauri-apps/api/window', () => ({
-  getCurrentWindow: () => ({ listen: vi.fn() }),
-}));
 vi.mock('@/app/auth/utils/appleIdAuth', () => ({ getAppleIdAuth: vi.fn() }));
 vi.mock('@/app/auth/utils/nativeAuth', () => ({
   authWithCustomTab: vi.fn(),

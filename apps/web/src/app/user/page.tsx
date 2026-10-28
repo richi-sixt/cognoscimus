@@ -53,7 +53,7 @@ const ProfilePage = () => {
     return () => clearTimeout(timer);
   }, [mounted, user, token, appService, router, searchParams]);
 
-  useTheme({ systemUIVisible: false });
+  useTheme();
 
   const { quotas } = useQuotaStats();
   const {
