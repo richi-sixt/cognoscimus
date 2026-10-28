@@ -466,7 +466,7 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
   // resulting URL becomes `/library?group=` instead of `/library`, which
   // Next.js does commit. The trailing empty `group=` is stripped via a
   // cleanup effect below (purely cosmetic URL rewrite). See
-  // https://github.com/readest/cognoscimus/issues/3782.
+  // https://github.com/readest/readest/issues/3782.
   const handleLibraryNavigation = useCallback(
     (targetGroup: string, shelfId?: string) => {
       const params = new URLSearchParams(window.location.search);

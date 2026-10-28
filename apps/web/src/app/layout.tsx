@@ -8,12 +8,10 @@ import Providers from '@/components/Providers';
 import '../styles/globals.css';
 
 const url = 'https://cognoscimus.sixt.services/';
-const title = 'Cognoscimus — Where You Read, Digest and Get Insight';
+const title = 'Cognoscimus — Your private e-book reader';
 const description =
-  'Discover Cognoscimus, the ultimate online ebook reader for immersive and organized reading. ' +
-  'Enjoy seamless access to your digital library, powerful tools for highlighting, bookmarking, ' +
-  'and note-taking, and support for multiple book views. ' +
-  'Perfect for deep reading, analysis, and understanding. Explore now!';
+  'A private, self-hosted e-book reader for EPUB, PDF, MOBI and comics. ' +
+  'Lend single books to other users for a limited time. Invitation only, open source.';
 const previewImage = 'https://cognoscimus.sixt.services/images/open_graph_preview_read_now.png';
 
 export const metadata: Metadata = {
@@ -25,15 +23,18 @@ export const metadata: Metadata = {
   description,
   generator: 'Next.js',
   manifest: '/manifest.json',
-  keywords: ['epub', 'pdf', 'ebook', 'reader', 'cognoscimus', 'pwa'],
+  keywords: ['epub', 'pdf', 'cbz', 'ebook', 'reader', 'self-hosted', 'cognoscimus'],
   authors: [
     {
       name: 'cognoscimus',
-      url: 'https://github.com/readest/cognoscimus',
+      url: 'https://github.com/richi-sixt/cognoscimus',
     },
   ],
   icons: {
-    icon: [{ url: '/icon.png' }, { url: '/favicon.ico' }],
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/icon-192.png', sizes: '192x192' },
+    ],
     apple: [{ url: '/apple-touch-icon.png', sizes: '180x180' }],
   },
   appleWebApp: {

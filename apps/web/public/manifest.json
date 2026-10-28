@@ -1,26 +1,29 @@
 {
   "name": "Cognoscimus",
   "short_name": "Cognoscimus",
+  "description": "A private, self-hosted e-book reader for EPUB, PDF, MOBI and comics. Invitation only.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "description": "Cognoscimus is an open-source eBook reader supporting EPUB, PDF, and sync across devices.",
+  "background_color": "#1e293b",
+  "theme_color": "#1e293b",
   "icons": [
     {
-      "src": "/icon.png",
+      "src": "/icon-192.png",
       "type": "image/png",
-      "sizes": "192x192"
+      "sizes": "192x192",
+      "purpose": "any"
     },
     {
       "src": "/icon.png",
       "type": "image/png",
-      "sizes": "256x256"
+      "sizes": "512x512",
+      "purpose": "any"
     },
     {
-      "src": "/icon.png",
+      "src": "/icon-maskable-512.png",
       "type": "image/png",
-      "sizes": "512x512"
+      "sizes": "512x512",
+      "purpose": "maskable"
     }
-  ],
-  "splash_pages": null
+  ]
 }

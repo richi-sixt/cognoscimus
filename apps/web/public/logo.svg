@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Cognoscimus">
+  <rect width="512" height="512" rx="112" fill="#1e293b"/>
+  <!-- open book -->
+  <path d="M256 160C214 132 150 128 104 148V366C150 348 214 352 256 380Z" fill="#f6f1e3"/>
+  <path d="M256 160C298 132 362 128 408 148V366C362 348 298 352 256 380Z" fill="#ebe4d0"/>
+  <path d="M256 160V380" stroke="#c9bd98" stroke-width="6" stroke-linecap="round"/>
+  <!-- lines of text -->
+  <g fill="none" stroke="#cfc6aa" stroke-width="8" stroke-linecap="round">
+    <path d="M142 204C170 194 206 194 228 206"/>
+    <path d="M142 236C170 226 206 226 228 238"/>
+    <path d="M142 268C170 258 206 258 228 270"/>
+    <path d="M284 206C296 199 312 197 328 199"/>
+    <path d="M284 238C296 231 312 229 328 231"/>
+  </g>
+  <!-- bookmark ribbon -->
+  <path d="M356 140H392V250L374 232L356 250Z" fill="#e8a33d"/>
+</svg>

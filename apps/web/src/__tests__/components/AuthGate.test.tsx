@@ -32,6 +32,24 @@ describe('AuthGate', () => {
     expect(state.replace).not.toHaveBeenCalled();
   });
 
+  it('leaves the public start page open', () => {
+    at('/');
+    render(<AuthGate>start page</AuthGate>);
+    expect(screen.getByText('start page')).toBeTruthy();
+    expect(state.replace).not.toHaveBeenCalled();
+  });
+
+  it('still protects the library and the reader', () => {
+    for (const path of ['/library', '/reader', '/user']) {
+      cleanup();
+      state.replace.mockReset();
+      at(path);
+      render(<AuthGate>secret</AuthGate>);
+      expect(screen.queryByText('secret')).toBeNull();
+      expect(state.replace).toHaveBeenCalledWith(`/auth?redirect=${encodeURIComponent(path)}`);
+    }
+  });
+
   it('leaves the sign-in routes open', () => {
     at('/auth/callback');
     render(<AuthGate>login form</AuthGate>);
