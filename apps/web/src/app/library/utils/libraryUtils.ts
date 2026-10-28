@@ -305,15 +305,27 @@ export const parseIndexFromTitle = (title: string, series?: string): number | un
     if (match) return toIndex(match[1]!);
   }
   const trailing = text.match(new RegExp(`${NUM}\\s*\\)?$`));
-  return trailing ? toIndex(trailing[1]!) : undefined;
+  if (trailing) return toIndex(trailing[1]!);
+  // Last resort: the first standalone number anywhere ("Serie 003 - Titel"). Zero-padded
+  // numbers and plain 1-4 digit numbers count, years are skipped by toIndex.
+  const standalone = text.match(/(?<![\d.,])(\d{1,4})(?![\d.,]?\d)/);
+  return standalone ? toIndex(standalone[1]!) : undefined;
 };
 
 export type SeriesIndexMode = 'keep' | 'fromTitle' | 'sequential';
+
+// Online lookup result for one book, keyed by hash in BookSeriesEdits.suggestions.
+export interface SeriesSuggestionValue {
+  series: string;
+  seriesIndex?: number;
+}
 
 export interface BookSeriesEdits {
   // Undefined leaves each book's series name as it is.
   series?: string;
   indexMode: SeriesIndexMode;
+  // When set, a book with a suggestion takes its series and index from it.
+  suggestions?: Record<string, SeriesSuggestionValue>;
 }
 
 // Series name and index live in book.metadata, so a changed book stamps
@@ -330,6 +342,17 @@ export const applyBookSeriesEdits = (
   return books.map((book) => {
     if (book.deletedAt || !selectedHashes.includes(book.hash)) return book;
     position += 1;
+    const suggestion = edits.suggestions?.[book.hash];
+    if (suggestion) {
+      const seriesIndex = suggestion.seriesIndex ?? book.metadata?.seriesIndex;
+      if (suggestion.series === book.metadata?.series && seriesIndex === book.metadata?.seriesIndex)
+        return book;
+      return {
+        ...book,
+        metadata: { ...book.metadata, series: suggestion.series, seriesIndex } as Book['metadata'],
+        metadataUpdatedAt: now,
+      };
+    }
     const series = edits.series?.trim() || book.metadata?.series;
     let seriesIndex = book.metadata?.seriesIndex;
     if (edits.indexMode === 'fromTitle') {

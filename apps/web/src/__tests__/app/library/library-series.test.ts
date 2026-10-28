@@ -14,6 +14,9 @@ describe('parseIndexFromTitle', () => {
     ['Perry Rhodan 2500', 'Perry Rhodan', 2500],
     ['One Piece 104', 'One Piece', 104],
     ['Dune 4', undefined, 4],
+    ['Serie 003 - Untertitel', undefined, 3],
+    ['003 Der Titel', undefined, 3],
+    ['Reihe 0042', 'Anders', 42],
     ['Hellboy 1994', undefined, undefined],
     ['Ohne Nummer', undefined, undefined],
   ])('%s -> %s', (title, series, expected) => {
@@ -55,5 +58,13 @@ describe('applyBookSeriesEdits', () => {
   it('returns the same book when nothing changes', () => {
     const out = applyBookSeriesEdits(books, ['a'], { indexMode: 'keep' });
     expect(out[0]).toBe(books[0]);
+  });
+
+  it('takes series and index from an online suggestion', () => {
+    const out = applyBookSeriesEdits(books, ['a'], {
+      indexMode: 'keep',
+      suggestions: { a: { series: 'Reihe X', seriesIndex: 4 } },
+    });
+    expect(out[0]!.metadata).toMatchObject({ series: 'Reihe X', seriesIndex: 4 });
   });
 });

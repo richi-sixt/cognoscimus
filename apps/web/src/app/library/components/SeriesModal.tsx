@@ -6,7 +6,13 @@ import { useEnv } from '@/context/EnvContext';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useLibraryStore } from '@/store/libraryStore';
 import { useKeyDownActions } from '@/hooks/useKeyDownActions';
-import { SeriesIndexMode, applyBookSeriesEdits, getLibrarySeries } from '../utils/libraryUtils';
+import { lookupSeries } from '@/libs/seriesLookup';
+import {
+  SeriesIndexMode,
+  SeriesSuggestionValue,
+  applyBookSeriesEdits,
+  getLibrarySeries,
+} from '../utils/libraryUtils';
 
 interface SeriesModalProps {
   libraryBooks: Book[];
@@ -31,7 +37,33 @@ const SeriesModal: React.FC<SeriesModalProps> = ({
   const [series, setSeries] = useState('');
   const [indexMode, setIndexMode] = useState<SeriesIndexMode>('fromTitle');
 
-  const updatedBooks = applyBookSeriesEdits(libraryBooks, bookHashes, { series, indexMode });
+  const [suggestions, setSuggestions] = useState<Record<string, SeriesSuggestionValue>>({});
+  const [lookupState, setLookupState] = useState<'idle' | 'loading' | 'error'>('idle');
+
+  const handleLookup = async () => {
+    setLookupState('loading');
+    try {
+      const found = await lookupSeries(
+        libraryBooks
+          .filter((book) => bookHashes.includes(book.hash))
+          .map((book) => ({ hash: book.hash, title: book.title })),
+      );
+      setSuggestions(
+        Object.fromEntries(
+          found.map((s) => [s.hash, { series: s.series, seriesIndex: s.seriesIndex }]),
+        ),
+      );
+      setLookupState('idle');
+    } catch {
+      setLookupState('error');
+    }
+  };
+
+  const updatedBooks = applyBookSeriesEdits(libraryBooks, bookHashes, {
+    series,
+    indexMode,
+    suggestions,
+  });
   const selected = libraryBooks.filter((book) => bookHashes.includes(book.hash));
   const preview = selected.map((book, i) => {
     const next = updatedBooks.find((b) => b.hash === book.hash) ?? book;
@@ -93,6 +125,27 @@ const SeriesModal: React.FC<SeriesModalProps> = ({
               {mode.label}
             </label>
           ))}
+        </div>
+
+        <div className='mt-4 flex items-center gap-3 text-sm'>
+          <button
+            onClick={handleLookup}
+            disabled={lookupState === 'loading'}
+            className='text-blue-500 disabled:opacity-50'
+          >
+            {lookupState === 'loading' ? _('Looking up …') : _('Look up online (Hardcover)')}
+          </button>
+          {lookupState === 'error' && (
+            <span className='text-red-500'>{_('Lookup failed or not configured')}</span>
+          )}
+          {Object.keys(suggestions).length > 0 && (
+            <>
+              <span>{_('{{count}} matches', { count: Object.keys(suggestions).length })}</span>
+              <button onClick={() => setSuggestions({})} className='text-neutral-content'>
+                {_('Discard')}
+              </button>
+            </>
+          )}
         </div>
 
         <ul className='mt-4 max-h-56 overflow-y-auto text-sm'>
