@@ -1,5 +1,6 @@
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/utils/supabase';
+import { sessionNeedsMfa } from '@/utils/mfa';
 
 interface UseAuthCallbackOptions {
   accessToken?: string | null;
@@ -60,7 +61,7 @@ export function handleAuthCallback({
       return;
     }
 
-    const { error: err } = await supabase.auth.setSession({
+    const { data: sessionData, error: err } = await supabase.auth.setSession({
       access_token: accessToken,
       refresh_token: refreshToken,
     });
@@ -68,6 +69,12 @@ export function handleAuthCallback({
     if (err) {
       console.error('Error setting session:', err);
       navigate('/auth/error');
+      return;
+    }
+
+    // The auth page asks for the TOTP code and then continues to `next`.
+    if (sessionNeedsMfa(sessionData.session)) {
+      navigate(`/auth?redirect=${encodeURIComponent(next)}`);
       return;
     }
 

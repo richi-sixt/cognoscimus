@@ -17,6 +17,7 @@ import ProfileHeader from './components/Header';
 import UserInfo from './components/UserInfo';
 import UsageStats from './components/UsageStats';
 import AccountActions from './components/AccountActions';
+import { MfaSection } from './components/MfaSection';
 import StorageManager from './components/StorageManager';
 import SharedBooksSection from './components/SharedBooksSection';
 import { SyncPassphraseSection } from './components/SyncPassphraseSection';
@@ -159,6 +160,7 @@ const ProfilePage = () => {
                 </div>
               ) : (
                 <div className='flex flex-col gap-y-8 px-6'>
+                  <MfaSection />
                   <AccountActions
                     onLogout={handleLogout}
                     onResetPassword={handleResetPassword}

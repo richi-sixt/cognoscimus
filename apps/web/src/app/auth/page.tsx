@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/utils/supabase';
 import { useTheme } from '@/hooks/useTheme';
+import { sessionNeedsMfa } from '@/utils/mfa';
 import AuthPanel from './components/AuthPanel';
+import MfaChallenge from './components/MfaChallenge';
 
 // Only same-origin paths may be used as a post-login target (no open redirect).
 const safeRedirect = (target: string | null): string =>
@@ -15,12 +17,14 @@ export default function AuthPage() {
   const router = useRouter();
   const { login } = useAuth();
   const [isMounted, setIsMounted] = useState(false);
+  const [mfaPending, setMfaPending] = useState(false);
 
   useTheme();
 
   useEffect(() => {
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.access_token && session.user) {
+      setMfaPending(sessionNeedsMfa(session));
+      if (session?.access_token && session.user && !sessionNeedsMfa(session)) {
         login(session.access_token, session.user);
         const redirectTo = safeRedirect(
           new URLSearchParams(window.location.search).get('redirect'),
@@ -51,11 +55,17 @@ export default function AuthPage() {
 
   return (
     <div className='bg-base-100 flex min-h-screen flex-col items-center overflow-y-auto px-6 pb-12 pt-20'>
-      <AuthPanel
-        supabaseClient={supabase}
-        magicLink={true}
-        redirectTo={`${window.location.origin}/auth/callback`}
-      />
+      {mfaPending ? (
+        <div className='flex w-full max-w-sm flex-col items-center gap-6'>
+          <MfaChallenge supabaseClient={supabase} />
+        </div>
+      ) : (
+        <AuthPanel
+          supabaseClient={supabase}
+          magicLink={true}
+          redirectTo={`${window.location.origin}/auth/callback`}
+        />
+      )}
     </div>
   );
 }

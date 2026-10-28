@@ -11,6 +11,7 @@ import {
 } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/utils/supabase';
+import { sessionNeedsMfa } from '@/utils/mfa';
 
 interface AuthContextType {
   token: string | null;
@@ -41,7 +42,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const syncSession = (
       session: { access_token: string; refresh_token: string; user: User } | null,
     ) => {
-      if (session) {
+      // A session still waiting for the TOTP code does not count as signed in;
+      // it stays in the Supabase storage so the code can upgrade it.
+      if (session && !sessionNeedsMfa(session)) {
         console.log('Syncing session');
         const { access_token, refresh_token, user } = session;
         localStorage.setItem('token', access_token);
