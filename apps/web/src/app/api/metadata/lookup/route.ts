@@ -24,10 +24,20 @@ const lookupOne = async (
   const response = await fetch(HARDCOVER_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: token },
-    body: JSON.stringify({ query: QUERY, variables: { title: query.title } }),
+    body: JSON.stringify({
+      query: QUERY,
+      variables: { title: `%${query.title.replace(/[%_\\]/g, '\\$&')}%` },
+    }),
   });
-  if (!response.ok) return null;
-  const json = (await response.json()) as { data?: { books?: HardcoverBook[] } };
+  if (!response.ok) {
+    console.error('Hardcover lookup failed:', response.status);
+    return null;
+  }
+  const json = (await response.json()) as {
+    data?: { books?: HardcoverBook[] };
+    errors?: { message: string }[];
+  };
+  if (json.errors?.length) console.error('Hardcover lookup errors:', json.errors[0]?.message);
   for (const book of json.data?.books ?? []) {
     const link = book.book_series.find((entry) => entry.series?.name);
     if (link?.series) {

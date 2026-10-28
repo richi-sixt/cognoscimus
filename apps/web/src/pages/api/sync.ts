@@ -1088,3 +1088,9 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 };
 
 export default handler;
+
+// Bulk edits (e.g. setting a series on a whole library) push every changed book
+// in one request; the 1mb default rejects that with a 413.
+export const config = {
+  api: { bodyParser: { sizeLimit: '20mb' } },
+};
