@@ -23,6 +23,9 @@ import {
 } from '@/libs/later/client';
 import { TRASH_RETENTION_DAYS } from '@/libs/later/constants';
 
+// Up to this many labels are shown as chips; beyond it a menu keeps the page tidy.
+const MAX_LABEL_CHIPS = 8;
+
 const hostOf = (url: string) => {
   try {
     return new URL(url).hostname.replace(/^www\./, '');
@@ -226,7 +229,22 @@ const LaterPage = () => {
           </div>
         )}
 
-        {labels.length > 0 && (
+        {labels.length > MAX_LABEL_CHIPS && (
+          <select
+            value={labelId ?? ''}
+            onChange={(e) => setLabelId(e.target.value || null)}
+            className='select select-bordered select-sm w-full max-w-xs'
+            aria-label={_('Filter by label')}
+          >
+            <option value=''>{_('All labels')}</option>
+            {labels.map((label) => (
+              <option key={label.id} value={label.id}>
+                {label.name}
+              </option>
+            ))}
+          </select>
+        )}
+        {labels.length > 0 && labels.length <= MAX_LABEL_CHIPS && (
           <div className='flex flex-wrap gap-2'>
             {labels.map((label) => (
               <button

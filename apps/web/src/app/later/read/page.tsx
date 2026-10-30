@@ -7,11 +7,11 @@ import {
   IoArchiveOutline,
   IoArrowBack,
   IoArrowUndoOutline,
+  IoClose,
   IoCreateOutline,
   IoOpenOutline,
   IoTrashOutline,
 } from 'react-icons/io5';
-import clsx from 'clsx';
 import { useAuth } from '@/context/AuthContext';
 import { useAppRouter } from '@/hooks/useAppRouter';
 import { useTheme } from '@/hooks/useTheme';
@@ -289,28 +289,43 @@ const Reader = () => {
             </p>
 
             <div className='mb-6 flex flex-wrap items-center gap-2'>
-              {labels.map((label) => (
-                <button
-                  key={label.id}
-                  type='button'
-                  onClick={() => toggleLabel(label.id)}
-                  className={clsx(
-                    'badge badge-lg',
-                    itemLabelIds.includes(label.id) ? 'badge-primary' : 'badge-outline',
-                  )}
-                >
-                  {label.name}
-                </button>
-              ))}
+              {labels
+                .filter((label) => itemLabelIds.includes(label.id))
+                .map((label) => (
+                  <span key={label.id} className='badge badge-primary badge-lg gap-1 pe-1'>
+                    {label.name}
+                    <button
+                      type='button'
+                      onClick={() => toggleLabel(label.id)}
+                      className='btn btn-ghost btn-circle btn-xs h-5 min-h-5 w-5'
+                      aria-label={_('Remove label {{name}}', { name: label.name })}
+                    >
+                      <IoClose className='h-3.5 w-3.5' />
+                    </button>
+                  </span>
+                ))}
               <input
                 value={newLabel}
                 onChange={(e) => setNewLabel(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && void addLabel()}
-                maxLength={40}
-                placeholder={_('New label')}
-                aria-label={_('New label')}
-                className='input input-bordered input-xs w-28'
+                list='later-label-suggestions'
+                maxLength={80}
+                placeholder={_('Add label')}
+                aria-label={_('Add label')}
+                className='input input-bordered input-xs w-36'
               />
+              <datalist id='later-label-suggestions'>
+                {labels
+                  .filter((label) => !itemLabelIds.includes(label.id))
+                  .map((label) => (
+                    <option key={label.id} value={label.name} />
+                  ))}
+              </datalist>
+              {newLabel.trim() && (
+                <button type='button' onClick={() => void addLabel()} className='btn btn-xs'>
+                  {_('Add')}
+                </button>
+              )}
             </div>
 
             {item.fetch_state !== 'ready' && (
