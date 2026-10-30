@@ -7,6 +7,7 @@ import {
   IoArchiveOutline,
   IoArrowBack,
   IoArrowUndoOutline,
+  IoCreateOutline,
   IoOpenOutline,
   IoTrashOutline,
 } from 'react-icons/io5';
@@ -29,6 +30,8 @@ import {
   type LaterItemFull,
   type LaterLabel,
 } from '@/libs/later/client';
+import HighlightPanel from './HighlightPanel';
+import { useHighlights } from './useHighlights';
 
 const Reader = () => {
   const _ = useTranslation();
@@ -45,6 +48,8 @@ const Reader = () => {
   const [error, setError] = useState<string | null>(null);
   const stateRef = useRef<LaterItemFull['state']>('unread');
   const restored = useRef(false);
+  const articleRef = useRef<HTMLDivElement>(null);
+  const [listOpen, setListOpen] = useState(false);
 
   useEffect(() => {
     if (!user) window.location.assign('/auth?redirect=%2Flater');
@@ -71,6 +76,14 @@ const Reader = () => {
     () => (item ? DOMPurify.sanitize(item.content_html, { USE_PROFILES: { html: true } }) : ''),
     [item],
   );
+
+  const highlights = useHighlights({
+    rootRef: articleRef,
+    itemId: item?.id ?? null,
+    userId: user?.id,
+    html,
+    onError: setError,
+  });
 
   // Restore the saved position once, after the article is in the DOM.
   useEffect(() => {
@@ -182,6 +195,20 @@ const Reader = () => {
         <div className='flex-1' />
         {item && (
           <>
+            <button
+              type='button'
+              onClick={() => setListOpen(true)}
+              className='btn btn-ghost btn-circle btn-sm indicator'
+              aria-label={_('Highlights')}
+              title={_('Highlights')}
+            >
+              {highlights.highlights.length > 0 && (
+                <span className='indicator-item badge badge-xs badge-primary'>
+                  {highlights.highlights.length}
+                </span>
+              )}
+              <IoCreateOutline className='h-5 w-5' />
+            </button>
             <a
               href={item.url}
               target='_blank'
@@ -270,12 +297,20 @@ const Reader = () => {
             </div>
 
             <div
+              ref={articleRef}
               className='prose prose-lg max-w-none break-words [&_img]:h-auto [&_img]:max-w-full'
               dangerouslySetInnerHTML={{ __html: html }}
             />
           </article>
         )}
       </main>
+      {item && (
+        <HighlightPanel
+          api={highlights}
+          listOpen={listOpen}
+          onCloseList={() => setListOpen(false)}
+        />
+      )}
     </div>
   );
 };
