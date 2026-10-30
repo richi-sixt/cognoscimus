@@ -5,13 +5,16 @@ import Link from 'next/link';
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { IoPersonCircleOutline } from 'react-icons/io5';
 import AppSwitcher from '@/components/AppSwitcher';
+import ImportRaindrop from './components/ImportRaindrop';
 import SaveFromAnywhere from './components/SaveFromAnywhere';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/hooks/useTheme';
 import { useTranslation } from '@/hooks/useTranslation';
 import {
+  countPending,
   listItems,
   listLabels,
+  loadPending,
   purgeTrash,
   saveArticle,
   type LaterItem,
@@ -19,6 +22,14 @@ import {
   type LaterView,
 } from '@/libs/later/client';
 import { TRASH_RETENTION_DAYS } from '@/libs/later/constants';
+
+const hostOf = (url: string) => {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return null;
+  }
+};
 
 const LaterPage = () => {
   const _ = useTranslation();
@@ -34,6 +45,8 @@ const LaterPage = () => {
   const [url, setUrl] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(0);
+  const [loadProgress, setLoadProgress] = useState<{ done: number; total: number } | null>(null);
 
   useEffect(() => setMounted(true), []);
   useEffect(() => {
@@ -45,6 +58,7 @@ const LaterPage = () => {
       // Opening the trash also clears what has outlived its retention.
       if (view === 'trash') await purgeTrash({ expiredOnly: true });
       setItems(await listItems({ view, search, labelId }));
+      setPending(await countPending());
       // Labels disappear with their last article, so the list is refreshed too.
       const current = await listLabels();
       setLabels(current);
@@ -76,6 +90,27 @@ const LaterPage = () => {
       setError(err instanceof Error ? err.message : _('Could not save the article'));
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Fetches the article text of imported links; the list refreshes as it goes.
+  const loadWaiting = async () => {
+    if (loadProgress) return;
+    setLoadProgress({ done: 0, total: pending });
+    try {
+      let lastRefresh = 0;
+      await loadPending((done, total) => {
+        setLoadProgress({ done, total });
+        if (done - lastRefresh >= 10) {
+          lastRefresh = done;
+          void load();
+        }
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : _('Something went wrong'));
+    } finally {
+      setLoadProgress(null);
+      await load();
     }
   };
 
@@ -130,6 +165,27 @@ const LaterPage = () => {
         </form>
 
         <SaveFromAnywhere />
+        <ImportRaindrop
+          onImported={() => {
+            setView('inbox');
+            void load().then(loadWaiting);
+          }}
+        />
+
+        {pending > 0 && (
+          <div className='bg-base-200/60 flex items-center justify-between gap-3 rounded-2xl px-4 py-3 text-sm'>
+            <span>
+              {loadProgress
+                ? _('Loading articles {{done}} / {{total}}', loadProgress)
+                : _('{{count}} saved links are waiting for their text.', { count: pending })}
+            </span>
+            {!loadProgress && (
+              <button type='button' className='btn btn-sm' onClick={loadWaiting}>
+                {_('Load now')}
+              </button>
+            )}
+          </div>
+        )}
 
         <div className='flex flex-wrap items-center gap-2'>
           <div role='tablist' className='tabs tabs-box'>
@@ -225,7 +281,12 @@ const LaterPage = () => {
                     <div className='truncate font-medium'>{item.title}</div>
                     <div className='text-base-content/60 truncate text-xs'>
                       {[
-                        item.site_name,
+                        item.fetch_state === 'pending'
+                          ? _('not loaded yet')
+                          : item.fetch_state === 'failed'
+                            ? _('could not be loaded')
+                            : null,
+                        item.site_name ?? hostOf(item.url),
                         `${Math.max(1, Math.round(item.word_count / 220))} min`,
                         item.progress > 0 && item.state !== 'archived'
                           ? `${Math.round(item.progress * 100)}%`

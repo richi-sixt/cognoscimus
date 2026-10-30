@@ -22,6 +22,7 @@ import {
   getItem,
   listItemLabelIds,
   listLabels,
+  refetchItem,
   restoreItem,
   setItemLabel,
   setItemProgress,
@@ -50,6 +51,7 @@ const Reader = () => {
   const restored = useRef(false);
   const articleRef = useRef<HTMLDivElement>(null);
   const [listOpen, setListOpen] = useState(false);
+  const [loadingText, setLoadingText] = useState(false);
 
   useEffect(() => {
     if (!user) window.location.assign('/auth?redirect=%2Flater');
@@ -148,6 +150,21 @@ const Reader = () => {
         await trashItem(item.id);
       }
       router.push('/later');
+    });
+
+  const loadText = () =>
+    run(async () => {
+      if (!item) return;
+      setLoadingText(true);
+      try {
+        await refetchItem(item.id);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : _('Could not load the article'));
+      }
+      // Reload either way: the server records whether the fetch worked.
+      const fresh = await getItem(item.id);
+      if (fresh) setItem(fresh);
+      setLoadingText(false);
     });
 
   const restore = () =>
@@ -296,6 +313,37 @@ const Reader = () => {
               />
             </div>
 
+            {item.fetch_state !== 'ready' && (
+              <div className='bg-base-200/60 mb-6 flex flex-col gap-3 rounded-2xl p-4 text-sm'>
+                <p>
+                  {item.fetch_state === 'failed'
+                    ? _('The text of this link could not be loaded.')
+                    : _('The text of this link has not been loaded yet.')}
+                </p>
+                <div className='flex gap-2'>
+                  <button
+                    type='button'
+                    className='btn btn-primary btn-sm'
+                    onClick={loadText}
+                    disabled={loadingText}
+                  >
+                    {loadingText ? (
+                      <span className='loading loading-spinner loading-xs' />
+                    ) : (
+                      _('Load now')
+                    )}
+                  </button>
+                  <a
+                    href={item.url}
+                    target='_blank'
+                    rel='noopener noreferrer'
+                    className='btn btn-ghost btn-sm'
+                  >
+                    {_('Open original')}
+                  </a>
+                </div>
+              </div>
+            )}
             <div
               ref={articleRef}
               className='prose prose-lg max-w-none break-words [&_img]:h-auto [&_img]:max-w-full'

@@ -1,9 +1,11 @@
 import { getAPIBaseUrl } from '@/services/environment';
 import { getAccessToken } from '@/utils/access';
 import { supabase } from '@/utils/supabase';
-import { TRASH_RETENTION_DAYS } from './constants';
+import { FETCH_CONCURRENCY, IMPORT_BATCH_SIZE, TRASH_RETENTION_DAYS } from './constants';
+import type { ImportEntry } from './importRaindrop';
 
 export type LaterState = 'unread' | 'reading' | 'archived';
+export type FetchState = 'ready' | 'pending' | 'failed';
 
 export interface LaterItem {
   id: string;
@@ -18,6 +20,7 @@ export interface LaterItem {
   progress: number;
   saved_at: string;
   deleted_at: string | null;
+  fetch_state: FetchState;
 }
 
 export interface LaterItemFull extends LaterItem {
@@ -41,7 +44,7 @@ export class LaterApiError extends Error {
 }
 
 const SUMMARY_COLUMNS =
-  'id, url, title, author, site_name, excerpt, thumbnail, word_count, state, progress, saved_at, deleted_at';
+  'id, url, title, author, site_name, excerpt, thumbnail, word_count, state, progress, saved_at, deleted_at, fetch_state';
 
 export const saveArticle = async (url: string): Promise<string> => {
   const token = await getAccessToken();
@@ -192,4 +195,86 @@ export const setItemLabel = async (itemId: string, labelId: string, on: boolean)
         .eq('item_id', itemId)
         .eq('label_id', labelId);
   if (error) throw error;
+};
+
+const postJson = async <T>(path: string, body: unknown): Promise<T> => {
+  const token = await getAccessToken();
+  if (!token) throw new LaterApiError(401, undefined, 'Not authenticated');
+  const response = await fetch(`${getAPIBaseUrl()}/later${path}`, {
+    method: 'POST',
+    cache: 'no-store',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const data = (await response.json().catch(() => ({}))) as T & { error?: string; code?: string };
+  if (!response.ok) {
+    throw new LaterApiError(response.status, data.code, data.error || 'Request failed');
+  }
+  return data;
+};
+
+export interface ImportResult {
+  imported: number;
+  existing: number;
+  invalid: number;
+}
+
+/** Stores the links in batches; their article text is loaded afterwards. */
+export const importEntries = async (
+  entries: ImportEntry[],
+  options: { folderLabels: boolean; onProgress?: (done: number) => void },
+): Promise<ImportResult> => {
+  const total: ImportResult = { imported: 0, existing: 0, invalid: 0 };
+  for (let i = 0; i < entries.length; i += IMPORT_BATCH_SIZE) {
+    const batch = entries.slice(i, i + IMPORT_BATCH_SIZE);
+    const part = await postJson<ImportResult>('/import', {
+      entries: batch,
+      folderLabels: options.folderLabels,
+    });
+    total.imported += part.imported;
+    total.existing += part.existing;
+    total.invalid += part.invalid;
+    options.onProgress?.(Math.min(i + batch.length, entries.length));
+  }
+  return total;
+};
+
+export const refetchItem = async (id: string): Promise<void> => {
+  await postJson<{ id: string }>('/refetch', { id });
+};
+
+export const countPending = async (): Promise<number> => {
+  const { count, error } = await supabase
+    .from('later_items')
+    .select('id', { count: 'exact', head: true })
+    .eq('fetch_state', 'pending')
+    .is('deleted_at', null);
+  if (error) throw error;
+  return count ?? 0;
+};
+
+/** Fetches the text of every link still waiting for it, a few at a time. */
+export const loadPending = async (onProgress: (done: number, total: number) => void) => {
+  const { data, error } = await supabase
+    .from('later_items')
+    .select('id')
+    .eq('fetch_state', 'pending')
+    .is('deleted_at', null)
+    .order('saved_at', { ascending: false })
+    .limit(2000);
+  if (error) throw error;
+  const ids = (data ?? []).map((row) => row.id as string);
+
+  let next = 0;
+  let done = 0;
+  onProgress(0, ids.length);
+  const worker = async () => {
+    while (next < ids.length) {
+      const id = ids[next++]!;
+      // A failure is recorded on the item by the server; the batch goes on.
+      await refetchItem(id).catch(() => undefined);
+      onProgress(++done, ids.length);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(FETCH_CONCURRENCY, ids.length) }, worker));
 };
