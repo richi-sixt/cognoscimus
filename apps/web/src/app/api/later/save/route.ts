@@ -4,6 +4,7 @@ import { validateUserAndToken } from '@/utils/access';
 import { extractArticle, NoArticleError } from '@/libs/later/extract';
 import { fetchPage, FetchPageError, normalizeUrl } from '@/libs/later/fetchPage';
 import { FetchBlockedError } from '@/libs/later/ssrf';
+import { TRASH_RETENTION_DAYS } from '@/libs/later/constants';
 
 const URL_MAX_LENGTH = 2048;
 
@@ -34,6 +35,15 @@ export async function POST(request: Request) {
     const article = extractArticle(html, finalUrl.toString());
 
     const supabase = createSupabaseAdminClient();
+
+    // Housekeeping: drop this user's trash that has outlived its retention.
+    const cutoff = new Date(Date.now() - TRASH_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+    await supabase
+      .from('later_items')
+      .delete()
+      .eq('user_id', user.id)
+      .lt('deleted_at', cutoff.toISOString());
+
     const { data, error } = await supabase
       .from('later_items')
       .upsert(
@@ -48,6 +58,8 @@ export async function POST(request: Request) {
           content_text: article.contentText,
           thumbnail: article.thumbnail,
           word_count: article.wordCount,
+          // Saving a link again also takes it out of the trash.
+          deleted_at: null,
         },
         { onConflict: 'user_id,url' },
       )

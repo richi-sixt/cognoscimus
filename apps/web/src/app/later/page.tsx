@@ -5,16 +5,20 @@ import Link from 'next/link';
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { IoPersonCircleOutline } from 'react-icons/io5';
 import AppSwitcher from '@/components/AppSwitcher';
+import SaveFromAnywhere from './components/SaveFromAnywhere';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/hooks/useTheme';
 import { useTranslation } from '@/hooks/useTranslation';
 import {
   listItems,
   listLabels,
+  purgeTrash,
   saveArticle,
   type LaterItem,
   type LaterLabel,
+  type LaterView,
 } from '@/libs/later/client';
+import { TRASH_RETENTION_DAYS } from '@/libs/later/constants';
 
 const LaterPage = () => {
   const _ = useTranslation();
@@ -22,7 +26,7 @@ const LaterPage = () => {
   useTheme();
 
   const [mounted, setMounted] = useState(false);
-  const [view, setView] = useState<'inbox' | 'archive'>('inbox');
+  const [view, setView] = useState<LaterView>('inbox');
   const [search, setSearch] = useState('');
   const [labelId, setLabelId] = useState<string | null>(null);
   const [labels, setLabels] = useState<LaterLabel[]>([]);
@@ -38,6 +42,8 @@ const LaterPage = () => {
 
   const load = useCallback(async () => {
     try {
+      // Opening the trash also clears what has outlived its retention.
+      if (view === 'trash') await purgeTrash({ expiredOnly: true });
       setItems(await listItems({ view, search, labelId }));
       // Labels disappear with their last article, so the list is refreshed too.
       const current = await listLabels();
@@ -71,6 +77,22 @@ const LaterPage = () => {
     } finally {
       setSaving(false);
     }
+  };
+
+  const emptyTrash = async () => {
+    if (!window.confirm(_('Delete everything in the trash for good?'))) return;
+    try {
+      await purgeTrash();
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : _('Something went wrong'));
+    }
+  };
+
+  const viewLabels: Record<LaterView, string> = {
+    inbox: _('Inbox'),
+    archive: _('Archive'),
+    trash: _('Trash'),
   };
 
   return (
@@ -107,9 +129,11 @@ const LaterPage = () => {
           </button>
         </form>
 
+        <SaveFromAnywhere />
+
         <div className='flex flex-wrap items-center gap-2'>
           <div role='tablist' className='tabs tabs-box'>
-            {(['inbox', 'archive'] as const).map((v) => (
+            {(['inbox', 'archive', 'trash'] as const).map((v) => (
               <button
                 key={v}
                 type='button'
@@ -117,7 +141,7 @@ const LaterPage = () => {
                 className={clsx('tab', view === v && 'tab-active')}
                 onClick={() => setView(v)}
               >
-                {v === 'inbox' ? _('Inbox') : _('Archive')}
+                {viewLabels[v]}
               </button>
             ))}
           </div>
@@ -130,6 +154,21 @@ const LaterPage = () => {
             aria-label={_('Search articles')}
           />
         </div>
+
+        {view === 'trash' && (
+          <div className='text-base-content/60 flex items-center justify-between gap-3 text-sm'>
+            <span>
+              {_('Articles are deleted for good after {{count}} days.', {
+                count: TRASH_RETENTION_DAYS,
+              })}
+            </span>
+            {items && items.length > 0 && (
+              <button type='button' className='btn btn-ghost btn-xs' onClick={emptyTrash}>
+                {_('Empty trash')}
+              </button>
+            )}
+          </div>
+        )}
 
         {labels.length > 0 && (
           <div className='flex flex-wrap gap-2'>
@@ -157,7 +196,11 @@ const LaterPage = () => {
         {items === null && !error && <span className='loading loading-dots loading-md' />}
         {items?.length === 0 && (
           <p className='text-base-content/60 text-sm'>
-            {search || labelId ? _('No articles match.') : _('Nothing here yet.')}
+            {search || labelId
+              ? _('No articles match.')
+              : view === 'trash'
+                ? _('The trash is empty.')
+                : _('Nothing here yet.')}
           </p>
         )}
         {items && items.length > 0 && (

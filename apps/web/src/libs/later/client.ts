@@ -1,6 +1,7 @@
 import { getAPIBaseUrl } from '@/services/environment';
 import { getAccessToken } from '@/utils/access';
 import { supabase } from '@/utils/supabase';
+import { TRASH_RETENTION_DAYS } from './constants';
 
 export type LaterState = 'unread' | 'reading' | 'archived';
 
@@ -16,6 +17,7 @@ export interface LaterItem {
   state: LaterState;
   progress: number;
   saved_at: string;
+  deleted_at: string | null;
 }
 
 export interface LaterItemFull extends LaterItem {
@@ -39,7 +41,7 @@ export class LaterApiError extends Error {
 }
 
 const SUMMARY_COLUMNS =
-  'id, url, title, author, site_name, excerpt, thumbnail, word_count, state, progress, saved_at';
+  'id, url, title, author, site_name, excerpt, thumbnail, word_count, state, progress, saved_at, deleted_at';
 
 export const saveArticle = async (url: string): Promise<string> => {
   const token = await getAccessToken();
@@ -61,8 +63,10 @@ export const saveArticle = async (url: string): Promise<string> => {
   return body.id;
 };
 
+export type LaterView = 'inbox' | 'archive' | 'trash';
+
 export const listItems = async (options: {
-  view: 'inbox' | 'archive';
+  view: LaterView;
   search?: string;
   labelId?: string | null;
 }): Promise<LaterItem[]> => {
@@ -78,15 +82,22 @@ export const listItems = async (options: {
   }
 
   let query = supabase.from('later_items').select(SUMMARY_COLUMNS);
-  query =
-    options.view === 'archive'
-      ? query.eq('state', 'archived')
-      : query.in('state', ['unread', 'reading']);
+  if (options.view === 'trash') {
+    query = query.not('deleted_at', 'is', null);
+  } else {
+    query = query.is('deleted_at', null);
+    query =
+      options.view === 'archive'
+        ? query.eq('state', 'archived')
+        : query.in('state', ['unread', 'reading']);
+  }
   if (ids) query = query.in('id', ids);
   const search = options.search?.trim();
   if (search) query = query.textSearch('tsv', search, { type: 'websearch', config: 'simple' });
 
-  const { data, error } = await query.order('saved_at', { ascending: false }).limit(200);
+  const { data, error } = await query
+    .order(options.view === 'trash' ? 'deleted_at' : 'saved_at', { ascending: false })
+    .limit(200);
   if (error) throw error;
   return (data ?? []) as LaterItem[];
 };
@@ -117,6 +128,31 @@ export const setItemProgress = async (id: string, progress: number, state: Later
   if (error) throw error;
 };
 
+export const trashItem = async (id: string) => {
+  const { error } = await supabase
+    .from('later_items')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', id);
+  if (error) throw error;
+};
+
+export const restoreItem = async (id: string) => {
+  const { error } = await supabase.from('later_items').update({ deleted_at: null }).eq('id', id);
+  if (error) throw error;
+};
+
+/** Removes everything in the trash for good, or only what is past its retention. */
+export const purgeTrash = async (options: { expiredOnly?: boolean } = {}) => {
+  let query = supabase.from('later_items').delete().not('deleted_at', 'is', null);
+  if (options.expiredOnly) {
+    const cutoff = new Date(Date.now() - TRASH_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+    query = query.lt('deleted_at', cutoff.toISOString());
+  }
+  const { error } = await query;
+  if (error) throw error;
+};
+
+/** Deletes one article for good, skipping the trash. */
 export const deleteItem = async (id: string) => {
   const { error } = await supabase.from('later_items').delete().eq('id', id);
   if (error) throw error;

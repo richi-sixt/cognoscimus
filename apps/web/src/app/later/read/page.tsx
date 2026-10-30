@@ -3,7 +3,13 @@
 import DOMPurify from 'dompurify';
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { IoArchiveOutline, IoArrowBack, IoOpenOutline, IoTrashOutline } from 'react-icons/io5';
+import {
+  IoArchiveOutline,
+  IoArrowBack,
+  IoArrowUndoOutline,
+  IoOpenOutline,
+  IoTrashOutline,
+} from 'react-icons/io5';
 import clsx from 'clsx';
 import { useAuth } from '@/context/AuthContext';
 import { useAppRouter } from '@/hooks/useAppRouter';
@@ -15,9 +21,11 @@ import {
   getItem,
   listItemLabelIds,
   listLabels,
+  restoreItem,
   setItemLabel,
   setItemProgress,
   setItemState,
+  trashItem,
   type LaterItemFull,
   type LaterLabel,
 } from '@/libs/later/client';
@@ -116,11 +124,24 @@ const Reader = () => {
       setItem({ ...item, state: next });
     });
 
+  // An article goes to the trash first; only from the trash is it deleted for good.
   const remove = () =>
     run(async () => {
-      if (!item || !window.confirm(_('Delete this article?'))) return;
-      await deleteItem(item.id);
+      if (!item) return;
+      if (item.deleted_at) {
+        if (!window.confirm(_('Delete this article for good?'))) return;
+        await deleteItem(item.id);
+      } else {
+        await trashItem(item.id);
+      }
       router.push('/later');
+    });
+
+  const restore = () =>
+    run(async () => {
+      if (!item) return;
+      await restoreItem(item.id);
+      setItem({ ...item, deleted_at: null });
     });
 
   const toggleLabel = (labelId: string) =>
@@ -170,19 +191,30 @@ const Reader = () => {
             >
               <IoOpenOutline className='h-5 w-5' />
             </a>
-            <button
-              type='button'
-              onClick={toggleArchive}
-              className='btn btn-ghost btn-circle btn-sm'
-              aria-label={item.state === 'archived' ? _('Move to inbox') : _('Archive')}
-            >
-              <IoArchiveOutline className='h-5 w-5' />
-            </button>
+            {item.deleted_at ? (
+              <button
+                type='button'
+                onClick={restore}
+                className='btn btn-ghost btn-circle btn-sm'
+                aria-label={_('Restore')}
+              >
+                <IoArrowUndoOutline className='h-5 w-5' />
+              </button>
+            ) : (
+              <button
+                type='button'
+                onClick={toggleArchive}
+                className='btn btn-ghost btn-circle btn-sm'
+                aria-label={item.state === 'archived' ? _('Move to inbox') : _('Archive')}
+              >
+                <IoArchiveOutline className='h-5 w-5' />
+              </button>
+            )}
             <button
               type='button'
               onClick={remove}
               className='btn btn-ghost btn-circle btn-sm'
-              aria-label={_('Delete')}
+              aria-label={item.deleted_at ? _('Delete for good') : _('Move to trash')}
             >
               <IoTrashOutline className='h-5 w-5' />
             </button>
@@ -200,6 +232,11 @@ const Reader = () => {
         {!item && !missing && !error && <span className='loading loading-dots loading-md' />}
         {item && (
           <article>
+            {item.deleted_at && (
+              <p className='bg-base-200 mb-4 rounded-lg px-3 py-2 text-sm'>
+                {_('This article is in the trash.')}
+              </p>
+            )}
             <h1 className='mb-2 text-3xl leading-tight font-bold'>{item.title}</h1>
             <p className='text-base-content/60 mb-4 text-sm'>
               {[item.author, item.site_name, new Date(item.saved_at).toLocaleDateString()]
