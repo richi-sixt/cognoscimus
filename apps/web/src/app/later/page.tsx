@@ -39,6 +39,10 @@ const LaterPage = () => {
   const load = useCallback(async () => {
     try {
       setItems(await listItems({ view, search, labelId }));
+      // Labels disappear with their last article, so the list is refreshed too.
+      const current = await listLabels();
+      setLabels(current);
+      if (labelId && !current.some((l) => l.id === labelId)) setLabelId(null);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : _('Could not load your articles'));
@@ -51,10 +55,6 @@ const LaterPage = () => {
     const timer = setTimeout(() => void load(), 250);
     return () => clearTimeout(timer);
   }, [user, load]);
-
-  useEffect(() => {
-    if (user) listLabels().then(setLabels, () => setLabels([]));
-  }, [user]);
 
   const handleSave = async (event: FormEvent) => {
     event.preventDefault();

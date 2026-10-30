@@ -129,6 +129,8 @@ const Reader = () => {
       const on = !itemLabelIds.includes(labelId);
       await setItemLabel(item.id, labelId, on);
       setItemLabelIds(on ? [...itemLabelIds, labelId] : itemLabelIds.filter((l) => l !== labelId));
+      // A label nobody carries any more is deleted by the database.
+      if (!on) setLabels(await listLabels());
     });
 
   const addLabel = () =>
