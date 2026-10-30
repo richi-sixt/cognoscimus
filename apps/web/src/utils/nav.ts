@@ -41,6 +41,12 @@ export const navigateBackFromProfile = (
   document.documentElement.setAttribute('data-nav-direction', 'back');
   // Browsers read a backslash as '/', so a redirect like '/\host' leaves the app.
   if (redirect?.startsWith('/') && !redirect.startsWith('//') && !redirect.includes('\\')) {
+    // /later is served without cross-origin isolation, so reaching it needs a
+    // full page load rather than a client-side route change.
+    if (redirect === '/later' || redirect.startsWith('/later/') || redirect.startsWith('/later?')) {
+      window.location.assign(redirect);
+      return;
+    }
     router.replace(redirect);
   } else {
     navigateToLibrary(router);

@@ -17,3 +17,15 @@ Run them once, in numeric order, in the Supabase SQL editor (or `supabase db pus
 Every table has row-level security: users only see their own rows. `files` and `admin_emails` are not writable through the API; only the server (service role) writes `files`.
 
 One-off scripts (for example inserting the first admin email) belong in `supabase/local/`, which is gitignored.
+
+## Local development
+
+`supabase start` runs a separate Postgres, Auth and Studio in Docker and applies every migration in `supabase/migrations/` (needs Docker; the CLI is configured in `config.toml`, ports are shifted by 100 so it can run next to other Supabase projects).
+
+```bash
+supabase start      # API http://127.0.0.1:54421, Studio http://127.0.0.1:54423
+supabase db reset   # drop the local data and re-apply all migrations
+supabase stop
+```
+
+`apps/web/.env.development.local` (gitignored) points `pnpm dev` at this local instance and takes precedence over `.env.local`. Create a test user in Studio under Authentication.

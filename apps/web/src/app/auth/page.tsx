@@ -34,7 +34,12 @@ export default function AuthPage() {
         const now = Date.now();
         localStorage.setItem(lastRedirectAtKey, now.toString());
         if (now - lastRedirectAt > 3000) {
-          router.push(redirectTo);
+          // /later is served without cross-origin isolation: it needs a full page load.
+          if (redirectTo === '/later' || redirectTo.startsWith('/later/')) {
+            window.location.assign(redirectTo);
+          } else {
+            router.push(redirectTo);
+          }
         }
       }
     });

@@ -50,6 +50,14 @@ export function proxy(request: NextRequest) {
     return response;
   }
 
+  // Read-later pages show images from arbitrary sites, which `require-corp`
+  // would block. They stay outside isolation, so links between /later and the
+  // rest of the app must be full page loads (see Hub and the /later pages):
+  // isolation is fixed per document, not per client-side route.
+  if (request.nextUrl.pathname === '/later' || request.nextUrl.pathname.startsWith('/later/')) {
+    return NextResponse.next();
+  }
+
   // Cross-origin isolation enables SharedArrayBuffer, which the Turso WASM
   // thread pool requires (initThreadPool hangs without it). Set on every
   // document response, not just /api/* — `crossOriginIsolated` is a property

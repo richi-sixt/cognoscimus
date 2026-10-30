@@ -16,6 +16,7 @@ import { useLibraryStore } from '@/store/libraryStore';
 import { useResponsiveSize } from '@/hooks/useResponsiveSize';
 import useShortcuts from '@/hooks/useShortcuts';
 import Dropdown from '@/components/Dropdown';
+import AppSwitcher from '@/components/AppSwitcher';
 import SettingsMenu from './SettingsMenu';
 import ImportMenu from './ImportMenu';
 import LibrarySearchOptionsMenu from './LibrarySearchOptionsMenu';
@@ -253,6 +254,7 @@ const LibraryHeader: React.FC<LibraryHeaderProps> = ({
           </div>
         ) : (
           <div className='flex h-full items-center gap-x-2 sm:gap-x-4'>
+            <AppSwitcher className='exclude-title-bar-mousedown' />
             <Dropdown
               label={_('View Menu')}
               className='exclude-title-bar-mousedown dropdown-bottom dropdown-end'
