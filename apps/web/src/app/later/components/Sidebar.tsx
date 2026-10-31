@@ -8,6 +8,7 @@ import {
   IoChevronDown,
   IoClose,
   IoCompassOutline,
+  IoLogoRss,
   IoPeopleOutline,
   IoSearchOutline,
   IoChevronForward,
@@ -51,6 +52,8 @@ interface Props {
   onLabel: (id: string | null) => void;
   /** Follow requests waiting for an answer. */
   requests: number;
+  /** New feed entries waiting to be saved or dismissed. */
+  newFeedEntries: number;
   savedSearches: SavedSearch[];
   onSavedSearch: (saved: SavedSearch) => void;
   onDeleteSavedSearch: (id: string) => void;
@@ -74,6 +77,7 @@ const Sidebar = ({
   labelId,
   onLabel,
   requests,
+  newFeedEntries,
   savedSearches,
   onSavedSearch,
   onDeleteSavedSearch,
@@ -85,7 +89,9 @@ const Sidebar = ({
   const [editing, setEditing] = useState<Editing | null>(null);
   const [draft, setDraft] = useState('');
   const [moving, setMoving] = useState<string | null>(null);
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  // Collections start closed; what the user opens is remembered while the page stays.
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [collectionsOpen, setCollectionsOpen] = useState(scope.kind === 'collection');
 
   const tree = buildCollectionTree(collections);
 
@@ -95,12 +101,9 @@ const Sidebar = ({
   const startEdit = (next: Editing, initial = '') => {
     setEditing(next);
     setDraft(initial);
+    setCollectionsOpen(true);
     if (next.mode === 'new' && next.parentId) {
-      setCollapsed((set) => {
-        const copy = new Set(set);
-        copy.delete(next.parentId!);
-        return copy;
-      });
+      setExpanded((set) => new Set(set).add(next.parentId!));
     }
   };
 
@@ -211,7 +214,7 @@ const Sidebar = ({
   const renderNode = (node: CollectionNode) => {
     const target: LaterScope = { kind: 'collection', id: node.id };
     const active = isSameScope(scope, target);
-    const isCollapsed = collapsed.has(node.id);
+    const isCollapsed = !expanded.has(node.id);
     const renaming = editing?.mode === 'rename' && editing.id === node.id;
     const relocating = moving === node.id;
     const indent = node.depth * 12;
@@ -254,7 +257,7 @@ const Sidebar = ({
             <button
               type='button'
               onClick={() =>
-                setCollapsed((set) => {
+                setExpanded((set) => {
                   const copy = new Set(set);
                   if (copy.has(node.id)) copy.delete(node.id);
                   else copy.add(node.id);
@@ -363,9 +366,19 @@ const Sidebar = ({
 
       <div className='flex flex-col gap-1'>
         <div className='flex items-center justify-between px-2'>
-          <h2 className='text-base-content/60 text-xs font-semibold uppercase'>
-            {_('Collections')}
-          </h2>
+          <button
+            type='button'
+            onClick={() => setCollectionsOpen((open) => !open)}
+            aria-expanded={collectionsOpen}
+            className='text-base-content/60 flex items-center gap-1 text-xs font-semibold uppercase'
+          >
+            {collectionsOpen ? (
+              <IoChevronDown className='h-3.5 w-3.5' />
+            ) : (
+              <IoChevronForward className='h-3.5 w-3.5' />
+            )}
+            {_('Collections')} ({collections.length})
+          </button>
           <button
             type='button'
             onClick={() => startEdit({ mode: 'new', parentId: null })}
@@ -376,11 +389,13 @@ const Sidebar = ({
             <IoAddCircleOutline className='h-4 w-4' />
           </button>
         </div>
-        <ul>
-          {tree.map(renderNode)}
-          {editing?.mode === 'new' && editing.parentId === null && <li>{editor(0)}</li>}
-        </ul>
-        {tree.length === 0 && !editing && (
+        {collectionsOpen && (
+          <ul>
+            {tree.map(renderNode)}
+            {editing?.mode === 'new' && editing.parentId === null && <li>{editor(0)}</li>}
+          </ul>
+        )}
+        {collectionsOpen && tree.length === 0 && !editing && (
           <p className='text-base-content/50 px-2 text-xs'>{_('No collections yet.')}</p>
         )}
       </div>
@@ -392,6 +407,16 @@ const Sidebar = ({
         <IoPeopleOutline className='h-4 w-4 shrink-0' />
         <span className='min-w-0 flex-1 truncate'>{_('People')}</span>
         {requests > 0 && <span className='badge badge-primary badge-sm'>{requests}</span>}
+      </Link>
+      <Link
+        href='/later/feeds'
+        className='hover:bg-base-200 flex items-center gap-2 rounded-lg px-2 py-1.5'
+      >
+        <IoLogoRss className='h-4 w-4 shrink-0' />
+        <span className='min-w-0 flex-1 truncate'>{_('Feeds')}</span>
+        {newFeedEntries > 0 && (
+          <span className='badge badge-primary badge-sm'>{newFeedEntries}</span>
+        )}
       </Link>
       <Link
         href='/later/explore'

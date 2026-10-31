@@ -247,7 +247,7 @@ export const setItemLabel = async (itemId: string, labelId: string, on: boolean)
   if (error) throw error;
 };
 
-const postJson = async <T>(path: string, body: unknown): Promise<T> => {
+export const postJson = async <T>(path: string, body: unknown): Promise<T> => {
   const token = await getAccessToken();
   if (!token) throw new LaterApiError(401, undefined, 'Not authenticated');
   const response = await fetch(`${getAPIBaseUrl()}/later${path}`, {

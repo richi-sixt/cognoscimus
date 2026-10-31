@@ -37,6 +37,7 @@ import {
   type SavedSearch,
   type SidebarCounts,
 } from '@/libs/later/client';
+import { countNewEntries } from '@/libs/later/feedsClient';
 import { countFollowRequests } from '@/libs/later/social';
 import type { ItemKind } from '@/libs/later/kind';
 import type { LaterCollection } from '@/libs/later/collections';
@@ -73,6 +74,7 @@ const LaterPage = () => {
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [requests, setRequests] = useState(0);
+  const [newFeedEntries, setNewFeedEntries] = useState(0);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([]);
   const [pending, setPending] = useState(0);
@@ -108,6 +110,12 @@ const LaterPage = () => {
       setLabels(currentLabels);
       setSavedSearches(await listSavedSearches());
       if (user) setRequests(await countFollowRequests(user.id));
+      // Feeds are optional: a failure here must not hide the articles.
+      setNewFeedEntries(
+        await countNewEntries()
+          .then((byFeed) => Object.values(byFeed).reduce((a, b) => a + b, 0))
+          .catch(() => 0),
+      );
       if (labelId && !currentLabels.some((l) => l.id === labelId)) setLabelId(null);
       if (scope.kind === 'collection' && !currentCollections.some((c) => c.id === scope.id)) {
         setScope({ kind: 'inbox' });
@@ -311,6 +319,7 @@ const LaterPage = () => {
         setDrawerOpen(false);
       }}
       requests={requests}
+      newFeedEntries={newFeedEntries}
       savedSearches={savedSearches}
       onSavedSearch={applySavedSearch}
       onDeleteSavedSearch={(id) => void removeSavedSearch(id)}
