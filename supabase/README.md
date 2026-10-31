@@ -11,6 +11,19 @@ SQL migrations for the Supabase project, derived from the Readest schema and tri
 | `0005_authorization.sql` | admin allowlist and `is_admin()` |
 | `0006_storage_usage.sql` | `storage_usage_bytes()`, the per-user quota sum (server only) |
 | `0007_book_grants.sql` | `book_grants` (time-limited, account-bound sharing), `find_user_id_by_email()`; removes `book_shares` |
+| `0008_later.sql` | Later: `later_items` (articles, full-text search), labels, column-level grants (the server writes the text) |
+| `0009_later_prune_labels.sql` | labels disappear with their last article |
+| `0010_later_trash.sql` | trash (`deleted_at`) |
+| `0011_later_highlights.sql` | highlights with notes |
+| `0012_later_fetch_state.sql` | fetch state (pending, failed) for imports and broken links |
+| `0013_later_collections.sql` | nested collections, loop protection, sidebar counts |
+| `0014_later_kind.sql` | item kind: article, link, video, document |
+| `0015_later_saved_searches.sql` | saved views |
+| `0016_profiles_follows.sql` | profiles (username), follow requests, `later_follow()` |
+| `0017_later_sharing.sql` | sharing with followers (items and collections), read functions |
+| `0018_later_send.sql` | sending an article to a person, accept or decline |
+| `0019_later_explore.sql` | notes on items, the explore feed, saving a shared item |
+| `0020_later_feeds.sql` | RSS feeds and their entries |
 
 Run them once, in numeric order, in the Supabase SQL editor (or `supabase db push`).
 
