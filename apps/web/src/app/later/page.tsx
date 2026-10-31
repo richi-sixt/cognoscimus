@@ -7,6 +7,7 @@ import AppSwitcher from '@/components/AppSwitcher';
 import BulkBar from './components/BulkBar';
 import ImportRaindrop from './components/ImportRaindrop';
 import SaveFromAnywhere from './components/SaveFromAnywhere';
+import Maintenance from './components/Maintenance';
 import Sidebar from './components/Sidebar';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/hooks/useTheme';
@@ -32,6 +33,7 @@ import {
   type LaterItem,
   type LaterLabel,
   type LaterScope,
+  type LaterSort,
   type SavedSearch,
   type SidebarCounts,
 } from '@/libs/later/client';
@@ -66,6 +68,7 @@ const LaterPage = () => {
   const [url, setUrl] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sort, setSort] = useState<LaterSort>('newest');
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
@@ -92,6 +95,7 @@ const LaterPage = () => {
           search,
           labelId,
           kind: kindFilter,
+          sort,
           maintenance,
         }),
       );
@@ -109,7 +113,7 @@ const LaterPage = () => {
     } catch (err) {
       setError(err instanceof Error ? err.message : _('Could not load your articles'));
     }
-  }, [scope, search, labelId, kindFilter, maintenance, _]);
+  }, [scope, search, labelId, kindFilter, sort, maintenance, _]);
 
   useEffect(() => {
     if (!user) return;
@@ -388,6 +392,7 @@ const LaterPage = () => {
           </form>
 
           <SaveFromAnywhere />
+          <Maintenance onDone={() => void load()} />
           <ImportRaindrop
             onImported={() => {
               setScope({ kind: 'inbox' });
@@ -478,6 +483,18 @@ const LaterPage = () => {
                 {selected.size === items.length ? _('Select none') : _('Select all')}
               </button>
             )}
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value as LaterSort)}
+              className='select select-ghost select-xs'
+              aria-label={_('Sort by')}
+            >
+              <option value='newest'>{_('Newest first')}</option>
+              <option value='oldest'>{_('Oldest first')}</option>
+              <option value='title'>{_('Title')}</option>
+              <option value='longest'>{_('Longest read')}</option>
+              <option value='shortest'>{_('Shortest read')}</option>
+            </select>
             {customView && (
               <button
                 type='button'

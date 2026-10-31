@@ -21,6 +21,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import {
   createCollection,
   deleteCollection,
+  moveCollection,
   renameCollection,
   type LaterLabel,
   type LaterScope,
@@ -29,6 +30,8 @@ import {
 } from '@/libs/later/client';
 import {
   buildCollectionTree,
+  collectionWithDescendants,
+  flattenCollectionTree,
   type CollectionNode,
   type LaterCollection,
   subtreeCount,
@@ -74,6 +77,7 @@ const Sidebar = ({
   const _ = useTranslation();
   const [editing, setEditing] = useState<Editing | null>(null);
   const [draft, setDraft] = useState('');
+  const [moving, setMoving] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
   const tree = buildCollectionTree(collections);
@@ -110,6 +114,23 @@ const Sidebar = ({
     } catch (err) {
       fail(err);
     }
+  };
+
+  const move = async (id: string, parentId: string | null) => {
+    setMoving(null);
+    try {
+      await moveCollection(id, parentId);
+      await onChanged();
+    } catch (err) {
+      fail(err);
+    }
+  };
+
+  // A collection may go to the top level or under any collection except itself
+  // and what lies below it.
+  const moveTargets = (id: string) => {
+    const blocked = new Set(collectionWithDescendants(collections, id));
+    return flattenCollectionTree(tree).filter((c) => !blocked.has(c.id));
   };
 
   const onKey = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -176,12 +197,36 @@ const Sidebar = ({
     const active = isSameScope(scope, target);
     const isCollapsed = collapsed.has(node.id);
     const renaming = editing?.mode === 'rename' && editing.id === node.id;
+    const relocating = moving === node.id;
     const indent = node.depth * 12;
 
     return (
       <li key={node.id}>
         {renaming ? (
           editor(indent)
+        ) : relocating ? (
+          <select
+            autoFocus
+            defaultValue=''
+            onChange={(e) => {
+              if (e.target.value)
+                void move(node.id, e.target.value === '__top' ? null : e.target.value);
+            }}
+            onBlur={() => setMoving(null)}
+            aria-label={_('Move "{{name}}" to', { name: node.name })}
+            style={{ marginLeft: indent }}
+            className='select select-bordered select-xs my-0.5 w-[calc(100%-1rem)]'
+          >
+            <option value='' disabled>
+              {_('Move "{{name}}" to…', { name: node.name })}
+            </option>
+            <option value='__top'>{_('Top level')}</option>
+            {moveTargets(node.id).map((c) => (
+              <option key={c.id} value={c.id}>
+                {`${'\u2003'.repeat(c.depth)}${c.name}`}
+              </option>
+            ))}
+          </select>
         ) : (
           <div
             className={clsx(
@@ -251,6 +296,11 @@ const Sidebar = ({
                     onClick={() => startEdit({ mode: 'new', parentId: node.id })}
                   >
                     {_('New sub-collection')}
+                  </button>
+                </li>
+                <li>
+                  <button type='button' onClick={() => setMoving(node.id)}>
+                    {_('Move…')}
                   </button>
                 </li>
                 <li>

@@ -70,6 +70,8 @@ export const saveArticle = async (url: string, collectionId?: string | null): Pr
   return body.id;
 };
 
+export type LaterSort = 'newest' | 'oldest' | 'title' | 'longest' | 'shortest';
+
 export type LaterScope =
   | { kind: 'inbox' | 'archive' | 'trash' | 'all' | 'unsorted' }
   | { kind: 'collection'; id: string };
@@ -81,6 +83,7 @@ export const listItems = async (options: {
   search?: string;
   labelId?: string | null;
   kind?: ItemKind | null;
+  sort?: LaterSort;
   /** Housekeeping views: links that could not be loaded, or items without a label. */
   maintenance?: 'failed' | 'unlabeled' | null;
 }): Promise<LaterItem[]> => {
@@ -125,9 +128,20 @@ export const listItems = async (options: {
   const search = options.search?.trim();
   if (search) query = query.textSearch('tsv', search, { type: 'websearch', config: 'simple' });
 
-  const { data, error } = await query
-    .order(scope.kind === 'trash' ? 'deleted_at' : 'saved_at', { ascending: false })
-    .limit(200);
+  const sort = options.sort ?? 'newest';
+  const ordered =
+    scope.kind === 'trash'
+      ? query.order('deleted_at', { ascending: false })
+      : sort === 'oldest'
+        ? query.order('saved_at', { ascending: true })
+        : sort === 'title'
+          ? query.order('title', { ascending: true })
+          : sort === 'longest' || sort === 'shortest'
+            ? query
+                .order('word_count', { ascending: sort === 'shortest' })
+                .order('saved_at', { ascending: false })
+            : query.order('saved_at', { ascending: false });
+  const { data, error } = await ordered.limit(200);
   if (error) throw error;
   // The select string varies, so the client cannot infer the row type.
   return (data ?? []) as unknown as LaterItem[];
@@ -370,6 +384,21 @@ export const deleteCollection = async (id: string) => {
   if (liftError) throw liftError;
   const { error } = await supabase.from('later_collections').delete().eq('id', id);
   if (error) throw error;
+};
+
+/** Hangs a collection under another one, or at the top level for null. */
+export const moveCollection = async (id: string, parentId: string | null) => {
+  const { error } = await supabase
+    .from('later_collections')
+    .update({ parent_id: parentId })
+    .eq('id', id);
+  if (error) throw error;
+};
+
+/** Re-sorts saved articles by what their address and length say; returns how many changed. */
+export const recheckKinds = async (): Promise<number> => {
+  const { changed } = await postJson<{ changed: number }>('/recheck', {});
+  return changed;
 };
 
 export const setItemCollection = async (itemId: string, collectionId: string | null) => {
