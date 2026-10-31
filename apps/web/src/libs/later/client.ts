@@ -379,3 +379,94 @@ export const setItemCollection = async (itemId: string, collectionId: string | n
     .eq('id', itemId);
   if (error) throw error;
 };
+
+// Bulk actions. Ids go to the database in chunks so the request address stays short.
+const BULK_CHUNK = 100;
+const inChunks = async (ids: string[], run: (chunk: string[]) => Promise<void>) => {
+  for (let i = 0; i < ids.length; i += BULK_CHUNK) await run(ids.slice(i, i + BULK_CHUNK));
+};
+
+export const bulkSetState = (ids: string[], state: LaterState) =>
+  inChunks(ids, async (chunk) => {
+    const { error } = await supabase
+      .from('later_items')
+      .update({ state, archived_at: state === 'archived' ? new Date().toISOString() : null })
+      .in('id', chunk);
+    if (error) throw error;
+  });
+
+export const bulkTrash = (ids: string[], on: boolean) =>
+  inChunks(ids, async (chunk) => {
+    const { error } = await supabase
+      .from('later_items')
+      .update({ deleted_at: on ? new Date().toISOString() : null })
+      .in('id', chunk);
+    if (error) throw error;
+  });
+
+export const bulkDelete = (ids: string[]) =>
+  inChunks(ids, async (chunk) => {
+    const { error } = await supabase.from('later_items').delete().in('id', chunk);
+    if (error) throw error;
+  });
+
+export const bulkSetCollection = (ids: string[], collectionId: string | null) =>
+  inChunks(ids, async (chunk) => {
+    const { error } = await supabase
+      .from('later_items')
+      .update({ collection_id: collectionId })
+      .in('id', chunk);
+    if (error) throw error;
+  });
+
+/** Adds a label to every item; items that already carry it are left alone. */
+export const bulkAddLabel = (ids: string[], labelId: string) =>
+  inChunks(ids, async (chunk) => {
+    const { error } = await supabase.from('later_item_labels').upsert(
+      chunk.map((item_id) => ({ item_id, label_id: labelId })),
+      { onConflict: 'item_id,label_id', ignoreDuplicates: true },
+    );
+    if (error) throw error;
+  });
+
+export interface SavedSearchQuery {
+  scope: LaterScope;
+  search: string;
+  labelId: string | null;
+  kind: ItemKind | null;
+  maintenance: 'failed' | 'unlabeled' | null;
+}
+
+export interface SavedSearch {
+  id: string;
+  name: string;
+  query: SavedSearchQuery;
+}
+
+export const listSavedSearches = async (): Promise<SavedSearch[]> => {
+  const { data, error } = await supabase
+    .from('later_saved_searches')
+    .select('id, name, query')
+    .order('name');
+  if (error) throw error;
+  return (data ?? []) as SavedSearch[];
+};
+
+export const createSavedSearch = async (
+  userId: string,
+  name: string,
+  query: SavedSearchQuery,
+): Promise<SavedSearch> => {
+  const { data, error } = await supabase
+    .from('later_saved_searches')
+    .insert({ user_id: userId, name: name.trim(), query })
+    .select('id, name, query')
+    .single();
+  if (error) throw error;
+  return data as SavedSearch;
+};
+
+export const deleteSavedSearch = async (id: string) => {
+  const { error } = await supabase.from('later_saved_searches').delete().eq('id', id);
+  if (error) throw error;
+};

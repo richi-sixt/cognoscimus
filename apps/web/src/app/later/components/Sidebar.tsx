@@ -5,6 +5,8 @@ import { type KeyboardEvent, useState } from 'react';
 import {
   IoArchiveOutline,
   IoChevronDown,
+  IoClose,
+  IoSearchOutline,
   IoChevronForward,
   IoEllipsisHorizontal,
   IoFolderOutline,
@@ -22,6 +24,7 @@ import {
   renameCollection,
   type LaterLabel,
   type LaterScope,
+  type SavedSearch,
   type SidebarCounts,
 } from '@/libs/later/client';
 import {
@@ -39,6 +42,9 @@ interface Props {
   labels: LaterLabel[];
   labelId: string | null;
   onLabel: (id: string | null) => void;
+  savedSearches: SavedSearch[];
+  onSavedSearch: (saved: SavedSearch) => void;
+  onDeleteSavedSearch: (id: string) => void;
   userId: string | undefined;
   /** Called after a collection was created, renamed or deleted. */
   onChanged: () => Promise<void> | void;
@@ -58,6 +64,9 @@ const Sidebar = ({
   labels,
   labelId,
   onLabel,
+  savedSearches,
+  onSavedSearch,
+  onDeleteSavedSearch,
   userId,
   onChanged,
   onError,
@@ -298,6 +307,39 @@ const Sidebar = ({
           <p className='text-base-content/50 px-2 text-xs'>{_('No collections yet.')}</p>
         )}
       </div>
+
+      {savedSearches.length > 0 && (
+        <div className='flex flex-col gap-1'>
+          <h2 className='text-base-content/60 px-2 text-xs font-semibold uppercase'>
+            {_('Saved views')}
+          </h2>
+          <ul>
+            {savedSearches.map((saved) => (
+              <li key={saved.id} className='group hover:bg-base-200 flex items-center rounded-lg'>
+                <button
+                  type='button'
+                  onClick={() => onSavedSearch(saved)}
+                  className='flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-left'
+                >
+                  <IoSearchOutline className='h-4 w-4 shrink-0' />
+                  <span className='min-w-0 flex-1 truncate'>{saved.name}</span>
+                </button>
+                <button
+                  type='button'
+                  onClick={() => {
+                    if (window.confirm(_('Delete the view "{{name}}"?', { name: saved.name })))
+                      onDeleteSavedSearch(saved.id);
+                  }}
+                  className='btn btn-ghost btn-xs h-6 min-h-6 w-6 p-0'
+                  aria-label={_('Delete the view "{{name}}"?', { name: saved.name })}
+                >
+                  <IoClose className='h-4 w-4' />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {labels.length > 0 && (
         <details open={labelId !== null} className='flex flex-col gap-1'>

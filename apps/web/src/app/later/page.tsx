@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { IoClose, IoMenuOutline, IoPersonCircleOutline } from 'react-icons/io5';
 import AppSwitcher from '@/components/AppSwitcher';
+import BulkBar from './components/BulkBar';
 import ImportRaindrop from './components/ImportRaindrop';
 import SaveFromAnywhere from './components/SaveFromAnywhere';
 import Sidebar from './components/Sidebar';
@@ -11,17 +12,27 @@ import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/hooks/useTheme';
 import { useTranslation } from '@/hooks/useTranslation';
 import {
+  bulkAddLabel,
+  bulkDelete,
+  bulkSetCollection,
+  bulkSetState,
+  bulkTrash,
   countPending,
+  createLabel,
+  createSavedSearch,
+  deleteSavedSearch,
   getSidebarCounts,
   listCollections,
   listItems,
   listLabels,
+  listSavedSearches,
   loadPending,
   purgeTrash,
   saveArticle,
   type LaterItem,
   type LaterLabel,
   type LaterScope,
+  type SavedSearch,
   type SidebarCounts,
 } from '@/libs/later/client';
 import type { ItemKind } from '@/libs/later/kind';
@@ -55,6 +66,10 @@ const LaterPage = () => {
   const [url, setUrl] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selecting, setSelecting] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([]);
   const [pending, setPending] = useState(0);
   const [loadProgress, setLoadProgress] = useState<{ done: number; total: number } | null>(null);
 
@@ -85,6 +100,7 @@ const LaterPage = () => {
       // Labels disappear with their last article, so the list is refreshed too.
       const currentLabels = await listLabels();
       setLabels(currentLabels);
+      setSavedSearches(await listSavedSearches());
       if (labelId && !currentLabels.some((l) => l.id === labelId)) setLabelId(null);
       if (scope.kind === 'collection' && !currentCollections.some((c) => c.id === scope.id)) {
         setScope({ kind: 'inbox' });
@@ -104,8 +120,88 @@ const LaterPage = () => {
 
   const chooseScope = (next: LaterScope) => {
     setScope(next);
+    setSelected(new Set());
     setDrawerOpen(false);
   };
+
+  const stopSelecting = () => {
+    setSelecting(false);
+    setSelected(new Set());
+  };
+
+  const toggleSelected = (id: string) =>
+    setSelected((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  // Runs a bulk action on the selection, then refreshes and clears it.
+  const bulk = async (action: (ids: string[]) => Promise<void>) => {
+    if (bulkBusy || selected.size === 0) return;
+    setBulkBusy(true);
+    try {
+      // Only what is still on screen: a changed filter may have hidden some.
+      await action([...selected].filter((id) => items?.some((item) => item.id === id)));
+      setSelected(new Set());
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : _('Something went wrong'));
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
+  const selectedItems = (items ?? []).filter((item) => selected.has(item.id));
+
+  const bulkLabel = (name: string) =>
+    bulk(async (ids) => {
+      if (!user) return;
+      const existing = labels.find((l) => l.name.toLowerCase() === name.toLowerCase());
+      const label = existing ?? (await createLabel(user.id, name));
+      await bulkAddLabel(ids, label.id);
+    });
+
+  const applySavedSearch = (saved: SavedSearch) => {
+    const query = saved.query;
+    setScope(query.scope ?? { kind: 'inbox' });
+    setSearch(query.search ?? '');
+    setLabelId(query.labelId ?? null);
+    setKindFilter(query.kind ?? null);
+    setMaintenance(query.maintenance ?? null);
+    setSelected(new Set());
+    setDrawerOpen(false);
+  };
+
+  const saveCurrentSearch = async () => {
+    if (!user) return;
+    const name = window.prompt(_('Name for this view'))?.trim();
+    if (!name) return;
+    try {
+      await createSavedSearch(user.id, name, {
+        scope,
+        search,
+        labelId,
+        kind: kindFilter,
+        maintenance,
+      });
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : _('Something went wrong'));
+    }
+  };
+
+  const removeSavedSearch = async (id: string) => {
+    try {
+      await deleteSavedSearch(id);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : _('Something went wrong'));
+    }
+  };
+
+  const customView = Boolean(search.trim() || labelId || kindFilter || maintenance);
 
   const handleSave = async (event: FormEvent) => {
     event.preventDefault();
@@ -207,6 +303,9 @@ const LaterPage = () => {
         setLabelId(id);
         setDrawerOpen(false);
       }}
+      savedSearches={savedSearches}
+      onSavedSearch={applySavedSearch}
+      onDeleteSavedSearch={(id) => void removeSavedSearch(id)}
       userId={user?.id}
       onChanged={load}
       onError={setError}
@@ -356,6 +455,40 @@ const LaterPage = () => {
             })}
           </div>
 
+          <div className='flex flex-wrap items-center gap-2 text-sm'>
+            {items && items.length > 0 && (
+              <button
+                type='button'
+                className='btn btn-ghost btn-xs'
+                onClick={() => (selecting ? stopSelecting() : setSelecting(true))}
+              >
+                {selecting ? _('Done') : _('Select')}
+              </button>
+            )}
+            {selecting && items && items.length > 0 && (
+              <button
+                type='button'
+                className='btn btn-ghost btn-xs'
+                onClick={() =>
+                  setSelected(
+                    selected.size === items.length ? new Set() : new Set(items.map((i) => i.id)),
+                  )
+                }
+              >
+                {selected.size === items.length ? _('Select none') : _('Select all')}
+              </button>
+            )}
+            {customView && (
+              <button
+                type='button'
+                className='btn btn-ghost btn-xs ms-auto'
+                onClick={() => void saveCurrentSearch()}
+              >
+                {_('Save this view')}
+              </button>
+            )}
+          </div>
+
           {scope.kind === 'trash' && (
             <div className='text-base-content/60 flex items-center justify-between gap-3 text-sm'>
               <span>
@@ -392,8 +525,24 @@ const LaterPage = () => {
                 <li key={item.id}>
                   <Link
                     href={`/later/read?id=${item.id}`}
-                    className='hover:bg-base-200 flex items-center gap-3 px-4 py-3'
+                    onClick={(event) => {
+                      if (!selecting) return;
+                      event.preventDefault();
+                      toggleSelected(item.id);
+                    }}
+                    className={`hover:bg-base-200 flex items-center gap-3 px-4 py-3 ${
+                      selected.has(item.id) ? 'bg-base-300/60' : ''
+                    }`}
                   >
+                    {selecting && (
+                      <input
+                        type='checkbox'
+                        className='checkbox checkbox-sm shrink-0'
+                        checked={selected.has(item.id)}
+                        onChange={() => toggleSelected(item.id)}
+                        aria-label={_('Select {{title}}', { title: item.title })}
+                      />
+                    )}
                     {item.thumbnail && (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -436,6 +585,44 @@ const LaterPage = () => {
           )}
         </main>
       </div>
+
+      {selecting && (
+        <>
+          <div className='h-20' />
+          <BulkBar
+            count={selected.size}
+            inTrash={scope.kind === 'trash'}
+            allArchived={
+              selectedItems.length > 0 && selectedItems.every((i) => i.state === 'archived')
+            }
+            collections={collections}
+            labels={labels}
+            busy={bulkBusy}
+            onArchive={() =>
+              void bulk((ids) =>
+                bulkSetState(
+                  ids,
+                  selectedItems.length > 0 && selectedItems.every((i) => i.state === 'archived')
+                    ? 'unread'
+                    : 'archived',
+                ),
+              )
+            }
+            onTrash={() => void bulk((ids) => bulkTrash(ids, true))}
+            onRestore={() => void bulk((ids) => bulkTrash(ids, false))}
+            onDeleteForGood={() => {
+              if (
+                !window.confirm(_('Delete {{count}} articles for good?', { count: selected.size }))
+              )
+                return;
+              void bulk(bulkDelete);
+            }}
+            onMove={(collectionId) => void bulk((ids) => bulkSetCollection(ids, collectionId))}
+            onAddLabel={(name) => void bulkLabel(name)}
+            onDone={stopSelecting}
+          />
+        </>
+      )}
     </div>
   );
 };
