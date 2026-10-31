@@ -1,11 +1,13 @@
 'use client';
 
 import clsx from 'clsx';
+import Link from 'next/link';
 import { type KeyboardEvent, useState } from 'react';
 import {
   IoArchiveOutline,
   IoChevronDown,
   IoClose,
+  IoPeopleOutline,
   IoSearchOutline,
   IoChevronForward,
   IoEllipsisHorizontal,
@@ -45,6 +47,8 @@ interface Props {
   labels: LaterLabel[];
   labelId: string | null;
   onLabel: (id: string | null) => void;
+  /** Follow requests waiting for an answer. */
+  requests: number;
   savedSearches: SavedSearch[];
   onSavedSearch: (saved: SavedSearch) => void;
   onDeleteSavedSearch: (id: string) => void;
@@ -67,6 +71,7 @@ const Sidebar = ({
   labels,
   labelId,
   onLabel,
+  requests,
   savedSearches,
   onSavedSearch,
   onDeleteSavedSearch,
@@ -357,6 +362,15 @@ const Sidebar = ({
           <p className='text-base-content/50 px-2 text-xs'>{_('No collections yet.')}</p>
         )}
       </div>
+
+      <Link
+        href='/later/people'
+        className='hover:bg-base-200 flex items-center gap-2 rounded-lg px-2 py-1.5'
+      >
+        <IoPeopleOutline className='h-4 w-4 shrink-0' />
+        <span className='min-w-0 flex-1 truncate'>{_('People')}</span>
+        {requests > 0 && <span className='badge badge-primary badge-sm'>{requests}</span>}
+      </Link>
 
       {savedSearches.length > 0 && (
         <div className='flex flex-col gap-1'>

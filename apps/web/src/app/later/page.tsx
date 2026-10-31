@@ -37,6 +37,7 @@ import {
   type SavedSearch,
   type SidebarCounts,
 } from '@/libs/later/client';
+import { countFollowRequests } from '@/libs/later/social';
 import type { ItemKind } from '@/libs/later/kind';
 import type { LaterCollection } from '@/libs/later/collections';
 import { TRASH_RETENTION_DAYS } from '@/libs/later/constants';
@@ -71,6 +72,7 @@ const LaterPage = () => {
   const [sort, setSort] = useState<LaterSort>('newest');
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [requests, setRequests] = useState(0);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([]);
   const [pending, setPending] = useState(0);
@@ -105,6 +107,7 @@ const LaterPage = () => {
       const currentLabels = await listLabels();
       setLabels(currentLabels);
       setSavedSearches(await listSavedSearches());
+      if (user) setRequests(await countFollowRequests(user.id));
       if (labelId && !currentLabels.some((l) => l.id === labelId)) setLabelId(null);
       if (scope.kind === 'collection' && !currentCollections.some((c) => c.id === scope.id)) {
         setScope({ kind: 'inbox' });
@@ -113,7 +116,7 @@ const LaterPage = () => {
     } catch (err) {
       setError(err instanceof Error ? err.message : _('Could not load your articles'));
     }
-  }, [scope, search, labelId, kindFilter, sort, maintenance, _]);
+  }, [scope, search, labelId, kindFilter, sort, maintenance, user, _]);
 
   useEffect(() => {
     if (!user) return;
@@ -307,6 +310,7 @@ const LaterPage = () => {
         setLabelId(id);
         setDrawerOpen(false);
       }}
+      requests={requests}
       savedSearches={savedSearches}
       onSavedSearch={applySavedSearch}
       onDeleteSavedSearch={(id) => void removeSavedSearch(id)}
