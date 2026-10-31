@@ -176,6 +176,23 @@ const Reader = () => {
       setLoadingText(false);
     });
 
+  // A page that was filed as a bookmark is fetched again, keeping its text.
+  const saveAsArticle = () =>
+    run(async () => {
+      if (!item) return;
+      setLoadingText(true);
+      try {
+        await refetchItem(item.id, { asArticle: true });
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : _('This page has no text that can be saved.'),
+        );
+      }
+      const fresh = await getItem(item.id);
+      if (fresh) setItem(fresh);
+      setLoadingText(false);
+    });
+
   const restore = () =>
     run(async () => {
       if (!item) return;
@@ -229,20 +246,22 @@ const Reader = () => {
         <div className='flex-1' />
         {item && (
           <>
-            <button
-              type='button'
-              onClick={() => setListOpen(true)}
-              className='btn btn-ghost btn-circle btn-sm indicator'
-              aria-label={_('Highlights')}
-              title={_('Highlights')}
-            >
-              {highlights.highlights.length > 0 && (
-                <span className='indicator-item badge badge-xs badge-primary'>
-                  {highlights.highlights.length}
-                </span>
-              )}
-              <IoCreateOutline className='h-5 w-5' />
-            </button>
+            {item.kind === 'article' && (
+              <button
+                type='button'
+                onClick={() => setListOpen(true)}
+                className='btn btn-ghost btn-circle btn-sm indicator'
+                aria-label={_('Highlights')}
+                title={_('Highlights')}
+              >
+                {highlights.highlights.length > 0 && (
+                  <span className='indicator-item badge badge-xs badge-primary'>
+                    {highlights.highlights.length}
+                  </span>
+                )}
+                <IoCreateOutline className='h-5 w-5' />
+              </button>
+            )}
             <a
               href={item.url}
               target='_blank'
@@ -392,6 +411,44 @@ const Reader = () => {
                 </div>
               </div>
             )}
+            {item.kind !== 'article' && item.fetch_state === 'ready' && (
+              <div className='bg-base-200/60 mb-6 flex flex-col gap-3 rounded-2xl p-4 text-sm'>
+                {item.thumbnail && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={item.thumbnail}
+                    alt=''
+                    referrerPolicy='no-referrer'
+                    className='max-h-60 w-full rounded-lg object-cover'
+                  />
+                )}
+                {item.excerpt && <p>{item.excerpt}</p>}
+                <div className='flex flex-wrap gap-2'>
+                  <a
+                    href={item.url}
+                    target='_blank'
+                    rel='noopener noreferrer'
+                    className='btn btn-primary btn-sm'
+                  >
+                    {_('Open original')}
+                  </a>
+                  {item.kind !== 'document' && (
+                    <button
+                      type='button'
+                      className='btn btn-ghost btn-sm'
+                      onClick={saveAsArticle}
+                      disabled={loadingText}
+                    >
+                      {loadingText ? (
+                        <span className='loading loading-spinner loading-xs' />
+                      ) : (
+                        _('Save as article')
+                      )}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
             <div
               ref={articleRef}
               className='prose prose-lg max-w-none break-words [&_img]:h-auto [&_img]:max-w-full'
@@ -400,7 +457,7 @@ const Reader = () => {
           </article>
         )}
       </main>
-      {item && (
+      {item && item.kind === 'article' && (
         <HighlightPanel
           api={highlights}
           listOpen={listOpen}

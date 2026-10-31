@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createSupabaseAdminClient } from '@/utils/supabase';
 import { validateUserAndToken } from '@/utils/access';
 import { normalizeUrl } from '@/libs/later/fetchPage';
+import { kindFromUrl } from '@/libs/later/kind';
 import { FetchBlockedError } from '@/libs/later/ssrf';
 import { IMPORT_MAX_ENTRIES } from '@/libs/later/constants';
 
@@ -91,6 +92,9 @@ export async function POST(request: Request) {
       content_html: '',
       content_text: '',
       fetch_state: 'pending',
+      // The address already gives some away (PDFs, videos, shops); the rest is
+      // decided when the page is fetched.
+      kind: kindFromUrl(new URL(e.url)) ?? 'article',
       // Every row carries the same columns: a bulk upsert cannot mix rows with and
       // without a column, and an absent one would be stored as NULL.
       saved_at: e.savedAt ?? new Date().toISOString(),

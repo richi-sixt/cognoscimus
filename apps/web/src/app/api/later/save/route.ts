@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseAdminClient } from '@/utils/supabase';
 import { validateUserAndToken } from '@/utils/access';
-import { extractArticle, NoArticleError } from '@/libs/later/extract';
+import { NoArticleError } from '@/libs/later/extract';
 import { fetchPage, FetchPageError, normalizeUrl } from '@/libs/later/fetchPage';
+import { bookmarkFromUrl, ingestPage, type IngestedItem, toRow } from '@/libs/later/ingest';
+import { kindFromUrl } from '@/libs/later/kind';
 import { FetchBlockedError } from '@/libs/later/ssrf';
 import { TRASH_RETENTION_DAYS } from '@/libs/later/constants';
 import { isUuid } from '@/libs/grantsServer';
@@ -36,8 +38,17 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { html, finalUrl } = await fetchPage(normalizeUrl(body.url));
-    const article = extractArticle(html, finalUrl.toString());
+    const target = normalizeUrl(body.url);
+    // Files such as PDFs are kept as bookmarks without being downloaded.
+    let finalUrl = target;
+    let article: IngestedItem;
+    if (kindFromUrl(target) === 'document') {
+      article = bookmarkFromUrl(target, 'document');
+    } else {
+      const page = await fetchPage(target);
+      finalUrl = page.finalUrl;
+      article = ingestPage(page.html, finalUrl.toString());
+    }
 
     const supabase = createSupabaseAdminClient();
 
@@ -72,14 +83,7 @@ export async function POST(request: Request) {
         {
           user_id: user.id,
           url: normalizeUrl(finalUrl.toString()).toString(),
-          title: article.title,
-          author: article.author,
-          site_name: article.siteName,
-          excerpt: article.excerpt,
-          content_html: article.contentHtml,
-          content_text: article.contentText,
-          thumbnail: article.thumbnail,
-          word_count: article.wordCount,
+          ...toRow(article),
           // Saving a link again also takes it out of the trash.
           deleted_at: null,
           // Without a target collection a saved-again link keeps the one it has.

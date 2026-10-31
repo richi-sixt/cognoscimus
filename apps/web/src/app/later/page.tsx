@@ -24,6 +24,7 @@ import {
   type LaterScope,
   type SidebarCounts,
 } from '@/libs/later/client';
+import type { ItemKind } from '@/libs/later/kind';
 import type { LaterCollection } from '@/libs/later/collections';
 import { TRASH_RETENTION_DAYS } from '@/libs/later/constants';
 
@@ -44,6 +45,8 @@ const LaterPage = () => {
   const [scope, setScope] = useState<LaterScope>({ kind: 'inbox' });
   const [search, setSearch] = useState('');
   const [labelId, setLabelId] = useState<string | null>(null);
+  const [kindFilter, setKindFilter] = useState<ItemKind | null>(null);
+  const [maintenance, setMaintenance] = useState<'failed' | 'unlabeled' | null>(null);
   const [labels, setLabels] = useState<LaterLabel[]>([]);
   const [collections, setCollections] = useState<LaterCollection[]>([]);
   const [counts, setCounts] = useState<SidebarCounts | null>(null);
@@ -67,7 +70,16 @@ const LaterPage = () => {
       // Collections come first: a collection scope includes its sub-collections.
       const currentCollections = await listCollections();
       setCollections(currentCollections);
-      setItems(await listItems({ scope, collections: currentCollections, search, labelId }));
+      setItems(
+        await listItems({
+          scope,
+          collections: currentCollections,
+          search,
+          labelId,
+          kind: kindFilter,
+          maintenance,
+        }),
+      );
       setCounts(await getSidebarCounts());
       setPending(await countPending());
       // Labels disappear with their last article, so the list is refreshed too.
@@ -81,7 +93,7 @@ const LaterPage = () => {
     } catch (err) {
       setError(err instanceof Error ? err.message : _('Could not load your articles'));
     }
-  }, [scope, search, labelId, _]);
+  }, [scope, search, labelId, kindFilter, maintenance, _]);
 
   useEffect(() => {
     if (!user) return;
@@ -161,6 +173,27 @@ const LaterPage = () => {
     }
   })();
   const activeLabel = labels.find((l) => l.id === labelId);
+
+  const kindFilters: {
+    id: string;
+    label: string;
+    kind: ItemKind | null;
+    maintenance: 'failed' | 'unlabeled' | null;
+  }[] = [
+    { id: 'all', label: _('All types'), kind: null, maintenance: null },
+    { id: 'article', label: _('Articles'), kind: 'article', maintenance: null },
+    { id: 'link', label: _('Links'), kind: 'link', maintenance: null },
+    { id: 'video', label: _('Videos'), kind: 'video', maintenance: null },
+    { id: 'document', label: _('Documents'), kind: 'document', maintenance: null },
+    { id: 'unlabeled', label: _('No label'), kind: null, maintenance: 'unlabeled' },
+    { id: 'failed', label: _('Broken links'), kind: null, maintenance: 'failed' },
+  ];
+  const kindLabel: Record<ItemKind, string | null> = {
+    article: null,
+    link: _('link'),
+    video: _('video'),
+    document: _('document'),
+  };
 
   const sidebar = (
     <Sidebar
@@ -303,6 +336,26 @@ const LaterPage = () => {
             />
           </div>
 
+          <div className='flex flex-wrap gap-1.5' role='group' aria-label={_('Filter by type')}>
+            {kindFilters.map((f) => {
+              const active = f.kind === kindFilter && f.maintenance === maintenance;
+              return (
+                <button
+                  key={f.id}
+                  type='button'
+                  onClick={() => {
+                    setKindFilter(f.kind);
+                    setMaintenance(f.maintenance);
+                  }}
+                  className={`btn btn-xs ${active ? 'btn-primary' : 'btn-ghost bg-base-200/60'}`}
+                  aria-pressed={active}
+                >
+                  {f.label}
+                </button>
+              );
+            })}
+          </div>
+
           {scope.kind === 'trash' && (
             <div className='text-base-content/60 flex items-center justify-between gap-3 text-sm'>
               <span>
@@ -326,7 +379,7 @@ const LaterPage = () => {
           {items === null && !error && <span className='loading loading-dots loading-md' />}
           {items?.length === 0 && (
             <p className='text-base-content/60 text-sm'>
-              {search || labelId
+              {search || labelId || kindFilter || maintenance
                 ? _('No articles match.')
                 : scope.kind === 'trash'
                   ? _('The trash is empty.')
@@ -363,8 +416,11 @@ const LaterPage = () => {
                           item.state === 'archived' && scope.kind !== 'archive'
                             ? _('archived')
                             : null,
+                          kindLabel[item.kind],
                           item.site_name ?? hostOf(item.url),
-                          `${Math.max(1, Math.round(item.word_count / 220))} min`,
+                          item.kind === 'article'
+                            ? `${Math.max(1, Math.round(item.word_count / 220))} min`
+                            : null,
                           item.progress > 0 && item.state !== 'archived'
                             ? `${Math.round(item.progress * 100)}%`
                             : null,

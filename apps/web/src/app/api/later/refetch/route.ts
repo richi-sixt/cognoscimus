@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseAdminClient } from '@/utils/supabase';
 import { validateUserAndToken } from '@/utils/access';
-import { extractArticle, NoArticleError } from '@/libs/later/extract';
+import { NoArticleError } from '@/libs/later/extract';
 import { fetchPage, FetchPageError, normalizeUrl } from '@/libs/later/fetchPage';
+import { bookmarkFromUrl, ingestPage, type IngestedItem, toRow } from '@/libs/later/ingest';
+import { kindFromUrl } from '@/libs/later/kind';
 import { FetchBlockedError } from '@/libs/later/ssrf';
 import { isUuid } from '@/libs/grantsServer';
 
@@ -14,9 +16,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
-  let body: { id?: unknown };
+  let body: { id?: unknown; asArticle?: unknown };
   try {
-    body = (await request.json()) as { id?: unknown };
+    body = (await request.json()) as { id?: unknown; asArticle?: unknown };
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
@@ -44,19 +46,20 @@ export async function POST(request: Request) {
       : supabase.from('later_items').update({ fetch_state: 'failed' }).eq('id', item.id);
 
   try {
-    const { html, finalUrl } = await fetchPage(normalizeUrl(item.url as string));
-    const article = extractArticle(html, finalUrl.toString());
+    const target = normalizeUrl(item.url as string);
+    let ingested: IngestedItem;
+    if (kindFromUrl(target) === 'document' && !body.asArticle) {
+      // Files such as PDFs stay bookmarks and are not downloaded.
+      ingested = { ...bookmarkFromUrl(target, 'document'), title: item.title as string };
+    } else {
+      const { html, finalUrl } = await fetchPage(target);
+      ingested = ingestPage(html, finalUrl.toString(), { asArticle: body.asArticle === true });
+    }
     const { error } = await supabase
       .from('later_items')
       .update({
-        title: article.title || item.title,
-        author: article.author,
-        site_name: article.siteName,
-        excerpt: article.excerpt,
-        content_html: article.contentHtml,
-        content_text: article.contentText,
-        thumbnail: article.thumbnail,
-        word_count: article.wordCount,
+        ...toRow(ingested),
+        title: ingested.title || item.title,
         fetch_state: 'ready',
       })
       .eq('id', item.id);

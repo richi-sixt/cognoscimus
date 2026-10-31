@@ -4,6 +4,7 @@ import { supabase } from '@/utils/supabase';
 import { FETCH_CONCURRENCY, IMPORT_BATCH_SIZE, TRASH_RETENTION_DAYS } from './constants';
 import { type LaterCollection, collectionWithDescendants } from './collections';
 import type { ImportEntry } from './importRaindrop';
+import type { ItemKind } from './kind';
 
 export type LaterState = 'unread' | 'reading' | 'archived';
 export type FetchState = 'ready' | 'pending' | 'failed';
@@ -23,6 +24,7 @@ export interface LaterItem {
   deleted_at: string | null;
   fetch_state: FetchState;
   collection_id: string | null;
+  kind: ItemKind;
 }
 
 export interface LaterItemFull extends LaterItem {
@@ -46,7 +48,7 @@ export class LaterApiError extends Error {
 }
 
 const SUMMARY_COLUMNS =
-  'id, url, title, author, site_name, excerpt, thumbnail, word_count, state, progress, saved_at, deleted_at, fetch_state, collection_id';
+  'id, url, title, author, site_name, excerpt, thumbnail, word_count, state, progress, saved_at, deleted_at, fetch_state, collection_id, kind';
 
 export const saveArticle = async (url: string, collectionId?: string | null): Promise<string> => {
   const token = await getAccessToken();
@@ -78,6 +80,9 @@ export const listItems = async (options: {
   collections?: LaterCollection[];
   search?: string;
   labelId?: string | null;
+  kind?: ItemKind | null;
+  /** Housekeeping views: links that could not be loaded, or items without a label. */
+  maintenance?: 'failed' | 'unlabeled' | null;
 }): Promise<LaterItem[]> => {
   const { scope } = options;
   let ids: string[] | null = null;
@@ -91,7 +96,17 @@ export const listItems = async (options: {
     if (ids.length === 0) return [];
   }
 
-  let query = supabase.from('later_items').select(SUMMARY_COLUMNS);
+  // An embedded join that must come back empty finds the items without a label.
+  let query = supabase
+    .from('later_items')
+    .select(
+      options.maintenance === 'unlabeled'
+        ? `${SUMMARY_COLUMNS}, later_item_labels(label_id)`
+        : SUMMARY_COLUMNS,
+    );
+  if (options.kind) query = query.eq('kind', options.kind);
+  if (options.maintenance === 'failed') query = query.eq('fetch_state', 'failed');
+  if (options.maintenance === 'unlabeled') query = query.is('later_item_labels', null);
   if (scope.kind === 'trash') {
     query = query.not('deleted_at', 'is', null);
   } else {
@@ -114,7 +129,8 @@ export const listItems = async (options: {
     .order(scope.kind === 'trash' ? 'deleted_at' : 'saved_at', { ascending: false })
     .limit(200);
   if (error) throw error;
-  return (data ?? []) as LaterItem[];
+  // The select string varies, so the client cannot infer the row type.
+  return (data ?? []) as unknown as LaterItem[];
 };
 
 export const getItem = async (id: string): Promise<LaterItemFull | null> => {
@@ -251,8 +267,12 @@ export const importEntries = async (
   return total;
 };
 
-export const refetchItem = async (id: string): Promise<void> => {
-  await postJson<{ id: string }>('/refetch', { id });
+/** `asArticle` keeps the readable text of a page that was filed as a bookmark. */
+export const refetchItem = async (
+  id: string,
+  options: { asArticle?: boolean } = {},
+): Promise<void> => {
+  await postJson<{ id: string }>('/refetch', { id, asArticle: options.asArticle });
 };
 
 export const countPending = async (): Promise<number> => {
