@@ -1911,5 +1911,17 @@
   "No one found with this username.": "Mit diesem Benutzernamen wurde niemand gefunden.",
   "This article cannot be sent.": "Dieser Artikel kann nicht gesendet werden.",
   "Send to @username": "An @benutzername senden",
-  "Send": "Senden"
+  "Send": "Senden",
+  "Article": "Artikel",
+  "Link": "Link",
+  "Video": "Video",
+  "Document": "Dokument",
+  "Explore": "Entdecken",
+  "Whose articles": "Von wem",
+  "Everyone I follow": "Alle, denen ich folge",
+  "Open source": "Quelle öffnen",
+  "Saved to your library.": "In deiner Bibliothek gespeichert.",
+  "Already in your library.": "Schon in deiner Bibliothek.",
+  "Add a note: why you saved this, what it is about": "Notiz hinzufügen: warum gespeichert, worum es geht",
+  "Followers and people you send this to can read the note": "Follower und Empfänger können die Notiz lesen"
 }

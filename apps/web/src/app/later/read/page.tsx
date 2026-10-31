@@ -16,7 +16,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useAppRouter } from '@/hooks/useAppRouter';
 import { useTheme } from '@/hooks/useTheme';
 import { useTranslation } from '@/hooks/useTranslation';
-import { sendArticle } from '@/libs/later/social';
+import { type FollowedPerson, listFollowing, sendArticle } from '@/libs/later/social';
 import {
   createLabel,
   deleteItem,
@@ -27,6 +27,7 @@ import {
   refetchItem,
   restoreItem,
   setItemCollection,
+  setItemNote,
   setItemVisibility,
   setItemLabel,
   setItemProgress,
@@ -210,6 +211,30 @@ const Reader = () => {
       setItem({ ...item, collection_id: target });
     });
 
+  const [noteDraft, setNoteDraft] = useState('');
+  const [followed, setFollowed] = useState<FollowedPerson[]>([]);
+  useEffect(() => {
+    if (user)
+      void listFollowing()
+        .then(setFollowed)
+        .catch(() => undefined);
+  }, [user]);
+  useEffect(() => setNoteDraft(item?.note ?? ''), [item?.id, item?.note]);
+
+  const saveNote = () =>
+    run(async () => {
+      if (!item || noteDraft.trim() === (item.note ?? '')) return;
+      await setItemNote(item.id, { note: noteDraft });
+      setItem({ ...item, note: noteDraft.trim() || null });
+    });
+
+  const toggleShareNote = () =>
+    run(async () => {
+      if (!item) return;
+      await setItemNote(item.id, { shareNote: !item.share_note });
+      setItem({ ...item, share_note: !item.share_note });
+    });
+
   const [sendTo, setSendTo] = useState('');
   const [sentNote, setSentNote] = useState<string | null>(null);
   const send = (event: FormEvent) => {
@@ -386,14 +411,46 @@ const Reader = () => {
               <span>{_('Followers can read this (title and text only)')}</span>
             </label>
 
+            <div className='mb-3 flex flex-col gap-1 text-sm'>
+              <textarea
+                value={noteDraft}
+                onChange={(e) => setNoteDraft(e.target.value)}
+                onBlur={() => void saveNote()}
+                maxLength={2000}
+                rows={2}
+                placeholder={_('Add a note: why you saved this, what it is about')}
+                aria-label={_('Note')}
+                className='textarea textarea-bordered w-full'
+              />
+              <label className='flex items-center gap-2'>
+                <input
+                  type='checkbox'
+                  className='checkbox checkbox-xs'
+                  checked={item.share_note}
+                  onChange={toggleShareNote}
+                />
+                <span className='text-base-content/70'>
+                  {_('Followers and people you send this to can read the note')}
+                </span>
+              </label>
+            </div>
+
             <form onSubmit={send} className='mb-3 flex flex-wrap items-center gap-2 text-sm'>
               <input
                 value={sendTo}
                 onChange={(e) => setSendTo(e.target.value)}
+                list='later-followed'
                 placeholder={_('Send to @username')}
                 aria-label={_('Send to @username')}
                 className='input input-bordered input-sm w-44'
               />
+              <datalist id='later-followed'>
+                {followed.map((p) => (
+                  <option key={p.user_id} value={p.handle}>
+                    {p.display_name}
+                  </option>
+                ))}
+              </datalist>
               <button type='submit' className='btn btn-sm' disabled={!sendTo.trim()}>
                 {_('Send')}
               </button>

@@ -7,7 +7,7 @@ import {
   IoArchiveOutline,
   IoChevronDown,
   IoClose,
-  IoBookOutline,
+  IoCompassOutline,
   IoPeopleOutline,
   IoSearchOutline,
   IoChevronForward,
@@ -394,11 +394,11 @@ const Sidebar = ({
         {requests > 0 && <span className='badge badge-primary badge-sm'>{requests}</span>}
       </Link>
       <Link
-        href='/later/following'
+        href='/later/explore'
         className='hover:bg-base-200 flex items-center gap-2 rounded-lg px-2 py-1.5'
       >
-        <IoBookOutline className='h-4 w-4 shrink-0' />
-        <span className='min-w-0 flex-1 truncate'>{_('Following')}</span>
+        <IoCompassOutline className='h-4 w-4 shrink-0' />
+        <span className='min-w-0 flex-1 truncate'>{_('Explore')}</span>
       </Link>
 
       {savedSearches.length > 0 && (

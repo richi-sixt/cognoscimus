@@ -6,6 +6,7 @@ import { IoArrowBack } from 'react-icons/io5';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/hooks/useTheme';
 import { useTranslation } from '@/hooks/useTranslation';
+import KindBadge from '../components/KindBadge';
 import {
   answerFollower,
   answerShare,
@@ -177,25 +178,27 @@ const PeoplePage = () => {
                   {incoming.map((s) => (
                     <li key={s.id} className='flex items-center justify-between gap-3 px-4 py-3'>
                       <span className='min-w-0'>
-                        <span className='block truncate'>{s.title}</span>
+                        <span className='flex items-center gap-2'>
+                          <KindBadge kind={s.kind} />
+                          <span className='truncate'>{s.title}</span>
+                        </span>
                         <span className='text-base-content/50 block text-xs'>
                           {_('from @{{handle}}', { handle: s.sender_handle })}
                         </span>
                       </span>
                       <span className='flex shrink-0 gap-1'>
-                        <button
-                          type='button'
+                        <a
+                          href={`/later/explore/read?id=${s.id}&offer=1`}
                           className='btn btn-primary btn-xs'
-                          onClick={() => void run(() => answerShare(s.id, true))}
                         >
-                          {_('Add to my library')}
-                        </button>
+                          {_('Open')}
+                        </a>
                         <button
                           type='button'
                           className='btn btn-ghost btn-xs'
                           onClick={() => void run(() => answerShare(s.id, false))}
                         >
-                          {_('Decline')}
+                          {_('Delete')}
                         </button>
                       </span>
                     </li>

@@ -27,6 +27,9 @@ export interface LaterItem {
   visibility: ItemVisibility;
   /** Handle of the person who sent this article, when it arrived as a share. */
   shared_from: string | null;
+  /** The owner's own context for the item; followers read it unless share_note is off. */
+  note: string | null;
+  share_note: boolean;
   kind: ItemKind;
 }
 
@@ -51,7 +54,7 @@ export class LaterApiError extends Error {
 }
 
 const SUMMARY_COLUMNS =
-  'id, url, title, author, site_name, excerpt, thumbnail, word_count, state, progress, saved_at, deleted_at, fetch_state, collection_id, kind, visibility, shared_from';
+  'id, url, title, author, site_name, excerpt, thumbnail, word_count, state, progress, saved_at, deleted_at, fetch_state, collection_id, kind, visibility, shared_from, note, share_note';
 
 export type ItemVisibility = 'private' | 'followers';
 
@@ -370,6 +373,17 @@ export const createCollection = async (
 
 export const setCollectionShared = async (id: string, shared: boolean) => {
   const { error } = await supabase.from('later_collections').update({ shared }).eq('id', id);
+  if (error) throw error;
+};
+
+export const setItemNote = async (
+  itemId: string,
+  fields: { note?: string | null; shareNote?: boolean },
+) => {
+  const update: { note?: string | null; share_note?: boolean } = {};
+  if (fields.note !== undefined) update.note = fields.note?.trim() ? fields.note.trim() : null;
+  if (fields.shareNote !== undefined) update.share_note = fields.shareNote;
+  const { error } = await supabase.from('later_items').update(update).eq('id', itemId);
   if (error) throw error;
 };
 
