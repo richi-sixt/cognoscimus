@@ -26,6 +26,7 @@ import {
   refetchItem,
   restoreItem,
   setItemCollection,
+  setItemVisibility,
   setItemLabel,
   setItemProgress,
   setItemState,
@@ -208,6 +209,14 @@ const Reader = () => {
       setItem({ ...item, collection_id: target });
     });
 
+  const toggleShared = () =>
+    run(async () => {
+      if (!item) return;
+      const visibility = item.visibility === 'followers' ? 'private' : 'followers';
+      await setItemVisibility(item.id, visibility);
+      setItem({ ...item, visibility });
+    });
+
   const toggleLabel = (labelId: string) =>
     run(async () => {
       if (!item) return;
@@ -338,6 +347,16 @@ const Reader = () => {
                   </option>
                 ))}
               </select>
+            </label>
+
+            <label className='mb-3 flex items-center gap-2 text-sm'>
+              <input
+                type='checkbox'
+                className='checkbox checkbox-sm'
+                checked={item.visibility === 'followers'}
+                onChange={toggleShared}
+              />
+              <span>{_('Followers can read this (title and text only)')}</span>
             </label>
 
             <div className='mb-6 flex flex-wrap items-center gap-2'>

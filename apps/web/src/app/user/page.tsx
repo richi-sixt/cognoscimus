@@ -11,6 +11,7 @@ import { useThemeStore } from '@/store/themeStore';
 import { useQuotaStats } from '@/hooks/useQuotaStats';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useUserActions } from '@/hooks/useUserActions';
+import { getMyProfile, type Profile } from '@/libs/later/social';
 import { navigateBackFromProfile } from '@/utils/nav';
 import { Toast } from '@/components/Toast';
 import ProfileHeader from './components/Header';
@@ -18,6 +19,7 @@ import UserInfo from './components/UserInfo';
 import UsageStats from './components/UsageStats';
 import AccountActions from './components/AccountActions';
 import { MfaSection } from './components/MfaSection';
+import { ProfileSection } from './components/ProfileSection';
 import StorageManager from './components/StorageManager';
 import SharedBooksSection from './components/SharedBooksSection';
 import { SyncPassphraseSection } from './components/SyncPassphraseSection';
@@ -36,6 +38,14 @@ const ProfilePage = () => {
   const [showSyncManager, setShowSyncManager] = useState(
     () => searchParams?.get('section') === 'sync',
   );
+
+  const [profile, setProfile] = useState<Profile | null>(null);
+  useEffect(() => {
+    if (user)
+      void getMyProfile(user.id)
+        .then(setProfile)
+        .catch(() => undefined);
+  }, [user]);
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -117,7 +127,10 @@ const ProfilePage = () => {
   }
 
   const avatarUrl = user?.user_metadata?.['picture'] || user?.user_metadata?.['avatar_url'];
-  const userFullName = user?.user_metadata?.['full_name'] || '-';
+  const userFullName =
+    profile?.display_name ||
+    user?.user_metadata?.['full_name'] ||
+    (profile ? `@${profile.handle}` : '');
   const userEmail = user?.email || '';
 
   return (
@@ -160,6 +173,7 @@ const ProfilePage = () => {
                 </div>
               ) : (
                 <div className='flex flex-col gap-y-8 px-6'>
+                  <ProfileSection onSaved={setProfile} />
                   <MfaSection />
                   <AccountActions
                     onLogout={handleLogout}

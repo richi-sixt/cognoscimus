@@ -7,6 +7,7 @@ import {
   IoArchiveOutline,
   IoChevronDown,
   IoClose,
+  IoBookOutline,
   IoPeopleOutline,
   IoSearchOutline,
   IoChevronForward,
@@ -25,6 +26,7 @@ import {
   deleteCollection,
   moveCollection,
   renameCollection,
+  setCollectionShared,
   type LaterLabel,
   type LaterScope,
   type SavedSearch,
@@ -116,6 +118,15 @@ const Sidebar = ({
         await renameCollection(current.id, name);
         await onChanged();
       }
+    } catch (err) {
+      fail(err);
+    }
+  };
+
+  const toggleShared = async (node: { id: string; shared?: boolean }) => {
+    try {
+      await setCollectionShared(node.id, !node.shared);
+      await onChanged();
     } catch (err) {
       fail(err);
     }
@@ -270,6 +281,12 @@ const Sidebar = ({
             >
               <IoFolderOutline className='h-4 w-4 shrink-0' />
               <span className='min-w-0 flex-1 truncate'>{node.name}</span>
+              {node.shared && (
+                <IoPeopleOutline
+                  className='text-base-content/50 h-3.5 w-3.5 shrink-0'
+                  aria-label={_('Shared with followers')}
+                />
+              )}
               <span className='text-base-content/50 text-xs'>
                 {subtreeCount(node, counts?.collections ?? {})}
               </span>
@@ -306,6 +323,11 @@ const Sidebar = ({
                 <li>
                   <button type='button' onClick={() => setMoving(node.id)}>
                     {_('Move…')}
+                  </button>
+                </li>
+                <li>
+                  <button type='button' onClick={() => void toggleShared(node)}>
+                    {node.shared ? _('Stop sharing with followers') : _('Share with followers')}
                   </button>
                 </li>
                 <li>
@@ -370,6 +392,13 @@ const Sidebar = ({
         <IoPeopleOutline className='h-4 w-4 shrink-0' />
         <span className='min-w-0 flex-1 truncate'>{_('People')}</span>
         {requests > 0 && <span className='badge badge-primary badge-sm'>{requests}</span>}
+      </Link>
+      <Link
+        href='/later/following'
+        className='hover:bg-base-200 flex items-center gap-2 rounded-lg px-2 py-1.5'
+      >
+        <IoBookOutline className='h-4 w-4 shrink-0' />
+        <span className='min-w-0 flex-1 truncate'>{_('Following')}</span>
       </Link>
 
       {savedSearches.length > 0 && (

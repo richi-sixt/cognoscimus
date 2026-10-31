@@ -2,6 +2,8 @@ export interface LaterCollection {
   id: string;
   name: string;
   parent_id: string | null;
+  /** Followers can read the articles in a shared collection and below it. */
+  shared?: boolean;
 }
 
 export interface CollectionNode extends LaterCollection {

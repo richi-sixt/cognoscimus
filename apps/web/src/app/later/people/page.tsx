@@ -10,13 +10,10 @@ import {
   answerFollower,
   followByHandle,
   getMyProfile,
-  HANDLE_PATTERN,
   listConnections,
-  normalizeHandle,
   type Person,
   type Profile,
   removeFollower,
-  saveMyProfile,
   unfollow,
 } from '@/libs/later/social';
 
@@ -31,9 +28,6 @@ const PeoplePage = () => {
   const [mounted, setMounted] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loaded, setLoaded] = useState(false);
-  const [handle, setHandle] = useState('');
-  const [displayName, setDisplayName] = useState('');
-  const [discoverable, setDiscoverable] = useState(false);
   const [find, setFind] = useState('');
   const [requests, setRequests] = useState<Person[]>([]);
   const [following, setFollowing] = useState<Person[]>([]);
@@ -53,9 +47,6 @@ const PeoplePage = () => {
       const mine = await getMyProfile(user.id);
       setProfile(mine);
       if (mine) {
-        setHandle(mine.handle);
-        setDisplayName(mine.display_name);
-        setDiscoverable(mine.discoverable);
         setRequests(await listConnections(user.id, 'pending', 'followers'));
         setFollowing(await listConnections(user.id, 'accepted', 'following'));
         setPendingOut(await listConnections(user.id, 'pending', 'following'));
@@ -82,28 +73,6 @@ const PeoplePage = () => {
     } catch (err) {
       setError(err instanceof Error ? err.message : _('Something went wrong'));
     }
-  };
-
-  const saveProfile = (event: FormEvent) => {
-    event.preventDefault();
-    if (!user) return;
-    const clean = normalizeHandle(handle);
-    if (!HANDLE_PATTERN.test(clean)) {
-      setError(_('A handle has 3 to 30 letters, numbers or hyphens.'));
-      return;
-    }
-    void run(async () => {
-      try {
-        await saveMyProfile(user.id, { handle: clean, displayName, discoverable });
-        setMessage(_('Profile saved.'));
-      } catch (err) {
-        // 23505 is the unique violation on the handle.
-        if ((err as { code?: string }).code === '23505') {
-          throw new Error(_('This handle is already taken.'));
-        }
-        throw err;
-      }
-    });
   };
 
   const sendRequest = (event: FormEvent) => {
@@ -155,49 +124,27 @@ const PeoplePage = () => {
         {message && <p className='text-success text-sm'>{message}</p>}
         {!loaded && <span className='loading loading-dots loading-md' />}
 
-        {loaded && (
-          <form
-            onSubmit={saveProfile}
-            className='bg-base-200/60 flex flex-col gap-3 rounded-2xl p-4'
-          >
-            <h2 className='font-medium'>{_('Your profile')}</h2>
-            <label className='flex flex-col gap-1 text-sm'>
-              <span className='text-base-content/60'>{_('Handle')}</span>
-              <input
-                value={handle}
-                onChange={(e) => setHandle(e.target.value)}
-                maxLength={31}
-                placeholder='your-name'
-                className='input input-bordered input-sm'
-              />
-            </label>
-            <label className='flex flex-col gap-1 text-sm'>
-              <span className='text-base-content/60'>{_('Display name')}</span>
-              <input
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                maxLength={60}
-                className='input input-bordered input-sm'
-              />
-            </label>
-            <label className='flex cursor-pointer items-start gap-2 text-sm'>
-              <input
-                type='checkbox'
-                checked={discoverable}
-                onChange={(e) => setDiscoverable(e.target.checked)}
-                className='checkbox checkbox-sm mt-0.5'
-              />
-              <span>
-                {_('Others can find me by my exact handle and ask to follow me')}
-                <span className='text-base-content/60 block text-xs'>
-                  {_('Your e-mail address is never shown. Off by default.')}
-                </span>
+        {loaded && !profile && (
+          <div className='bg-base-200/60 flex flex-col gap-3 rounded-2xl p-4 text-sm'>
+            <p>{_('Choose a username first. It is shared with the library.')}</p>
+            <a href='/user?redirect=%2Flater%2Fpeople' className='btn btn-primary btn-sm w-fit'>
+              {_('Choose a username')}
+            </a>
+          </div>
+        )}
+
+        {profile && (
+          <p className='text-base-content/70 text-sm'>
+            {_('You are @{{handle}}.', { handle: profile.handle })}{' '}
+            <a href='/user?redirect=%2Flater%2Fpeople' className='link'>
+              {_('Edit profile')}
+            </a>
+            {!profile.discoverable && (
+              <span className='block'>
+                {_('Others cannot find you yet. Switch it on in your profile.')}
               </span>
-            </label>
-            <button type='submit' className='btn btn-primary btn-sm w-fit'>
-              {_('Save')}
-            </button>
-          </form>
+            )}
+          </p>
         )}
 
         {profile && (

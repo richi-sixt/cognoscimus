@@ -120,3 +120,44 @@ export const unfollow = async (userId: string, followeeId: string) => {
     .eq('followee_id', followeeId);
   if (error) throw error;
 };
+
+/** A person the caller follows, with how many articles they share. */
+export interface FollowedPerson extends Person {
+  shared_count: number;
+}
+
+export interface SharedItem {
+  id: string;
+  title: string;
+  word_count: number;
+  saved_at: string;
+}
+
+export interface SharedArticle {
+  id: string;
+  owner_id: string;
+  title: string;
+  content_html: string;
+  saved_at: string;
+}
+
+export const listFollowing = async (): Promise<FollowedPerson[]> => {
+  const { data, error } = await supabase.rpc('later_following_overview');
+  if (error) throw error;
+  return ((data ?? []) as (Person & { shared_count: number | string })[]).map((p) => ({
+    ...p,
+    shared_count: Number(p.shared_count),
+  }));
+};
+
+export const listSharedItems = async (ownerId: string): Promise<SharedItem[]> => {
+  const { data, error } = await supabase.rpc('later_shared_items', { p_owner: ownerId });
+  if (error) throw error;
+  return (data ?? []) as SharedItem[];
+};
+
+export const getSharedArticle = async (id: string): Promise<SharedArticle | null> => {
+  const { data, error } = await supabase.rpc('later_shared_item', { p_id: id });
+  if (error) throw error;
+  return ((data ?? []) as SharedArticle[])[0] ?? null;
+};

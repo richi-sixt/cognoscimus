@@ -24,6 +24,7 @@ export interface LaterItem {
   deleted_at: string | null;
   fetch_state: FetchState;
   collection_id: string | null;
+  visibility: ItemVisibility;
   kind: ItemKind;
 }
 
@@ -48,7 +49,9 @@ export class LaterApiError extends Error {
 }
 
 const SUMMARY_COLUMNS =
-  'id, url, title, author, site_name, excerpt, thumbnail, word_count, state, progress, saved_at, deleted_at, fetch_state, collection_id, kind';
+  'id, url, title, author, site_name, excerpt, thumbnail, word_count, state, progress, saved_at, deleted_at, fetch_state, collection_id, kind, visibility';
+
+export type ItemVisibility = 'private' | 'followers';
 
 export const saveArticle = async (url: string, collectionId?: string | null): Promise<string> => {
   const token = await getAccessToken();
@@ -342,7 +345,9 @@ export const getSidebarCounts = async (): Promise<SidebarCounts> => {
 };
 
 export const listCollections = async (): Promise<LaterCollection[]> => {
-  const { data, error } = await supabase.from('later_collections').select('id, name, parent_id');
+  const { data, error } = await supabase
+    .from('later_collections')
+    .select('id, name, parent_id, shared');
   if (error) throw error;
   return (data ?? []) as LaterCollection[];
 };
@@ -359,6 +364,16 @@ export const createCollection = async (
     .single();
   if (error) throw error;
   return data as LaterCollection;
+};
+
+export const setCollectionShared = async (id: string, shared: boolean) => {
+  const { error } = await supabase.from('later_collections').update({ shared }).eq('id', id);
+  if (error) throw error;
+};
+
+export const setItemVisibility = async (itemId: string, visibility: ItemVisibility) => {
+  const { error } = await supabase.from('later_items').update({ visibility }).eq('id', itemId);
+  if (error) throw error;
 };
 
 export const renameCollection = async (id: string, name: string) => {
