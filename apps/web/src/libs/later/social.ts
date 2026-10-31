@@ -86,7 +86,8 @@ export const countFollowRequests = async (userId: string): Promise<number> => {
     .eq('followee_id', userId)
     .eq('status', 'pending');
   if (error) throw error;
-  return count ?? 0;
+  // Articles sent to the caller wait for an answer just like follow requests.
+  return (count ?? 0) + (await listIncomingShares()).length;
 };
 
 /** Answers a request or changes a follower's status; the caller is the followed person. */
@@ -160,4 +161,37 @@ export const getSharedArticle = async (id: string): Promise<SharedArticle | null
   const { data, error } = await supabase.rpc('later_shared_item', { p_id: id });
   if (error) throw error;
   return ((data ?? []) as SharedArticle[])[0] ?? null;
+};
+
+export type SendResult = 'sent' | 'profile_required' | 'not_found' | 'no_article';
+
+/** Offers one of the caller's articles to the discoverable profile with this handle. */
+export const sendArticle = async (itemId: string, handle: string): Promise<SendResult> => {
+  const { data, error } = await supabase.rpc('later_send', {
+    p_item: itemId,
+    p_handle: normalizeHandle(handle),
+  });
+  if (error) throw error;
+  return data as SendResult;
+};
+
+export interface IncomingShare {
+  id: string;
+  title: string;
+  word_count: number;
+  created_at: string;
+  sender_handle: string;
+  sender_name: string;
+}
+
+export const listIncomingShares = async (): Promise<IncomingShare[]> => {
+  const { data, error } = await supabase.rpc('later_incoming_shares');
+  if (error) throw error;
+  return (data ?? []) as IncomingShare[];
+};
+
+/** Accepting copies the article into the library; declining just deletes the offer. */
+export const answerShare = async (id: string, accept: boolean) => {
+  const { error } = await supabase.rpc('later_answer_share', { p_id: id, p_accept: accept });
+  if (error) throw error;
 };

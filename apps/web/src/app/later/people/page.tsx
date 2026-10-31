@@ -8,6 +8,9 @@ import { useTheme } from '@/hooks/useTheme';
 import { useTranslation } from '@/hooks/useTranslation';
 import {
   answerFollower,
+  answerShare,
+  type IncomingShare,
+  listIncomingShares,
   followByHandle,
   getMyProfile,
   listConnections,
@@ -33,6 +36,7 @@ const PeoplePage = () => {
   const [following, setFollowing] = useState<Person[]>([]);
   const [pendingOut, setPendingOut] = useState<Person[]>([]);
   const [followers, setFollowers] = useState<Person[]>([]);
+  const [incoming, setIncoming] = useState<IncomingShare[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,6 +51,7 @@ const PeoplePage = () => {
       const mine = await getMyProfile(user.id);
       setProfile(mine);
       if (mine) {
+        setIncoming(await listIncomingShares());
         setRequests(await listConnections(user.id, 'pending', 'followers'));
         setFollowing(await listConnections(user.id, 'accepted', 'following'));
         setPendingOut(await listConnections(user.id, 'pending', 'following'));
@@ -164,6 +169,40 @@ const PeoplePage = () => {
                 </button>
               </div>
             </form>
+
+            {incoming.length > 0 && (
+              <section className='flex flex-col gap-2'>
+                <h2 className='font-medium'>{_('Sent to you')}</h2>
+                <ul className='bg-base-200/60 divide-base-content/5 divide-y overflow-hidden rounded-2xl'>
+                  {incoming.map((s) => (
+                    <li key={s.id} className='flex items-center justify-between gap-3 px-4 py-3'>
+                      <span className='min-w-0'>
+                        <span className='block truncate'>{s.title}</span>
+                        <span className='text-base-content/50 block text-xs'>
+                          {_('from @{{handle}}', { handle: s.sender_handle })}
+                        </span>
+                      </span>
+                      <span className='flex shrink-0 gap-1'>
+                        <button
+                          type='button'
+                          className='btn btn-primary btn-xs'
+                          onClick={() => void run(() => answerShare(s.id, true))}
+                        >
+                          {_('Add to my library')}
+                        </button>
+                        <button
+                          type='button'
+                          className='btn btn-ghost btn-xs'
+                          onClick={() => void run(() => answerShare(s.id, false))}
+                        >
+                          {_('Decline')}
+                        </button>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
 
             {list(_('Requests to follow you'), requests, (p) => (
               <>

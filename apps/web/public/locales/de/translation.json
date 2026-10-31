@@ -1902,5 +1902,14 @@
   "You do not follow anyone yet. Ask someone to follow on the People page.": "Du folgst noch niemandem. Frage auf der Seite «Personen» jemanden an.",
   "{{count}} shared": "{{count}} geteilt",
   "Nothing shared yet.": "Noch nichts geteilt.",
-  "{{count}} words": "{{count}} Wörter"
+  "{{count}} words": "{{count}} Wörter",
+  "Sent to you": "An dich gesendet",
+  "from @{{handle}}": "von @{{handle}}",
+  "Add to my library": "In meine Bibliothek",
+  "Sent. It reaches their library once they accept.": "Gesendet. Der Artikel landet in der Bibliothek, sobald die Person annimmt.",
+  "Choose a username first in your profile.": "Wähle zuerst im Profil einen Benutzernamen.",
+  "No one found with this username.": "Mit diesem Benutzernamen wurde niemand gefunden.",
+  "This article cannot be sent.": "Dieser Artikel kann nicht gesendet werden.",
+  "Send to @username": "An @benutzername senden",
+  "Send": "Senden"
 }

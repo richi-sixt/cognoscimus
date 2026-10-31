@@ -25,6 +25,8 @@ export interface LaterItem {
   fetch_state: FetchState;
   collection_id: string | null;
   visibility: ItemVisibility;
+  /** Handle of the person who sent this article, when it arrived as a share. */
+  shared_from: string | null;
   kind: ItemKind;
 }
 
@@ -49,7 +51,7 @@ export class LaterApiError extends Error {
 }
 
 const SUMMARY_COLUMNS =
-  'id, url, title, author, site_name, excerpt, thumbnail, word_count, state, progress, saved_at, deleted_at, fetch_state, collection_id, kind, visibility';
+  'id, url, title, author, site_name, excerpt, thumbnail, word_count, state, progress, saved_at, deleted_at, fetch_state, collection_id, kind, visibility, shared_from';
 
 export type ItemVisibility = 'private' | 'followers';
 

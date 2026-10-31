@@ -1,7 +1,7 @@
 'use client';
 
 import DOMPurify from 'dompurify';
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type FormEvent, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
   IoArchiveOutline,
@@ -16,6 +16,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useAppRouter } from '@/hooks/useAppRouter';
 import { useTheme } from '@/hooks/useTheme';
 import { useTranslation } from '@/hooks/useTranslation';
+import { sendArticle } from '@/libs/later/social';
 import {
   createLabel,
   deleteItem,
@@ -209,6 +210,27 @@ const Reader = () => {
       setItem({ ...item, collection_id: target });
     });
 
+  const [sendTo, setSendTo] = useState('');
+  const [sentNote, setSentNote] = useState<string | null>(null);
+  const send = (event: FormEvent) => {
+    event.preventDefault();
+    setSentNote(null);
+    return run(async () => {
+      if (!item || !sendTo.trim()) return;
+      const result = await sendArticle(item.id, sendTo);
+      setSentNote(
+        result === 'sent'
+          ? _('Sent. It reaches their library once they accept.')
+          : result === 'profile_required'
+            ? _('Choose a username first in your profile.')
+            : result === 'not_found'
+              ? _('No one found with this username.')
+              : _('This article cannot be sent.'),
+      );
+      if (result === 'sent') setSendTo('');
+    });
+  };
+
   const toggleShared = () =>
     run(async () => {
       if (!item) return;
@@ -328,7 +350,12 @@ const Reader = () => {
             )}
             <h1 className='mb-2 text-3xl leading-tight font-bold'>{item.title}</h1>
             <p className='text-base-content/60 mb-4 text-sm'>
-              {[item.author, item.site_name, new Date(item.saved_at).toLocaleDateString()]
+              {[
+                item.author,
+                item.site_name,
+                new Date(item.saved_at).toLocaleDateString(),
+                item.shared_from ? _('from @{{handle}}', { handle: item.shared_from }) : null,
+              ]
                 .filter(Boolean)
                 .join(' · ')}
             </p>
@@ -358,6 +385,20 @@ const Reader = () => {
               />
               <span>{_('Followers can read this (title and text only)')}</span>
             </label>
+
+            <form onSubmit={send} className='mb-3 flex flex-wrap items-center gap-2 text-sm'>
+              <input
+                value={sendTo}
+                onChange={(e) => setSendTo(e.target.value)}
+                placeholder={_('Send to @username')}
+                aria-label={_('Send to @username')}
+                className='input input-bordered input-sm w-44'
+              />
+              <button type='submit' className='btn btn-sm' disabled={!sendTo.trim()}>
+                {_('Send')}
+              </button>
+              {sentNote && <span className='text-base-content/70'>{sentNote}</span>}
+            </form>
 
             <div className='mb-6 flex flex-wrap items-center gap-2'>
               {labels
