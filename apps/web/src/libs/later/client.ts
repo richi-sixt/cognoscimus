@@ -2,6 +2,7 @@ import { getAPIBaseUrl } from '@/services/environment';
 import { getAccessToken } from '@/utils/access';
 import { supabase } from '@/utils/supabase';
 import { FETCH_CONCURRENCY, IMPORT_BATCH_SIZE, TRASH_RETENTION_DAYS } from './constants';
+import { type LaterCollection, collectionWithDescendants } from './collections';
 import type { ImportEntry } from './importRaindrop';
 
 export type LaterState = 'unread' | 'reading' | 'archived';
@@ -21,6 +22,7 @@ export interface LaterItem {
   saved_at: string;
   deleted_at: string | null;
   fetch_state: FetchState;
+  collection_id: string | null;
 }
 
 export interface LaterItemFull extends LaterItem {
@@ -44,16 +46,16 @@ export class LaterApiError extends Error {
 }
 
 const SUMMARY_COLUMNS =
-  'id, url, title, author, site_name, excerpt, thumbnail, word_count, state, progress, saved_at, deleted_at, fetch_state';
+  'id, url, title, author, site_name, excerpt, thumbnail, word_count, state, progress, saved_at, deleted_at, fetch_state, collection_id';
 
-export const saveArticle = async (url: string): Promise<string> => {
+export const saveArticle = async (url: string, collectionId?: string | null): Promise<string> => {
   const token = await getAccessToken();
   if (!token) throw new LaterApiError(401, undefined, 'Not authenticated');
   const response = await fetch(`${getAPIBaseUrl()}/later/save`, {
     method: 'POST',
     cache: 'no-store',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ url }),
+    body: JSON.stringify({ url, collectionId: collectionId ?? undefined }),
   });
   const body = (await response.json().catch(() => ({}))) as {
     id?: string;
@@ -66,13 +68,18 @@ export const saveArticle = async (url: string): Promise<string> => {
   return body.id;
 };
 
-export type LaterView = 'inbox' | 'archive' | 'trash';
+export type LaterScope =
+  | { kind: 'inbox' | 'archive' | 'trash' | 'all' | 'unsorted' }
+  | { kind: 'collection'; id: string };
 
 export const listItems = async (options: {
-  view: LaterView;
+  scope: LaterScope;
+  /** Needed to include the sub-collections of a collection scope. */
+  collections?: LaterCollection[];
   search?: string;
   labelId?: string | null;
 }): Promise<LaterItem[]> => {
+  const { scope } = options;
   let ids: string[] | null = null;
   if (options.labelId) {
     const { data, error } = await supabase
@@ -85,21 +92,26 @@ export const listItems = async (options: {
   }
 
   let query = supabase.from('later_items').select(SUMMARY_COLUMNS);
-  if (options.view === 'trash') {
+  if (scope.kind === 'trash') {
     query = query.not('deleted_at', 'is', null);
   } else {
     query = query.is('deleted_at', null);
-    query =
-      options.view === 'archive'
-        ? query.eq('state', 'archived')
-        : query.in('state', ['unread', 'reading']);
+    if (scope.kind === 'archive') query = query.eq('state', 'archived');
+    else if (scope.kind === 'inbox') query = query.in('state', ['unread', 'reading']);
+    else if (scope.kind === 'unsorted') query = query.is('collection_id', null);
+    else if (scope.kind === 'collection') {
+      query = query.in(
+        'collection_id',
+        collectionWithDescendants(options.collections ?? [], scope.id),
+      );
+    }
   }
   if (ids) query = query.in('id', ids);
   const search = options.search?.trim();
   if (search) query = query.textSearch('tsv', search, { type: 'websearch', config: 'simple' });
 
   const { data, error } = await query
-    .order(options.view === 'trash' ? 'deleted_at' : 'saved_at', { ascending: false })
+    .order(scope.kind === 'trash' ? 'deleted_at' : 'saved_at', { ascending: false })
     .limit(200);
   if (error) throw error;
   return (data ?? []) as LaterItem[];
@@ -277,4 +289,73 @@ export const loadPending = async (onProgress: (done: number, total: number) => v
     }
   };
   await Promise.all(Array.from({ length: Math.min(FETCH_CONCURRENCY, ids.length) }, worker));
+};
+
+export interface SidebarCounts {
+  all: number;
+  inbox: number;
+  archive: number;
+  trash: number;
+  unsorted: number;
+  collections: Record<string, number>;
+  labels: Record<string, number>;
+}
+
+export const getSidebarCounts = async (): Promise<SidebarCounts> => {
+  const { data, error } = await supabase.rpc('later_sidebar_counts');
+  if (error) throw error;
+  return data as SidebarCounts;
+};
+
+export const listCollections = async (): Promise<LaterCollection[]> => {
+  const { data, error } = await supabase.from('later_collections').select('id, name, parent_id');
+  if (error) throw error;
+  return (data ?? []) as LaterCollection[];
+};
+
+export const createCollection = async (
+  userId: string,
+  name: string,
+  parentId: string | null,
+): Promise<LaterCollection> => {
+  const { data, error } = await supabase
+    .from('later_collections')
+    .insert({ user_id: userId, name: name.trim(), parent_id: parentId })
+    .select('id, name, parent_id')
+    .single();
+  if (error) throw error;
+  return data as LaterCollection;
+};
+
+export const renameCollection = async (id: string, name: string) => {
+  const { error } = await supabase
+    .from('later_collections')
+    .update({ name: name.trim() })
+    .eq('id', id);
+  if (error) throw error;
+};
+
+/** Sub-collections move up one level and the articles become unsorted. */
+export const deleteCollection = async (id: string) => {
+  const { data, error: readError } = await supabase
+    .from('later_collections')
+    .select('parent_id')
+    .eq('id', id)
+    .maybeSingle();
+  if (readError) throw readError;
+  const { error: liftError } = await supabase
+    .from('later_collections')
+    .update({ parent_id: data?.parent_id ?? null })
+    .eq('parent_id', id);
+  if (liftError) throw liftError;
+  const { error } = await supabase.from('later_collections').delete().eq('id', id);
+  if (error) throw error;
+};
+
+export const setItemCollection = async (itemId: string, collectionId: string | null) => {
+  const { error } = await supabase
+    .from('later_items')
+    .update({ collection_id: collectionId })
+    .eq('id', itemId);
+  if (error) throw error;
 };

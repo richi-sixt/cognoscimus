@@ -5,6 +5,7 @@ import { extractArticle, NoArticleError } from '@/libs/later/extract';
 import { fetchPage, FetchPageError, normalizeUrl } from '@/libs/later/fetchPage';
 import { FetchBlockedError } from '@/libs/later/ssrf';
 import { TRASH_RETENTION_DAYS } from '@/libs/later/constants';
+import { isUuid } from '@/libs/grantsServer';
 
 const URL_MAX_LENGTH = 2048;
 
@@ -17,9 +18,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
-  let body: { url?: unknown };
+  let body: { url?: unknown; collectionId?: unknown };
   try {
-    body = (await request.json()) as { url?: unknown };
+    body = (await request.json()) as { url?: unknown; collectionId?: unknown };
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
@@ -30,11 +31,32 @@ export async function POST(request: Request) {
     );
   }
 
+  if (body.collectionId !== undefined && !isUuid(body.collectionId)) {
+    return NextResponse.json({ error: 'Invalid collectionId' }, { status: 400 });
+  }
+
   try {
     const { html, finalUrl } = await fetchPage(normalizeUrl(body.url));
     const article = extractArticle(html, finalUrl.toString());
 
     const supabase = createSupabaseAdminClient();
+
+    // Only the user's own collection may receive the article.
+    if (body.collectionId) {
+      const { data: collection, error: collectionError } = await supabase
+        .from('later_collections')
+        .select('id')
+        .eq('id', body.collectionId)
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (collectionError) throw collectionError;
+      if (!collection) {
+        return NextResponse.json(
+          { error: 'Collection not found', code: 'collection_not_found' },
+          { status: 404 },
+        );
+      }
+    }
 
     // Housekeeping: drop this user's trash that has outlived its retention.
     const cutoff = new Date(Date.now() - TRASH_RETENTION_DAYS * 24 * 60 * 60 * 1000);
@@ -60,6 +82,8 @@ export async function POST(request: Request) {
           word_count: article.wordCount,
           // Saving a link again also takes it out of the trash.
           deleted_at: null,
+          // Without a target collection a saved-again link keeps the one it has.
+          ...(body.collectionId ? { collection_id: body.collectionId } : {}),
         },
         { onConflict: 'user_id,url' },
       )

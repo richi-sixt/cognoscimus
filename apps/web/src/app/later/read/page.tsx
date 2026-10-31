@@ -20,10 +20,12 @@ import {
   createLabel,
   deleteItem,
   getItem,
+  listCollections,
   listItemLabelIds,
   listLabels,
   refetchItem,
   restoreItem,
+  setItemCollection,
   setItemLabel,
   setItemProgress,
   setItemState,
@@ -31,6 +33,11 @@ import {
   type LaterItemFull,
   type LaterLabel,
 } from '@/libs/later/client';
+import {
+  buildCollectionTree,
+  flattenCollectionTree,
+  type LaterCollection,
+} from '@/libs/later/collections';
 import HighlightPanel from './HighlightPanel';
 import { useHighlights } from './useHighlights';
 
@@ -44,6 +51,7 @@ const Reader = () => {
   const [item, setItem] = useState<LaterItemFull | null>(null);
   const [missing, setMissing] = useState(false);
   const [labels, setLabels] = useState<LaterLabel[]>([]);
+  const [collections, setCollections] = useState<LaterCollection[]>([]);
   const [itemLabelIds, setItemLabelIds] = useState<string[]>([]);
   const [newLabel, setNewLabel] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -66,6 +74,7 @@ const Reader = () => {
         stateRef.current = found.state;
         setItem(found);
         setLabels(await listLabels());
+        setCollections(await listCollections());
         setItemLabelIds(await listItemLabelIds(id));
       } catch (err) {
         setError(err instanceof Error ? err.message : _('Could not load the article'));
@@ -172,6 +181,14 @@ const Reader = () => {
       if (!item) return;
       await restoreItem(item.id);
       setItem({ ...item, deleted_at: null });
+    });
+
+  const moveToCollection = (collectionId: string) =>
+    run(async () => {
+      if (!item) return;
+      const target = collectionId || null;
+      await setItemCollection(item.id, target);
+      setItem({ ...item, collection_id: target });
     });
 
   const toggleLabel = (labelId: string) =>
@@ -287,6 +304,22 @@ const Reader = () => {
                 .filter(Boolean)
                 .join(' · ')}
             </p>
+
+            <label className='mb-3 flex items-center gap-2 text-sm'>
+              <span className='text-base-content/60'>{_('Collection')}</span>
+              <select
+                value={item.collection_id ?? ''}
+                onChange={(e) => void moveToCollection(e.target.value)}
+                className='select select-bordered select-xs max-w-60'
+              >
+                <option value=''>{_('Unsorted')}</option>
+                {flattenCollectionTree(buildCollectionTree(collections)).map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {`${'\u2003'.repeat(c.depth)}${c.name}`}
+                  </option>
+                ))}
+              </select>
+            </label>
 
             <div className='mb-6 flex flex-wrap items-center gap-2'>
               {labels
