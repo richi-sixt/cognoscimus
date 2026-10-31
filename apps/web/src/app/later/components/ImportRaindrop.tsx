@@ -10,7 +10,7 @@ import { type ParsedImport, parseRaindropExport } from '@/libs/later/importRaind
 const ImportRaindrop = ({ onImported }: { onImported: () => void }) => {
   const _ = useTranslation();
   const [parsed, setParsed] = useState<ParsedImport | null>(null);
-  const [folderLabels, setFolderLabels] = useState(true);
+  const [folders, setFolders] = useState<'collections' | 'labels' | 'none'>('collections');
   const [progress, setProgress] = useState<number | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +39,7 @@ const ImportRaindrop = ({ onImported }: { onImported: () => void }) => {
     setError(null);
     setProgress(0);
     try {
-      const result = await importEntries(parsed.entries, { folderLabels, onProgress: setProgress });
+      const result = await importEntries(parsed.entries, { folders, onProgress: setProgress });
       setMessage(
         _('Imported {{imported}} links, {{existing}} were already saved.', {
           imported: result.imported,
@@ -81,15 +81,27 @@ const ImportRaindrop = ({ onImported }: { onImported: () => void }) => {
                 tags: tagCount,
               })}
             </p>
-            <label className='flex cursor-pointer items-center gap-2'>
-              <input
-                type='checkbox'
-                checked={folderLabels}
-                onChange={(e) => setFolderLabels(e.target.checked)}
-                className='checkbox checkbox-sm'
-              />
-              <span>{_('Keep folders as labels (for example Coding/Python)')}</span>
-            </label>
+            <fieldset className='flex flex-col gap-1.5'>
+              <legend className='text-base-content mb-1'>{_('Folders')}</legend>
+              {(
+                [
+                  ['collections', _('Make collections (nested like in Raindrop)')],
+                  ['labels', _('Keep as labels (for example Coding/Python)')],
+                  ['none', _('Ignore folders')],
+                ] as const
+              ).map(([value, text]) => (
+                <label key={value} className='flex cursor-pointer items-center gap-2'>
+                  <input
+                    type='radio'
+                    name='raindrop-folders'
+                    checked={folders === value}
+                    onChange={() => setFolders(value)}
+                    className='radio radio-sm'
+                  />
+                  <span>{text}</span>
+                </label>
+              ))}
+            </fieldset>
             <button
               type='button'
               onClick={start}

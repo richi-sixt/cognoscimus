@@ -33,6 +33,8 @@ describe('parseRaindropExport', () => {
     expect(byUrl('https://a.example/one').folder).toBeNull();
     expect(byUrl('https://b.example/two').folder).toBe('Coding');
     expect(byUrl('https://c.example/three').folder).toBe('Coding/Python');
+    expect(byUrl('https://c.example/three').folderPath).toEqual(['Coding', 'Python']);
+    expect(byUrl('https://a.example/one').folderPath).toEqual([]);
     expect(result.folders.sort()).toEqual(['Coding', 'Coding/Python']);
   });
 

@@ -250,14 +250,14 @@ export interface ImportResult {
 /** Stores the links in batches; their article text is loaded afterwards. */
 export const importEntries = async (
   entries: ImportEntry[],
-  options: { folderLabels: boolean; onProgress?: (done: number) => void },
+  options: { folders: 'collections' | 'labels' | 'none'; onProgress?: (done: number) => void },
 ): Promise<ImportResult> => {
   const total: ImportResult = { imported: 0, existing: 0, invalid: 0 };
   for (let i = 0; i < entries.length; i += IMPORT_BATCH_SIZE) {
     const batch = entries.slice(i, i + IMPORT_BATCH_SIZE);
     const part = await postJson<ImportResult>('/import', {
       entries: batch,
-      folderLabels: options.folderLabels,
+      folders: options.folders,
     });
     total.imported += part.imported;
     total.existing += part.existing;

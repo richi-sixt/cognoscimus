@@ -8,6 +8,8 @@ export interface ImportEntry {
   tags: string[];
   /** Folder path such as "Coding/Python", without the Unsorted folder. */
   folder: string | null;
+  /** The same path as separate names, for nesting collections. */
+  folderPath: string[];
   addedAt: string | null;
 }
 
@@ -53,7 +55,9 @@ export const parseRaindropExport = (html: string): ParsedImport => {
       const name = folderNameOf(el);
       if (name) path.unshift(name);
     }
-    const folder = path.length > 0 && path[0]!.toLowerCase() !== UNSORTED ? path.join('/') : null;
+    const filed = path.length > 0 && path[0]!.toLowerCase() !== UNSORTED;
+    const folderPath = filed ? path : [];
+    const folder = filed ? path.join('/') : null;
     if (folder) folders.add(folder);
 
     entries.push({
@@ -64,6 +68,7 @@ export const parseRaindropExport = (html: string): ParsedImport => {
         .map((tag) => tag.trim())
         .filter(Boolean),
       folder,
+      folderPath,
       addedAt: toIsoDate(link.getAttribute('add_date')),
     });
   }
