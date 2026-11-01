@@ -16,3 +16,6 @@ export const FEED_POLL_CONCURRENCY = 3;
 /** Entries that are no longer new are forgotten after this many days. */
 export const FEED_ENTRY_RETENTION_DAYS = 30;
 export const FEED_MAX_ERRORS = 10;
+
+/** Items that came by mail have no page; their url is "mail:" plus a hash. */
+export const isMailUrl = (url: string) => url.startsWith('mail:');

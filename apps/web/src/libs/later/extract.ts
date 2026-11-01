@@ -34,7 +34,7 @@ const resolveUrl = (value: string | undefined, base: string): string | undefined
 // The saved HTML is rendered in the reader, so it is reduced to a fixed set of
 // reading tags. Scripts, styles, forms, inline handlers and data: URLs never
 // get through; links open in a new tab and images send no referrer.
-const sanitizeArticle = (html: string, baseUrl: string): string =>
+export const sanitizeArticle = (html: string, baseUrl: string): string =>
   sanitizeHtml(html, {
     allowedTags: [
       'a',

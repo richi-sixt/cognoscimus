@@ -16,6 +16,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useAppRouter } from '@/hooks/useAppRouter';
 import { useTheme } from '@/hooks/useTheme';
 import { useTranslation } from '@/hooks/useTranslation';
+import { isMailUrl } from '@/libs/later/constants';
 import { type FollowedPerson, listFollowing, sendArticle } from '@/libs/later/social';
 import {
   createLabel,
@@ -318,15 +319,17 @@ const Reader = () => {
                 <IoCreateOutline className='h-5 w-5' />
               </button>
             )}
-            <a
-              href={item.url}
-              target='_blank'
-              rel='noopener noreferrer'
-              className='btn btn-ghost btn-circle btn-sm'
-              aria-label={_('Open original')}
-            >
-              <IoOpenOutline className='h-5 w-5' />
-            </a>
+            {!isMailUrl(item.url) && (
+              <a
+                href={item.url}
+                target='_blank'
+                rel='noopener noreferrer'
+                className='btn btn-ghost btn-circle btn-sm'
+                aria-label={_('Open original')}
+              >
+                <IoOpenOutline className='h-5 w-5' />
+              </a>
+            )}
             {item.deleted_at ? (
               <button
                 type='button'

@@ -8,6 +8,7 @@ import { IoArrowBack, IoOpenOutline } from 'react-icons/io5';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/hooks/useTheme';
 import { useTranslation } from '@/hooks/useTranslation';
+import { isMailUrl } from '@/libs/later/constants';
 import {
   answerShare,
   getIncomingShare,
@@ -92,15 +93,17 @@ const SharedReader = () => {
         <span className='flex-1' />
         {article && (
           <>
-            <a
-              href={article.url}
-              target='_blank'
-              rel='noopener noreferrer'
-              className='btn btn-ghost btn-sm'
-            >
-              <IoOpenOutline className='h-4 w-4' />
-              {_('Open source')}
-            </a>
+            {!isMailUrl(article.url) && (
+              <a
+                href={article.url}
+                target='_blank'
+                rel='noopener noreferrer'
+                className='btn btn-ghost btn-sm'
+              >
+                <IoOpenOutline className='h-4 w-4' />
+                {_('Open source')}
+              </a>
+            )}
             {saved ? (
               <span className='text-sm'>
                 {saved === 'new' ? _('Saved to your library.') : _('Already in your library.')}

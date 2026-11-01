@@ -78,6 +78,8 @@ pnpm --filter @cognoscimus/web storage:cors     # S3_CORS_ORIGINS=https://your.d
 
 Later's feeds are fetched by a scheduled job: set a random `CRON_SECRET` and have your scheduler call `POST /api/later/feeds/poll` with `Authorization: Bearer <CRON_SECRET>` every 15 minutes or so. Without the variable the route answers 503.
 
+The mail inbox needs `INBOX_SECRET` (shared by the app and the receiver `apps/web/scripts/mail-inbox.mjs`) and, to show the address in the profile, `NEXT_PUBLIC_LATER_INBOX_ADDRESS`. The receiver accepts mail, the app checks SPF/DKIM and files links and newsletters in the sender's library.
+
 `NEXT_PUBLIC_*` variables are baked in at build time, so changing them needs a new build. Keep secrets only in `.env.local`, never in the repository. A small server can skip the second type check of `next build` with `SKIP_TYPECHECK=true` (`pnpm lint` already type-checks before every push).
 
 ## Comics

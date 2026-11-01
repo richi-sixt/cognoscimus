@@ -1938,5 +1938,11 @@
   "Dismiss": "Verwerfen",
   "Manage feeds ({{count}})": "Feeds verwalten ({{count}})",
   "Paused": "Pausiert",
-  "Stop following \"{{title}}\"?": "«{{title}}» nicht mehr folgen?"
+  "Stop following \"{{title}}\"?": "«{{title}}» nicht mehr folgen?",
+  "Mail inbox": "Mail-Inbox",
+  "Mail a link to this address and it lands in your Later library. A longer mail is saved as an article. Put @username on its own line to offer the item to someone.": "Schick einen Link an diese Adresse, und er landet in deiner Later-Bibliothek. Eine längere Mail wird als Artikel gespeichert. Mit @benutzername auf einer eigenen Zeile bietest du den Eintrag jemandem an.",
+  "Mail counts as yours when it comes from your sign-in address or one of these, and the sending domain vouches for it.": "Eine Mail gilt als deine, wenn sie von deiner Anmeldeadresse oder einer dieser Adressen kommt und die absendende Domain dafür bürgt.",
+  "Another sender address": "Weitere Absenderadresse",
+  "This address is already in use.": "Diese Adresse wird bereits verwendet.",
+  "This is not a valid e-mail address.": "Das ist keine gültige E-Mail-Adresse."
 }
