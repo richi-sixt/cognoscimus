@@ -188,6 +188,18 @@ export const isCustomTTSAllowed = isCustomTranslatorAllowed;
 
 export const STORAGE_QUOTA_GRACE_BYTES = 10 * 1024 * 1024; // 10 MB grace
 
+/**
+ * A larger limit for the owner's account, set on the server only: the e-mail
+ * address stays out of the browser's runtime config and out of the repository.
+ * Returns 0 when it is not configured or the token belongs to someone else.
+ */
+const ownerStorageQuota = (email: unknown): number => {
+  const owner = process.env['STORAGE_OWNER_EMAIL']?.trim().toLowerCase();
+  const quota = parseInt(process.env['STORAGE_OWNER_QUOTA'] ?? '0', 10);
+  if (!owner || !(quota > 0) || typeof email !== 'string') return 0;
+  return email.trim().toLowerCase() === owner ? quota : 0;
+};
+
 export const getStoragePlanData = (token: string) => {
   const data = jwtDecode<Token>(token) || {};
   const plan = data['plan'] || 'free';
@@ -196,7 +208,11 @@ export const getStoragePlanData = (token: string) => {
   const runtimeConfig = getRuntimeConfig();
   const fixedQuota =
     runtimeConfig?.storageFixedQuota ?? parseInt(process.env['STORAGE_FIXED_QUOTA'] ?? '0');
-  const planQuota = fixedQuota || DEFAULT_STORAGE_QUOTA[plan] || DEFAULT_STORAGE_QUOTA['free'];
+  const planQuota =
+    ownerStorageQuota(data['email']) ||
+    fixedQuota ||
+    DEFAULT_STORAGE_QUOTA[plan] ||
+    DEFAULT_STORAGE_QUOTA['free'];
   const quota = planQuota + purchasedQuota;
 
   return {
