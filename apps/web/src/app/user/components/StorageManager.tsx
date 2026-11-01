@@ -24,6 +24,7 @@ const StorageManager = () => {
   const _ = useTranslation();
   const { appService } = useEnv();
   const { libraryLoaded } = useLibrary();
+  const library = useLibraryStore((state) => state.library);
   const { safeAreaInsets } = useThemeStore();
   const [loading, setLoading] = useState(false);
   const [filesLoaded, setFilesLoaded] = useState(false);
@@ -39,6 +40,15 @@ const StorageManager = () => {
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const [expandedBooks, setExpandedBooks] = useState<Set<string>>(new Set());
 
+  // Files are stored under the book's hash; the library knows what the book is called.
+  const titleOf = React.useMemo(() => {
+    const titles = new Map<string, string>();
+    library.forEach((book) => {
+      if (!book.deletedAt && book.title) titles.set(book.hash, book.title);
+    });
+    return titles;
+  }, [library]);
+
   const loadFiles = useCallback(async () => {
     setLoading(true);
     try {
@@ -51,6 +61,17 @@ const StorageManager = () => {
 
       if (searchQuery.trim()) {
         params.search = searchQuery.trim();
+        const needle = searchQuery.trim().toLowerCase();
+        const matches = library
+          .filter(
+            (book) =>
+              !book.deletedAt &&
+              [book.title, book.author, book.sourceTitle].some((text) =>
+                text?.toLowerCase().includes(needle),
+              ),
+          )
+          .map((book) => book.hash);
+        if (matches.length > 0) params.bookHashes = matches.slice(0, 100);
       }
 
       const response = await listFiles(params);
@@ -66,7 +87,7 @@ const StorageManager = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, sortBy, sortOrder, searchQuery, _]);
+  }, [currentPage, sortBy, sortOrder, searchQuery, library, _]);
 
   const loadStats = useCallback(async () => {
     setLoading(true);
@@ -374,8 +395,6 @@ const StorageManager = () => {
               <option value='created_at-asc'>{_('Oldest First')}</option>
               <option value='file_size-desc'>{_('Largest First')}</option>
               <option value='file_size-asc'>{_('Smallest First')}</option>
-              <option value='file_key-asc'>{_('Name A-Z')}</option>
-              <option value='file_key-desc'>{_('Name Z-A')}</option>
             </select>
           </div>
         </div>
@@ -488,7 +507,7 @@ const StorageManager = () => {
                           <div className='flex flex-col'>
                             <div className='flex items-center gap-2'>
                               <span className='text-base-content block max-w-full truncate font-medium'>
-                                {getFileName(mainFile.file_key)}
+                                {titleOf.get(bookHash) ?? getFileName(mainFile.file_key)}
                               </span>
                               {hasMultipleFiles && (
                                 <span className='text-base-content/60 shrink-0 whitespace-nowrap text-xs'>
@@ -496,6 +515,11 @@ const StorageManager = () => {
                                 </span>
                               )}
                             </div>
+                            {titleOf.has(bookHash) && (
+                              <span className='text-base-content/50 block max-w-full truncate text-xs'>
+                                {getFileName(mainFile.file_key)}
+                              </span>
+                            )}
                             <span className='text-base-content/60 text-xs sm:hidden'>
                               {formatFileSize(getBookTotalSize(bookFiles))} ·{' '}
                               {formatDate(mainFile.created_at)}

@@ -10,6 +10,8 @@ const h = vi.hoisted(() => ({
   purgeFiles: vi.fn(),
   // Stable identity: the real useTranslation memoizes, and StorageManager's
   // loaders depend on it.
+  // Stable identity too: the loaders depend on the library list.
+  library: [] as { hash: string; title: string; author?: string }[],
   translate: (value: string, params?: Record<string, string | number>) =>
     Object.entries(params ?? {}).reduce(
       (result: string, [key, replacement]) => result.replace(`{{${key}}}`, String(replacement)),
@@ -40,7 +42,10 @@ vi.mock('@/store/themeStore', () => ({
 }));
 
 vi.mock('@/store/libraryStore', () => ({
-  useLibraryStore: { getState: () => ({ library: [], setLibrary: vi.fn() }) },
+  useLibraryStore: Object.assign(
+    (select: (state: { library: typeof h.library }) => unknown) => select({ library: h.library }),
+    { getState: () => ({ library: h.library, setLibrary: vi.fn() }) },
+  ),
 }));
 
 const searchParams = () =>
@@ -52,6 +57,7 @@ describe('StorageManager search', () => {
   });
 
   beforeEach(() => {
+    h.library.length = 0;
     h.listFiles.mockReset();
     h.listFiles.mockResolvedValue({ files: [], totalPages: 1 });
     h.getStorageStats.mockReset();
@@ -86,6 +92,48 @@ describe('StorageManager search', () => {
 
     await waitFor(() => expect(h.listFiles).toHaveBeenCalledTimes(2));
     expect(searchParams()).toEqual([undefined, 'novel']);
+  });
+
+  it('also searches by the titles of the books in the library', async () => {
+    h.library.push(
+      { hash: 'aaaa1111bbbb2222', title: 'Der Tote vom Strand', author: 'Håkan Nesser' },
+      { hash: 'cccc3333dddd4444', title: 'Asterix' },
+    );
+    render(<StorageManager />);
+    await waitFor(() => expect(h.listFiles).toHaveBeenCalledTimes(1));
+
+    fireEvent.change(screen.getByPlaceholderText('Search files...'), {
+      target: { value: 'nesser' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+
+    await waitFor(() => expect(h.listFiles).toHaveBeenCalledTimes(2));
+    expect(h.listFiles.mock.calls[1]![0]).toMatchObject({
+      search: 'nesser',
+      bookHashes: ['aaaa1111bbbb2222'],
+    });
+  });
+
+  it('shows the title of a book instead of its hash', async () => {
+    h.library.push({ hash: 'aaaa1111bbbb2222', title: 'Der Tote vom Strand' });
+    h.listFiles.mockResolvedValue({
+      files: [
+        {
+          file_key: 'u/aaaa1111bbbb2222/aaaa1111bbbb2222.epub',
+          file_size: 1000,
+          book_hash: 'aaaa1111bbbb2222',
+          replica_kind: null,
+          replica_id: null,
+          created_at: '2026-10-28T10:00:00Z',
+          updated_at: null,
+        },
+      ],
+      totalPages: 1,
+    });
+    render(<StorageManager />);
+
+    expect(await screen.findByText('Der Tote vom Strand')).toBeTruthy();
+    expect(screen.getByText('aaaa1111bbbb2222.epub')).toBeTruthy();
   });
 
   it('ignores Enter while an IME composition is active', async () => {

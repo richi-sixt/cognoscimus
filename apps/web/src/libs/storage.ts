@@ -234,6 +234,8 @@ export interface ListFilesParams {
   sortBy?: 'created_at' | 'updated_at' | 'file_size' | 'file_key';
   sortOrder?: 'asc' | 'desc';
   bookHash?: string;
+  /** Books whose title matched the search; their files are listed as well. */
+  bookHashes?: string[];
   search?: string;
 }
 
@@ -255,6 +257,7 @@ export const listFiles = async (params?: ListFilesParams): Promise<ListFilesResp
     if (params?.sortOrder) queryParams.set('sortOrder', params.sortOrder);
     if (params?.bookHash) queryParams.set('bookHash', params.bookHash);
     if (params?.search) queryParams.set('search', params.search);
+    if (params?.bookHashes?.length) queryParams.set('bookHashes', params.bookHashes.join(','));
 
     const url = queryParams.toString()
       ? `${API_ENDPOINTS.list}?${queryParams.toString()}`

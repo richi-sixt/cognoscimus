@@ -27,6 +27,9 @@ interface ListFilesResponse {
 // and is unaffected.
 export const MAX_PAGE_SIZE = 1000;
 
+// Most books a title search may add to the file search.
+const MAX_TITLE_HASHES = 100;
+
 // Supabase renders `.in()` into the request's query string, so a whole page of
 // hashes at MAX_PAGE_SIZE would be tens of kilobytes of URL. Send the group
 // expansion in batches instead.
@@ -63,6 +66,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       sortOrder?: string;
       bookHash?: string;
       search?: string;
+      bookHashes?: string;
     };
     const page = parseInt(reqQuery.page as string) || 1;
     const pageSize = resolvePageSize(reqQuery.pageSize);
@@ -70,6 +74,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const sortOrder = (reqQuery.sortOrder as string) === 'asc' ? 'asc' : 'desc';
     const bookHash = reqQuery.bookHash as string | undefined;
     const search = reqQuery.search as string | undefined;
+    // Files are stored under the book's hash, so a search by title arrives as the
+    // hashes of the books whose title matched. Anything that is not a plain hash is
+    // dropped: the list goes into a filter expression.
+    const titleHashes = (reqQuery.bookHashes ?? '')
+      .split(',')
+      .filter((hash) => /^[A-Za-z0-9_-]{8,64}$/.test(hash))
+      .slice(0, MAX_TITLE_HASHES);
 
     const supabase = createSupabaseAdminClient();
 
@@ -85,7 +96,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       query = query.eq('book_hash', bookHash);
     }
 
-    if (search) {
+    if (search && titleHashes.length > 0) {
+      // Quoted so commas and parentheses in the search text stay plain text.
+      const pattern = `%${search.replace(/[\\"]/g, '\\$&')}%`;
+      query = query.or(`file_key.ilike."${pattern}",book_hash.in.(${titleHashes.join(',')})`);
+    } else if (search) {
       query = query.ilike('file_key', `%${search}%`);
     }
 

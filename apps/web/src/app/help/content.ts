@@ -64,7 +64,11 @@ export const HELP_CONTENT: Record<LandingLang, HelpContent> = {
           },
           {
             title: 'Storage',
-            text: 'The account page shows how much space your files use and lets you remove files.',
+            text: 'The account page shows how much space your files use and lets you remove files. In the cloud the files are kept under internal numbers; the list shows the title of each book, and the search finds books by title or author.',
+          },
+          {
+            title: 'Back up your library',
+            text: '"Backup & Restore" under "Advanced settings" creates a ZIP file with your library, settings, reading statistics and the book files. Only books that are stored on this device are included. Books marked with a cloud symbol live only in the cloud, so download them first, otherwise the backup holds their entries but not the files. Restoring merges the backup with your current library.',
           },
         ],
       },
@@ -230,7 +234,11 @@ export const HELP_CONTENT: Record<LandingLang, HelpContent> = {
           },
           {
             title: 'Speicher',
-            text: 'Die Konto-Seite zeigt, wie viel Platz deine Dateien belegen, und lässt dich Dateien entfernen.',
+            text: 'Die Konto-Seite zeigt, wie viel Platz deine Dateien belegen, und lässt dich Dateien entfernen. In der Cloud liegen die Dateien unter internen Nummern; die Liste zeigt den Titel jedes Buchs, und die Suche findet Bücher nach Titel oder Autor.',
+          },
+          {
+            title: 'Bibliothek sichern',
+            text: '«Sichern & Wiederherstellen» unter «Erweiterte Einstellungen» erstellt eine ZIP-Datei mit Bibliothek, Einstellungen, Lesestatistik und den Buchdateien. Gesichert werden nur Bücher, die auf diesem Gerät liegen. Bücher mit einem Wolken-Symbol liegen nur in der Cloud: Lade sie vorher herunter, sonst enthält die Sicherung zwar ihre Einträge, aber nicht die Dateien. Beim Wiederherstellen wird die Sicherung mit der aktuellen Bibliothek zusammengeführt.',
           },
         ],
       },
