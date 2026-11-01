@@ -16,7 +16,6 @@ import { navigateBackFromProfile } from '@/utils/nav';
 import { Toast } from '@/components/Toast';
 import ProfileHeader from './components/Header';
 import UserInfo from './components/UserInfo';
-import UsageStats from './components/UsageStats';
 import AccountActions from './components/AccountActions';
 import { InboxSection } from './components/InboxSection';
 import { MfaSection } from './components/MfaSection';
@@ -67,7 +66,8 @@ const ProfilePage = () => {
 
   useTheme();
 
-  const { quotas } = useQuotaStats();
+  // Also caches the plan for the sync gates; the figures themselves are not shown here.
+  useQuotaStats();
   const {
     handleLogout,
     handleResetPassword,
@@ -153,10 +153,6 @@ const ProfilePage = () => {
             <div className='flex flex-col gap-y-8'>
               <div className='flex flex-col gap-y-8 px-6'>
                 <UserInfo avatarUrl={avatarUrl} userFullName={userFullName} userEmail={userEmail} />
-
-                {!showStorageManager && !showSharedBooksManager && !showSyncManager && (
-                  <UsageStats quotas={quotas} />
-                )}
               </div>
 
               {showStorageManager ? (
