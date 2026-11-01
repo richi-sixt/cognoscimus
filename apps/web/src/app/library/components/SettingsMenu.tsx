@@ -74,6 +74,11 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ onPullLibrary, setIsDropdow
     setIsDropdownOpen?.(false);
   };
 
+  const openHelp = () => {
+    router.push('/help');
+    setIsDropdownOpen?.(false);
+  };
+
   const handleSharedWithMe = () => {
     router.push('/shared');
     setIsDropdownOpen?.(false);
@@ -301,6 +306,7 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ onPullLibrary, setIsDropdow
         </ul>
       </MenuItem>
       <hr aria-hidden='true' className='border-base-200 my-1' />
+      <MenuItem label={_('Help')} onClick={openHelp} />
       <MenuItem label={_('About Cognoscimus')} onClick={showAboutCognoscimus} />
     </Menu>
   );

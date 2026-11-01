@@ -3,45 +3,19 @@
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { useTheme } from '@/hooks/useTheme';
-import {
-  CONTACT_DOMAIN,
-  CONTACT_USER,
-  LANDING_CONTENT,
-  LICENSE_URL,
-  SOURCE_URL,
-  type LandingLang,
-} from './content';
+import { useLandingLang } from './useLandingLang';
+import { CONTACT_DOMAIN, CONTACT_USER, LANDING_CONTENT, LICENSE_URL, SOURCE_URL } from './content';
 
-// Public start page for visitors who are not signed in. The first render is
-// always English, the same as the server-rendered HTML, so hydration matches;
-// the browser language is read right after mounting.
+// Public start page for visitors who are not signed in.
 const Landing = () => {
   useTheme({ systemUIVisible: false });
-  const [lang, setLang] = useState<LandingLang>('en');
+  const { lang, chooseLang } = useLandingLang();
   const [contact, setContact] = useState<string | null>(null);
 
   useEffect(() => {
     // Put together here, after mounting: the address is not in the server HTML.
     setContact(`${CONTACT_USER}${String.fromCharCode(64)}${CONTACT_DOMAIN}`);
-    const saved = (() => {
-      try {
-        return localStorage.getItem('landingLang');
-      } catch {
-        return null;
-      }
-    })();
-    if (saved === 'de' || saved === 'en') setLang(saved);
-    else if (navigator.language?.toLowerCase().startsWith('de')) setLang('de');
   }, []);
-
-  const chooseLang = (next: LandingLang) => {
-    setLang(next);
-    try {
-      localStorage.setItem('landingLang', next);
-    } catch {
-      // The choice then only lasts for this visit.
-    }
-  };
 
   const c = LANDING_CONTENT[lang];
 
@@ -105,12 +79,33 @@ const Landing = () => {
             ))}
           </div>
         </section>
+
+        <section aria-labelledby='later' className='pb-16'>
+          <h2 id='later' className='mb-2 text-sm font-semibold uppercase tracking-wide opacity-60'>
+            {c.laterTitle}
+          </h2>
+          <p className='text-base-content/75 mb-6 max-w-2xl leading-relaxed'>{c.laterIntro}</p>
+          <div className='grid gap-4 sm:grid-cols-2'>
+            {c.laterFeatures.map((feature) => (
+              <article
+                key={feature.title}
+                className='border-base-300 bg-base-200/50 rounded-2xl border p-5'
+              >
+                <h3 className='mb-2 text-base font-semibold'>{feature.title}</h3>
+                <p className='text-base-content/70 text-sm leading-relaxed'>{feature.text}</p>
+              </article>
+            ))}
+          </div>
+        </section>
       </main>
 
       <footer className='border-base-300 border-t'>
         <div className='text-base-content/60 mx-auto flex w-full max-w-5xl flex-col gap-2 px-6 py-6 text-xs sm:flex-row sm:items-center sm:justify-between'>
           <p>{c.license}</p>
           <nav className='flex gap-4'>
+            <a href='/help' className='underline'>
+              {c.help}
+            </a>
             <a href={SOURCE_URL} className='underline'>
               {c.source}
             </a>

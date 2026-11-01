@@ -2,7 +2,12 @@
 
 import Link from 'next/link';
 import { FormEvent, useCallback, useEffect, useState } from 'react';
-import { IoClose, IoMenuOutline, IoPersonCircleOutline } from 'react-icons/io5';
+import {
+  IoClose,
+  IoHelpCircleOutline,
+  IoMenuOutline,
+  IoPersonCircleOutline,
+} from 'react-icons/io5';
 import AppSwitcher from '@/components/AppSwitcher';
 import BulkBar from './components/BulkBar';
 import ImportRaindrop from './components/ImportRaindrop';
@@ -343,15 +348,27 @@ const LaterPage = () => {
           </button>
           <AppSwitcher />
         </div>
-        <button
-          type='button'
-          onClick={() => window.location.assign('/user?redirect=%2Flater')}
-          className='btn btn-ghost btn-circle btn-sm'
-          aria-label={_('Account')}
-          title={_('Account')}
-        >
-          <IoPersonCircleOutline className='h-6 w-6' />
-        </button>
+        <div className='flex items-center'>
+          {/* /help is served with cross-origin isolation, so this is a full page load. */}
+          <button
+            type='button'
+            onClick={() => window.location.assign('/help')}
+            className='btn btn-ghost btn-circle btn-sm'
+            aria-label={_('Help')}
+            title={_('Help')}
+          >
+            <IoHelpCircleOutline className='h-6 w-6' />
+          </button>
+          <button
+            type='button'
+            onClick={() => window.location.assign('/user?redirect=%2Flater')}
+            className='btn btn-ghost btn-circle btn-sm'
+            aria-label={_('Account')}
+            title={_('Account')}
+          >
+            <IoPersonCircleOutline className='h-6 w-6' />
+          </button>
+        </div>
       </header>
 
       {drawerOpen && (

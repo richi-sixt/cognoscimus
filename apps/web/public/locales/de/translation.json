@@ -1942,5 +1942,6 @@
   "Mail counts as yours when it comes from your sign-in address or one of these, and the sending domain vouches for it.": "Eine Mail gilt als deine, wenn sie von deiner Anmeldeadresse oder einer dieser Adressen kommt und die absendende Domain dafür bürgt.",
   "Another sender address": "Weitere Absenderadresse",
   "This address is already in use.": "Diese Adresse wird bereits verwendet.",
-  "This is not a valid e-mail address.": "Das ist keine gültige E-Mail-Adresse."
+  "This is not a valid e-mail address.": "Das ist keine gültige E-Mail-Adresse.",
+  "Help": "Hilfe"
 }
