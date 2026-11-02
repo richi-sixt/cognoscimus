@@ -4,12 +4,14 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { IoPersonAddOutline } from 'react-icons/io5';
 import Dialog from '@/components/Dialog';
 import SegmentedControl from '@/components/SegmentedControl';
+import { useAuth } from '@/context/AuthContext';
 import { useEnv } from '@/context/EnvContext';
 import { useTranslation } from '@/hooks/useTranslation';
 import { eventDispatcher } from '@/utils/event';
 import { Book } from '@/types/book';
 import { GRANT_DEFAULT_EXPIRATION_DAYS, GRANT_EXPIRATION_DAYS } from '@/services/constants';
 import { createGrant, listGrants, revokeGrant, type BookGrant } from '@/libs/grants';
+import { listHiddenBooks, setBookHidden } from '@/libs/libraryExplore';
 import { formatBytes } from '@/utils/book';
 import { useSettingsStore } from '@/store/settingsStore';
 import { isCognoscimusCloudStorageActive } from '@/services/sync/cloudSyncProvider';
@@ -30,6 +32,7 @@ const isActive = (g: BookGrant) => !g.revoked_at && new Date(g.expires_at).getTi
 const ShareBookDialog: React.FC<ShareBookDialogProps> = ({ isOpen, book, onClose }) => {
   const _ = useTranslation();
   const { appService } = useEnv();
+  const { user } = useAuth();
   const settings = useSettingsStore((state) => state.settings);
 
   const [email, setEmail] = useState('');
@@ -40,6 +43,7 @@ const ShareBookDialog: React.FC<ShareBookDialogProps> = ({ isOpen, book, onClose
   const [grants, setGrants] = useState<BookGrant[]>([]);
   const [revokingId, setRevokingId] = useState<string | null>(null);
   const [fileSize, setFileSize] = useState<number | null>(null);
+  const [hidden, setHidden] = useState<boolean | null>(null);
 
   const bookHash = book?.hash;
 
@@ -65,8 +69,32 @@ const ShareBookDialog: React.FC<ShareBookDialogProps> = ({ isOpen, book, onClose
     setGrants([]);
     setRevokingId(null);
     setFileSize(null);
+    setHidden(null);
     void loadGrants();
   }, [isOpen, loadGrants]);
+
+  // Whether followers who browse my library see this book. Secondary to sharing.
+  useEffect(() => {
+    if (!isOpen || !user || !bookHash) return;
+    let cancelled = false;
+    void listHiddenBooks(user.id)
+      .then((all) => !cancelled && setHidden(all.has(bookHash)))
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, user, bookHash]);
+
+  const toggleHidden = async (value: boolean) => {
+    if (!user || !bookHash) return;
+    setHidden(value);
+    try {
+      await setBookHidden(user.id, bookHash, value);
+    } catch (err) {
+      setHidden(!value);
+      setErrorMessage(err instanceof Error ? err.message : _('Something went wrong'));
+    }
+  };
 
   // File size is decorative; a cloud-only book has no local file to measure.
   useEffect(() => {
@@ -228,6 +256,23 @@ const ShareBookDialog: React.FC<ShareBookDialogProps> = ({ isOpen, book, onClose
             {sharing ? _('Sharing…') : _('Share')}
           </button>
         </form>
+
+        {hidden !== null && (
+          <label className='flex cursor-pointer items-start gap-2 text-sm'>
+            <input
+              type='checkbox'
+              checked={hidden}
+              onChange={(e) => void toggleHidden(e.target.checked)}
+              className='checkbox checkbox-sm mt-0.5'
+            />
+            <span>
+              {_('Hide from people who browse my library')}
+              <span className='text-base-content/60 block text-xs'>
+                {_('Only matters if you share your library with followers.')}
+              </span>
+            </span>
+          </label>
+        )}
 
         {activeGrants.length > 0 && (
           <div className='flex flex-col gap-2'>

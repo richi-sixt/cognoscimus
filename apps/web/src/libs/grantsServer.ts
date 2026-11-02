@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { GRANT_MAX_ACTIVE_PER_OWNER } from '@/services/constants';
 
 export interface GrantRow {
   id: string;
@@ -80,4 +81,82 @@ export const foreignGrantedHashes = async (
   if (ownedError) throw ownedError;
   const ownedHashes = new Set((owned ?? []).map((f) => f.book_hash as string));
   return new Set(granted.filter((hash) => !ownedHashes.has(hash)));
+};
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+export type CreateGrantResult =
+  | { grant: GrantRow }
+  | { error: { status: number; code: string; message: string } };
+
+/**
+ * Grants `granteeId` the owner's book until the expiry, or renews an existing
+ * grant. Shared by the e-mail route and by accepting a borrow request, so both
+ * enforce the same checks: the book is the owner's, its file is uploaded and the
+ * owner stays under the active-grant cap. Display data comes from the owner's
+ * library row, never from the client.
+ */
+export const createGrant = async (
+  supabase: SupabaseClient,
+  params: { ownerId: string; granteeId: string; bookHash: string; expirationDays: number },
+): Promise<CreateGrantResult> => {
+  const { ownerId, granteeId, bookHash, expirationDays } = params;
+
+  const { data: book, error: bookError } = await supabase
+    .from('books')
+    .select('title, author, format')
+    .eq('user_id', ownerId)
+    .eq('book_hash', bookHash)
+    .is('deleted_at', null)
+    .maybeSingle();
+  if (bookError) throw bookError;
+  if (!book) {
+    return { error: { status: 404, code: 'book_not_found', message: 'Book not found' } };
+  }
+
+  const file = await findBookFile(supabase, ownerId, bookHash);
+  if (!file) {
+    return {
+      error: { status: 409, code: 'book_not_uploaded', message: 'Book is not uploaded yet' },
+    };
+  }
+
+  const nowIso = new Date().toISOString();
+  const { count, error: countError } = await supabase
+    .from('book_grants')
+    .select('id', { count: 'exact', head: true })
+    .eq('owner_id', ownerId)
+    .is('revoked_at', null)
+    .gt('expires_at', nowIso);
+  if (countError) throw countError;
+  if ((count ?? 0) >= GRANT_MAX_ACTIVE_PER_OWNER) {
+    return {
+      error: {
+        status: 429,
+        code: 'grant_limit_reached',
+        message: `You have reached the maximum of ${GRANT_MAX_ACTIVE_PER_OWNER} active grants.`,
+      },
+    };
+  }
+
+  const { data: grant, error: upsertError } = await supabase
+    .from('book_grants')
+    .upsert(
+      {
+        owner_id: ownerId,
+        grantee_id: granteeId,
+        book_hash: bookHash,
+        book_title: book.title || 'Untitled',
+        book_author: book.author || null,
+        book_format: (book.format || '').toLowerCase() || 'epub',
+        expires_at: new Date(Date.now() + expirationDays * DAY_MS).toISOString(),
+        revoked_at: null,
+        created_at: nowIso,
+      },
+      { onConflict: 'owner_id,grantee_id,book_hash' },
+    )
+    .select(GRANT_COLUMNS)
+    .single();
+  if (upsertError) throw upsertError;
+  return { grant: grant as GrantRow };
 };

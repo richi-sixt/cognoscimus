@@ -22,6 +22,7 @@ export function ProfileSection({ onSaved }: { onSaved?: (profile: Profile) => vo
   const [handle, setHandle] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [discoverable, setDiscoverable] = useState(false);
+  const [libraryShared, setLibraryShared] = useState(false);
   const [exists, setExists] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
@@ -36,6 +37,7 @@ export function ProfileSection({ onSaved }: { onSaved?: (profile: Profile) => vo
         setHandle(profile.handle);
         setDisplayName(profile.display_name);
         setDiscoverable(profile.discoverable);
+        setLibraryShared(profile.library_shared);
       })
       .catch((err) => setError(err instanceof Error ? err.message : _('Something went wrong')));
   }, [user, _]);
@@ -51,7 +53,7 @@ export function ProfileSection({ onSaved }: { onSaved?: (profile: Profile) => vo
     }
     setBusy(true);
     try {
-      await saveMyProfile(user.id, { handle: clean, displayName, discoverable });
+      await saveMyProfile(user.id, { handle: clean, displayName, discoverable, libraryShared });
       setHandle(clean);
       setExists(true);
       onSaved?.({
@@ -59,6 +61,7 @@ export function ProfileSection({ onSaved }: { onSaved?: (profile: Profile) => vo
         handle: clean,
         display_name: displayName.trim(),
         discoverable,
+        library_shared: libraryShared,
       });
       setError('');
       setMessage(_('Profile saved.'));
@@ -116,6 +119,22 @@ export function ProfileSection({ onSaved }: { onSaved?: (profile: Profile) => vo
         <span>
           {_('Others can find me by my exact username and ask to follow me')}
           <span className='text-base-content/60 block text-xs'>{_('Off by default.')}</span>
+        </span>
+      </label>
+      <label className='flex cursor-pointer items-start gap-2 text-sm'>
+        <input
+          type='checkbox'
+          checked={libraryShared}
+          onChange={(e) => setLibraryShared(e.target.checked)}
+          className='checkbox checkbox-sm mt-0.5'
+        />
+        <span>
+          {_('People who follow me can browse my library')}
+          <span className='text-base-content/60 block text-xs'>
+            {_(
+              'They see title, author and cover, and can ask to borrow a book. Off by default. You can hide single books.',
+            )}
+          </span>
         </span>
       </label>
       <button type='submit' className='btn btn-primary w-fit rounded-lg' disabled={busy}>

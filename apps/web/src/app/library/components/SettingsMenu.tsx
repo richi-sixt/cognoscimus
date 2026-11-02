@@ -84,6 +84,16 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ onPullLibrary, setIsDropdow
     setIsDropdownOpen?.(false);
   };
 
+  const openExplore = () => {
+    router.push('/library/explore');
+    setIsDropdownOpen?.(false);
+  };
+
+  const openPeople = () => {
+    router.push('/people?from=library');
+    setIsDropdownOpen?.(false);
+  };
+
   const handleManageSync = () => {
     router.push('/user?section=sync');
     setIsDropdownOpen?.(false);
@@ -277,6 +287,8 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ onPullLibrary, setIsDropdow
         onClick={cycleThemeMode}
       />
       {user && <MenuItem label={_('Shared with me')} onClick={handleSharedWithMe} />}
+      {user && <MenuItem label={_('Explore')} onClick={openExplore} />}
+      {user && <MenuItem label={_('People')} onClick={openPeople} />}
       <MenuItem label={_('Reading Statistics')} Icon={PiChartBar} onClick={openReadingStats} />
       <MenuItem label={_('Settings')} Icon={PiGear} onClick={openSettingsDialog} />
       <hr aria-hidden='true' className='border-base-200 my-1' />

@@ -991,3 +991,12 @@ export const SUPPORTED_LANGS: Record<string, string> = { ...TRANSLATED_LANGS, zh
 export const SUPPORTED_LANGNAMES: Record<string, string> = Object.fromEntries(
   Object.entries(SUPPORTED_LANGS).map(([code, name]) => [name, code]),
 );
+
+// Explore: a followed person's shared library, read one page at a time.
+export const EXPLORE_PAGE_SIZE = 24;
+export const EXPLORE_COVER_TTL_SECONDS = 3600;
+
+// Borrow requests (book_requests): limits that keep requests from piling up.
+export const BOOK_REQUEST_MAX_PENDING = 20;
+export const BOOK_REQUEST_RETRY_DAYS = 30;
+export const BOOK_REQUEST_MESSAGE_MAX = 300;

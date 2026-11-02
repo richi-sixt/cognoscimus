@@ -25,6 +25,7 @@ SQL migrations for the Supabase project, derived from the Readest schema and tri
 | `0019_later_explore.sql` | notes on items, the explore feed, saving a shared item |
 | `0020_later_feeds.sql` | RSS feeds and their entries |
 | `0021_later_inbox.sql` | Mail inbox: extra sender addresses, `later_inbox_owner()`, `later_send_as()` |
+| `0022_library_social.sql` | Library for followers: `profiles.library_shared`, `library_hidden`, `library_shared_books()`, `book_requests` |
 
 Run them once, in numeric order, in the Supabase SQL editor (or `supabase db push`).
 

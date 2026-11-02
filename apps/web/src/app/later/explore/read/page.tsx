@@ -1,7 +1,6 @@
 'use client';
 
 import DOMPurify from 'dompurify';
-import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { IoArrowBack, IoOpenOutline } from 'react-icons/io5';
@@ -27,7 +26,7 @@ const SharedReader = () => {
   const params = useSearchParams();
   const id = params?.get('id') ?? '';
   const offer = params?.get('offer') === '1';
-  const back = offer ? '/later/people' : '/later/explore';
+  const back = offer ? '/people' : '/later/explore';
 
   const [article, setArticle] = useState<SharedArticle | null>(null);
   const [missing, setMissing] = useState(false);
@@ -61,7 +60,7 @@ const SharedReader = () => {
       if (offer) {
         // Saving an offer also closes it.
         await answerShare(id, true);
-        window.location.assign('/later/people');
+        window.location.assign('/people');
         return;
       }
       setSaved((await saveShared(id)) ? 'new' : 'already');
@@ -77,7 +76,7 @@ const SharedReader = () => {
     setBusy(true);
     try {
       await answerShare(id, false);
-      window.location.assign('/later/people');
+      window.location.assign('/people');
     } catch (err) {
       setError(err instanceof Error ? err.message : _('Something went wrong'));
       setBusy(false);
@@ -87,9 +86,9 @@ const SharedReader = () => {
   return (
     <div className='bg-base-100 text-base-content min-h-dvh'>
       <header className='flex items-center gap-2 px-4 py-3'>
-        <Link href={back} className='btn btn-ghost btn-circle btn-sm' aria-label={_('Back')}>
+        <a href={back} className='btn btn-ghost btn-circle btn-sm' aria-label={_('Back')}>
           <IoArrowBack className='h-5 w-5' />
-        </Link>
+        </a>
         <span className='flex-1' />
         {article && (
           <>

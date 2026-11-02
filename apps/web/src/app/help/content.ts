@@ -63,6 +63,10 @@ export const HELP_CONTENT: Record<LandingLang, HelpContent> = {
             text: 'Share a single book with another user for 1, 7 or 30 days. It leaves their library when the time is up, or when you revoke it. Books lent to you appear under "Shared with me".',
           },
           {
+            title: 'Browse and borrow from people you follow',
+            text: 'Switch on "People who follow me can browse my library" in your profile (off by default). Followers then see title, author and cover under "Explore" in the menu, never your reading progress or notes. In a book\'s share dialog you can hide single books. A follower can ask to borrow a book; under "People" you lend it for 1, 7 or 30 days or decline. A lent book works like any other loan: it leaves their library when the time is up. It is a loan between people who know each other, not copy protection: respect the rights of the authors.',
+          },
+          {
             title: 'Storage',
             text: 'The account page shows how much space your files use and lets you remove files. In the cloud the files are kept under internal numbers; the list shows the title of each book, and the search finds books by title or author.',
           },
@@ -128,7 +132,7 @@ export const HELP_CONTENT: Record<LandingLang, HelpContent> = {
         steps: [
           {
             title: 'Follow someone',
-            text: 'Under "People" enter the exact username. The other person has to accept your request, and only if their profile is set to discoverable can they be found at all.',
+            text: 'One follow list serves the library and Later. Under "People" enter the exact username. The other person has to accept your request, and only if their profile is set to discoverable can they be found at all.',
           },
           {
             title: 'Share with followers',
@@ -233,6 +237,10 @@ export const HELP_CONTENT: Record<LandingLang, HelpContent> = {
             text: 'Ein einzelnes Buch für 1, 7 oder 30 Tage mit einem anderen Nutzer teilen. Es verschwindet aus dessen Bibliothek, wenn die Zeit abläuft oder du den Zugriff widerrufst. Bücher, die dir geliehen wurden, findest du unter «Mit mir geteilt».',
           },
           {
+            title: 'Bei gefolgten Personen stöbern und ausleihen',
+            text: 'Schalte im Profil «Personen, die mir folgen, dürfen meine Bibliothek durchstöbern» ein (standardmässig aus). Follower sehen dann unter «Entdecken» im Menü Titel, Autor und Cover, nie deinen Lesefortschritt oder deine Notizen. Im Teilen-Dialog eines Buchs kannst du einzelne Bücher verbergen. Ein Follower kann ein Buch zum Ausleihen anfragen; unter «Personen» verleihst du es für 1, 7 oder 30 Tage oder lehnst ab. Ein verliehenes Buch funktioniert wie jede Leihgabe: Es verschwindet aus der Bibliothek der Person, wenn die Zeit abläuft. Es ist eine Leihe zwischen Personen, die sich kennen, kein Kopierschutz: Achte die Rechte der Autorinnen und Autoren.',
+          },
+          {
             title: 'Speicher',
             text: 'Die Konto-Seite zeigt, wie viel Platz deine Dateien belegen, und lässt dich Dateien entfernen. In der Cloud liegen die Dateien unter internen Nummern; die Liste zeigt den Titel jedes Buchs, und die Suche findet Bücher nach Titel oder Autor.',
           },
@@ -298,7 +306,7 @@ export const HELP_CONTENT: Record<LandingLang, HelpContent> = {
         steps: [
           {
             title: 'Jemandem folgen',
-            text: 'Unter «Personen» den genauen Benutzernamen eingeben. Die andere Person muss deine Anfrage annehmen, und nur wenn ihr Profil auf «auffindbar» steht, kann sie überhaupt gefunden werden.',
+            text: 'Eine Follower-Liste gilt für Bibliothek und Later. Unter «Personen» den genauen Benutzernamen eingeben. Die andere Person muss deine Anfrage annehmen, und nur wenn ihr Profil auf «auffindbar» steht, kann sie überhaupt gefunden werden.',
           },
           {
             title: 'Mit Followern teilen',

@@ -400,14 +400,14 @@ const Sidebar = ({
         )}
       </div>
 
-      <Link
-        href='/later/people'
+      <a
+        href='/people'
         className='hover:bg-base-200 flex items-center gap-2 rounded-lg px-2 py-1.5'
       >
         <IoPeopleOutline className='h-4 w-4 shrink-0' />
         <span className='min-w-0 flex-1 truncate'>{_('People')}</span>
         {requests > 0 && <span className='badge badge-primary badge-sm'>{requests}</span>}
-      </Link>
+      </a>
       <Link
         href='/later/feeds'
         className='hover:bg-base-200 flex items-center gap-2 rounded-lg px-2 py-1.5'
