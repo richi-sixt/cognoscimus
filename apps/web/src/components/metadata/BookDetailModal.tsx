@@ -7,6 +7,8 @@ import { BookMetadata } from '@/libs/document';
 import { useEnv } from '@/context/EnvContext';
 import { useAuth } from '@/context/AuthContext';
 import { useThemeStore } from '@/store/themeStore';
+import { useSettingsStore } from '@/store/settingsStore';
+import { isCognoscimusCloudStorageActive } from '@/services/sync/cloudSyncProvider';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useMetadataEdit } from './useMetadataEdit';
 import { DeleteAction } from '@/types/system';
@@ -59,6 +61,7 @@ const BookDetailModal: React.FC<BookDetailModalProps> = ({
   const _ = useTranslation();
   const { envConfig, appService } = useEnv();
   const { user } = useAuth();
+  const settings = useSettingsStore((state) => state.settings);
   const { safeAreaInsets } = useThemeStore();
   const [activeDeleteAction, setActiveDeleteAction] = useState<DeleteMenuAction | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -222,10 +225,11 @@ const BookDetailModal: React.FC<BookDetailModalProps> = ({
     }
   };
 
-  // Sharing uploads the book to the Cognoscimus backend and mints a public link, so
-  // it needs a signed-in user and a resolvable on-disk file. `fileSize` is only
-  // non-null when getBookFileSize could actually open the local file.
-  const shareEnabled = !!user && fileSize !== null;
+  // Sharing needs a signed-in user and a file the recipient can fetch: either the
+  // local copy (uploaded on demand) or the copy already in Cognoscimus storage.
+  // `fileSize` is only non-null when getBookFileSize could open the local file.
+  const inCloudStorage = !!book.uploadedAt && isCognoscimusCloudStorageActive(settings);
+  const shareEnabled = !!user && (fileSize !== null || inCloudStorage);
 
   const currentDeleteConfig = activeDeleteAction ? deleteConfigs[activeDeleteAction] : null;
 
