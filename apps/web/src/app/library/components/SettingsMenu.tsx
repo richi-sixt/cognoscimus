@@ -30,9 +30,15 @@ import { type AppLockDialogMode, useAppLockStore } from '@/store/appLockStore';
 interface SettingsMenuProps {
   onPullLibrary: (fullRefresh?: boolean, verbose?: boolean) => void;
   setIsDropdownOpen?: (isOpen: boolean) => void;
+  /** Open requests on the People page, shown next to its menu entry. */
+  requestCount?: number;
 }
 
-const SettingsMenu: React.FC<SettingsMenuProps> = ({ onPullLibrary, setIsDropdownOpen }) => {
+const SettingsMenu: React.FC<SettingsMenuProps> = ({
+  onPullLibrary,
+  setIsDropdownOpen,
+  requestCount = 0,
+}) => {
   const _ = useTranslation();
   const router = useAppRouter();
   const { appService } = useEnv();
@@ -288,7 +294,12 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ onPullLibrary, setIsDropdow
       />
       {user && <MenuItem label={_('Shared with me')} onClick={handleSharedWithMe} />}
       {user && <MenuItem label={_('Explore')} onClick={openExplore} />}
-      {user && <MenuItem label={_('People')} onClick={openPeople} />}
+      {user && (
+        <MenuItem
+          label={requestCount > 0 ? `${_('People')} (${requestCount})` : _('People')}
+          onClick={openPeople}
+        />
+      )}
       <MenuItem label={_('Reading Statistics')} Icon={PiChartBar} onClick={openReadingStats} />
       <MenuItem label={_('Settings')} Icon={PiGear} onClick={openSettingsDialog} />
       <hr aria-hidden='true' className='border-base-200 my-1' />

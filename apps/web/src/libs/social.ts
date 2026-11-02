@@ -9,6 +9,8 @@ export interface Profile {
   discoverable: boolean;
   /** Followers may browse the library (title, author, cover). */
   library_shared: boolean;
+  /** E-mail about borrow requests and their answers. */
+  notify_email: boolean;
 }
 
 /** A person on the other side of a follow. */
@@ -25,7 +27,7 @@ export const normalizeHandle = (input: string) => input.trim().replace(/^@/, '')
 export const getMyProfile = async (userId: string): Promise<Profile | null> => {
   const { data, error } = await supabase
     .from('profiles')
-    .select('user_id, handle, display_name, discoverable, library_shared')
+    .select('user_id, handle, display_name, discoverable, library_shared, notify_email')
     .eq('user_id', userId)
     .maybeSingle();
   if (error) throw error;
@@ -34,7 +36,13 @@ export const getMyProfile = async (userId: string): Promise<Profile | null> => {
 
 export const saveMyProfile = async (
   userId: string,
-  fields: { handle: string; displayName: string; discoverable: boolean; libraryShared: boolean },
+  fields: {
+    handle: string;
+    displayName: string;
+    discoverable: boolean;
+    libraryShared: boolean;
+    notifyEmail: boolean;
+  },
 ): Promise<Profile> => {
   const { data, error } = await supabase
     .from('profiles')
@@ -45,10 +53,11 @@ export const saveMyProfile = async (
         display_name: fields.displayName.trim(),
         discoverable: fields.discoverable,
         library_shared: fields.libraryShared,
+        notify_email: fields.notifyEmail,
       },
       { onConflict: 'user_id' },
     )
-    .select('user_id, handle, display_name, discoverable, library_shared')
+    .select('user_id, handle, display_name, discoverable, library_shared, notify_email')
     .single();
   if (error) throw error;
   return data as Profile;

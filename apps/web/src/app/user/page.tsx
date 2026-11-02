@@ -20,6 +20,7 @@ import AccountActions from './components/AccountActions';
 import { InboxSection } from './components/InboxSection';
 import { MfaSection } from './components/MfaSection';
 import { ProfileSection } from './components/ProfileSection';
+import CoverOptimizer from './components/CoverOptimizer';
 import StorageManager from './components/StorageManager';
 import SharedBooksSection from './components/SharedBooksSection';
 import { SyncPassphraseSection } from './components/SyncPassphraseSection';
@@ -157,6 +158,7 @@ const ProfilePage = () => {
 
               {showStorageManager ? (
                 <div className='flex flex-col gap-y-8 px-6'>
+                  <CoverOptimizer />
                   <StorageManager />
                 </div>
               ) : showSharedBooksManager ? (

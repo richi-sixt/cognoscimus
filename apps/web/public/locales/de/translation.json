@@ -1968,5 +1968,14 @@
   "Requests to borrow a book": "Anfragen zum Ausleihen eines Buchs",
   "Lend for": "Verleihen für",
   "{{count}} days": "{{count}} Tage",
-  "Lend": "Verleihen"
+  "Lend": "Verleihen",
+  "Shrink covers": "Cover verkleinern",
+  "Covers of imported books are often 1 to 2 MB. This scales the covers on this device down and replaces their cloud copies, so the library loads faster everywhere. It can take a few minutes.": "Cover importierter Bücher sind oft 1 bis 2 MB gross. Das verkleinert die Cover auf diesem Gerät und ersetzt ihre Cloud-Kopien, damit die Bibliothek überall schneller lädt. Das kann ein paar Minuten dauern.",
+  "Working…": "Arbeite…",
+  "Stop": "Stopp",
+  "All covers are already small.": "Alle Cover sind bereits klein.",
+  "{{count}} covers shrunk, {{size}} saved.": "{{count}} Cover verkleinert, {{size}} gespart.",
+  "{{count}} could not be uploaded.": "{{count}} konnten nicht hochgeladen werden.",
+  "E-mail me about borrow requests": "Mich per E-Mail über Ausleih-Anfragen informieren",
+  "When someone asks to borrow a book, and when they answer your request.": "Wenn jemand ein Buch anfragt und wenn jemand deine Anfrage beantwortet."
 }

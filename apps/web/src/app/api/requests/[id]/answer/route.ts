@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createSupabaseAdminClient } from '@/utils/supabase';
 import { validateUserAndToken } from '@/utils/access';
 import { createGrant, isUuid } from '@/libs/grantsServer';
+import { borrowAnswerMail, notifyUser } from '@/libs/notifyServer';
 import { REQUEST_COLUMNS, type BookRequestRow } from '@/libs/requestsServer';
 import { GRANT_EXPIRATION_DAYS } from '@/services/constants';
 
@@ -86,6 +87,21 @@ export async function POST(request: Request, { params }: RouteParams) {
       .eq('id', id)
       .eq('status', 'pending');
     if (updateError) throw updateError;
+
+    const { data: me } = await supabase
+      .from('profiles')
+      .select('handle')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    await notifyUser(
+      supabase,
+      row.requester_id,
+      borrowAnswerMail({
+        ownerHandle: me?.handle ?? '',
+        bookTitle: row.book_title,
+        accepted: body.accept,
+      }),
+    );
     return NextResponse.json({ status: body.accept ? 'accepted' : 'declined' });
   } catch (error) {
     console.error('book_requests answer failed:', error);

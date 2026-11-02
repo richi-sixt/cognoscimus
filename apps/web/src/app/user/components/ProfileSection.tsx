@@ -23,6 +23,7 @@ export function ProfileSection({ onSaved }: { onSaved?: (profile: Profile) => vo
   const [displayName, setDisplayName] = useState('');
   const [discoverable, setDiscoverable] = useState(false);
   const [libraryShared, setLibraryShared] = useState(false);
+  const [notifyEmail, setNotifyEmail] = useState(true);
   const [exists, setExists] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
@@ -38,6 +39,7 @@ export function ProfileSection({ onSaved }: { onSaved?: (profile: Profile) => vo
         setDisplayName(profile.display_name);
         setDiscoverable(profile.discoverable);
         setLibraryShared(profile.library_shared);
+        setNotifyEmail(profile.notify_email);
       })
       .catch((err) => setError(err instanceof Error ? err.message : _('Something went wrong')));
   }, [user, _]);
@@ -53,7 +55,13 @@ export function ProfileSection({ onSaved }: { onSaved?: (profile: Profile) => vo
     }
     setBusy(true);
     try {
-      await saveMyProfile(user.id, { handle: clean, displayName, discoverable, libraryShared });
+      await saveMyProfile(user.id, {
+        handle: clean,
+        displayName,
+        discoverable,
+        libraryShared,
+        notifyEmail,
+      });
       setHandle(clean);
       setExists(true);
       onSaved?.({
@@ -62,6 +70,7 @@ export function ProfileSection({ onSaved }: { onSaved?: (profile: Profile) => vo
         display_name: displayName.trim(),
         discoverable,
         library_shared: libraryShared,
+        notify_email: notifyEmail,
       });
       setError('');
       setMessage(_('Profile saved.'));
@@ -134,6 +143,20 @@ export function ProfileSection({ onSaved }: { onSaved?: (profile: Profile) => vo
             {_(
               'They see title, author and cover, and can ask to borrow a book. Off by default. You can hide single books.',
             )}
+          </span>
+        </span>
+      </label>
+      <label className='flex cursor-pointer items-start gap-2 text-sm'>
+        <input
+          type='checkbox'
+          checked={notifyEmail}
+          onChange={(e) => setNotifyEmail(e.target.checked)}
+          className='checkbox checkbox-sm mt-0.5'
+        />
+        <span>
+          {_('E-mail me about borrow requests')}
+          <span className='text-base-content/60 block text-xs'>
+            {_('When someone asks to borrow a book, and when they answer your request.')}
           </span>
         </span>
       </label>

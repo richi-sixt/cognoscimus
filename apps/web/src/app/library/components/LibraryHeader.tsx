@@ -17,6 +17,7 @@ import { useResponsiveSize } from '@/hooks/useResponsiveSize';
 import useShortcuts from '@/hooks/useShortcuts';
 import Dropdown from '@/components/Dropdown';
 import AppSwitcher from '@/components/AppSwitcher';
+import { useOpenRequests } from '@/hooks/useOpenRequests';
 import SettingsMenu from './SettingsMenu';
 import ImportMenu from './ImportMenu';
 import LibrarySearchOptionsMenu from './LibrarySearchOptionsMenu';
@@ -64,6 +65,7 @@ const LibraryHeader: React.FC<LibraryHeaderProps> = ({
   onSearchTargetChange,
 }) => {
   const _ = useTranslation();
+  const requestCount = useOpenRequests();
   const { appService } = useEnv();
   const { systemUIVisible, statusBarHeight } = useThemeStore();
   const { currentBookshelf } = useLibraryStore();
@@ -267,9 +269,19 @@ const LibraryHeader: React.FC<LibraryHeaderProps> = ({
               label={_('Settings Menu')}
               className='exclude-title-bar-mousedown dropdown-bottom dropdown-end'
               buttonClassName='btn btn-ghost h-8 min-h-8 w-8 p-0'
-              toggleButton={<MdOutlineMenu role='none' size={iconSize18} />}
+              toggleButton={
+                <span className='relative flex'>
+                  <MdOutlineMenu role='none' size={iconSize18} />
+                  {requestCount > 0 && (
+                    <span
+                      className='bg-primary absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full'
+                      aria-hidden='true'
+                    />
+                  )}
+                </span>
+              }
             >
-              <SettingsMenu onPullLibrary={onPullLibrary} />
+              <SettingsMenu onPullLibrary={onPullLibrary} requestCount={requestCount} />
             </Dropdown>
           </div>
         )}

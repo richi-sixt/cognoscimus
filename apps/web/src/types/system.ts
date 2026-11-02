@@ -252,6 +252,7 @@ export interface AppService {
   getCoverImageBlobUrl(book: Book): Promise<string>;
   generateCoverImageUrl(book: Book): Promise<string>;
   updateCoverImage(book: Book, imageUrl?: string, imageFile?: string): Promise<void>;
+  optimizeBookCover(book: Book): Promise<{ before: number; after: number } | null>;
   computeCoverHash(book: Book): Promise<string | null>;
   ask(message: string): Promise<boolean>;
   openDatabase(

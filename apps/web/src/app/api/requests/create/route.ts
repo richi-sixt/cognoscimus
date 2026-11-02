@@ -3,6 +3,7 @@ import { createSupabaseAdminClient } from '@/utils/supabase';
 import { validateUserAndToken } from '@/utils/access';
 import { canBrowseLibrary, visibleBookHashes } from '@/libs/exploreServer';
 import { findBookFile, isUuid } from '@/libs/grantsServer';
+import { borrowRequestMail, notifyUser } from '@/libs/notifyServer';
 import { mayAskAgain, REQUEST_COLUMNS, type BookRequestRow } from '@/libs/requestsServer';
 import {
   BOOK_REQUEST_MAX_PENDING,
@@ -109,6 +110,22 @@ export async function POST(request: Request) {
       .select(REQUEST_COLUMNS)
       .single();
     if (saveError) throw saveError;
+
+    // Tell the owner. The handle comes from the requester's profile, not the request body.
+    const { data: me } = await supabase
+      .from('profiles')
+      .select('handle')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    await notifyUser(
+      supabase,
+      ownerId,
+      borrowRequestMail({
+        requesterHandle: me?.handle ?? '',
+        bookTitle: book.title || 'Untitled',
+        message: message || null,
+      }),
+    );
     return NextResponse.json({ request: saved });
   } catch (error) {
     console.error('book_requests create failed:', error);

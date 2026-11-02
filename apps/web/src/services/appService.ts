@@ -292,6 +292,10 @@ export abstract class BaseAppService implements AppService {
     return BookSvc.updateCoverImage(this.coverCtx, book, imageUrl, imageFile);
   }
 
+  async optimizeBookCover(book: Book): Promise<{ before: number; after: number } | null> {
+    return BookSvc.optimizeBookCover(this.coverCtx, book);
+  }
+
   async computeCoverHash(book: Book): Promise<string | null> {
     return BookSvc.computeCoverHash(this.fs, book);
   }

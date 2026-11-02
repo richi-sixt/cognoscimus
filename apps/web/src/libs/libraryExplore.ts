@@ -157,3 +157,14 @@ export const setBookHidden = async (userId: string, bookHash: string, hidden: bo
         .eq('book_hash', bookHash);
   if (error) throw error;
 };
+
+/** Borrow requests for the caller's books that still wait for an answer. */
+export const countOpenBookRequests = async (userId: string): Promise<number> => {
+  const { count, error } = await supabase
+    .from('book_requests')
+    .select('id', { count: 'exact', head: true })
+    .eq('owner_id', userId)
+    .eq('status', 'pending');
+  if (error) throw error;
+  return count ?? 0;
+};

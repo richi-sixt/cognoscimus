@@ -38,6 +38,7 @@ import { deserializeConfig, serializeConfig, serializeRawConfig } from '@/utils/
 import { ClosableFile } from '@/utils/file';
 import { TxtToEpubConverter } from '@/utils/txt';
 import { svg2png } from '@/utils/svg';
+import { shrinkCover } from '@/utils/image';
 import { normalizeMetadataIsbn } from '@/utils/isbn';
 import { BookFileNotFoundError } from './errors';
 import {
@@ -296,9 +297,27 @@ export async function updateCoverImage(
   if (imageUrl === '_blank') {
     await ctx.fs.removeFile(getCoverFilename(book), 'Books');
   } else if (imageUrl || imageFile) {
-    const arrayBuffer = await imageToArrayBuffer(imageUrl);
+    const arrayBuffer = await shrinkCover(await imageToArrayBuffer(imageUrl));
     await ctx.fs.writeFile(getCoverFilename(book), 'Books', arrayBuffer);
   }
+}
+
+/**
+ * Re-encodes an existing local cover smaller, in place. Returns the sizes, or
+ * null when there is no cover or it is already small. The caller refreshes the
+ * cover hash and the cloud copy.
+ */
+export async function optimizeBookCover(
+  ctx: CoverContext,
+  book: Book,
+): Promise<{ before: number; after: number } | null> {
+  const path = getCoverFilename(book);
+  if (!(await ctx.fs.exists(path, 'Books'))) return null;
+  const original = await (await ctx.fs.openFile(path, 'Books')).arrayBuffer();
+  const smaller = await shrinkCover(original);
+  if (smaller === original) return null;
+  await ctx.fs.writeFile(path, 'Books', smaller);
+  return { before: original.byteLength, after: smaller.byteLength };
 }
 
 /**
@@ -804,7 +823,7 @@ export async function importBook(
         } catch {}
       }
       if (cover) {
-        const coverBytes = await cover.arrayBuffer();
+        const coverBytes = await shrinkCover(await cover.arrayBuffer());
         await fs.writeFile(getCoverFilename(book), 'Books', coverBytes);
       }
     }

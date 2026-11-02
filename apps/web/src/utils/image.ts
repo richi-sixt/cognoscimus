@@ -213,3 +213,51 @@ export async function fetchImageAsBase64(
     throw error;
   }
 }
+
+/** Covers are shown at card size, so a long side of 640 px is sharp on a retina screen. */
+export const COVER_MAX_SIDE = 640;
+export const COVER_JPEG_QUALITY = 0.82;
+/** A cover at or below this size is left alone: re-encoding would only lose quality. */
+export const COVER_KEEP_BYTES = 150 * 1024;
+
+/** The size an image of `width` x `height` is scaled to so its long side is at most `maxSide`. */
+export function fitWithin(width: number, height: number, maxSide: number) {
+  const scale = Math.min(1, maxSide / Math.max(width, height));
+  return {
+    width: Math.max(1, Math.round(width * scale)),
+    height: Math.max(1, Math.round(height * scale)),
+  };
+}
+
+/**
+ * Scales a cover down to a JPEG of at most COVER_MAX_SIDE px. Returns the input
+ * untouched when it is already small, cannot be decoded here (no canvas, broken
+ * image) or would not get smaller. Transparency becomes white.
+ */
+export async function shrinkCover(data: ArrayBuffer): Promise<ArrayBuffer> {
+  if (data.byteLength <= COVER_KEEP_BYTES) return data;
+  if (typeof createImageBitmap !== 'function' || typeof document === 'undefined') return data;
+  try {
+    const bitmap = await createImageBitmap(new Blob([data]));
+    try {
+      const { width, height } = fitWithin(bitmap.width, bitmap.height, COVER_MAX_SIDE);
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext('2d');
+      if (!context) return data;
+      context.fillStyle = '#ffffff';
+      context.fillRect(0, 0, width, height);
+      context.drawImage(bitmap, 0, 0, width, height);
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob(resolve, 'image/jpeg', COVER_JPEG_QUALITY),
+      );
+      if (!blob || blob.type !== 'image/jpeg' || blob.size >= data.byteLength) return data;
+      return await blob.arrayBuffer();
+    } finally {
+      bitmap.close();
+    }
+  } catch {
+    return data;
+  }
+}

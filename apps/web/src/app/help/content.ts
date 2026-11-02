@@ -64,11 +64,11 @@ export const HELP_CONTENT: Record<LandingLang, HelpContent> = {
           },
           {
             title: 'Browse and borrow from people you follow',
-            text: 'Switch on "People who follow me can browse my library" in your profile (off by default). Followers then see title, author and cover under "Explore" in the menu, never your reading progress or notes. In a book\'s share dialog you can hide single books. A follower can ask to borrow a book; under "People" you lend it for 1, 7 or 30 days or decline. A lent book works like any other loan: it leaves their library when the time is up. It is a loan between people who know each other, not copy protection: respect the rights of the authors.',
+            text: 'Switch on "People who follow me can browse my library" in your profile (off by default). Followers then see title, author and cover under "Explore" in the menu, never your reading progress or notes. In a book\'s share dialog you can hide single books. A follower can ask to borrow a book; under "People" you lend it for 1, 7 or 30 days or decline. A lent book works like any other loan: it leaves their library when the time is up. You get an e-mail when someone asks and when your request is answered; switch it off in your profile. It is a loan between people who know each other, not copy protection: respect the rights of the authors.',
           },
           {
             title: 'Storage',
-            text: 'The account page shows how much space your files use and lets you remove files. In the cloud the files are kept under internal numbers; the list shows the title of each book, and the search finds books by title or author.',
+            text: 'The account page shows how much space your files use and lets you remove files. In the cloud the files are kept under internal numbers; the list shows the title of each book, and the search finds books by title or author. "Shrink covers" on the same page scales large covers down (often from 1 to 2 MB to about 100 KB), on this device and in the cloud.',
           },
           {
             title: 'Back up your library',
@@ -238,11 +238,11 @@ export const HELP_CONTENT: Record<LandingLang, HelpContent> = {
           },
           {
             title: 'Bei gefolgten Personen stöbern und ausleihen',
-            text: 'Schalte im Profil «Personen, die mir folgen, dürfen meine Bibliothek durchstöbern» ein (standardmässig aus). Follower sehen dann unter «Entdecken» im Menü Titel, Autor und Cover, nie deinen Lesefortschritt oder deine Notizen. Im Teilen-Dialog eines Buchs kannst du einzelne Bücher verbergen. Ein Follower kann ein Buch zum Ausleihen anfragen; unter «Personen» verleihst du es für 1, 7 oder 30 Tage oder lehnst ab. Ein verliehenes Buch funktioniert wie jede Leihgabe: Es verschwindet aus der Bibliothek der Person, wenn die Zeit abläuft. Es ist eine Leihe zwischen Personen, die sich kennen, kein Kopierschutz: Achte die Rechte der Autorinnen und Autoren.',
+            text: 'Schalte im Profil «Personen, die mir folgen, dürfen meine Bibliothek durchstöbern» ein (standardmässig aus). Follower sehen dann unter «Entdecken» im Menü Titel, Autor und Cover, nie deinen Lesefortschritt oder deine Notizen. Im Teilen-Dialog eines Buchs kannst du einzelne Bücher verbergen. Ein Follower kann ein Buch zum Ausleihen anfragen; unter «Personen» verleihst du es für 1, 7 oder 30 Tage oder lehnst ab. Ein verliehenes Buch funktioniert wie jede Leihgabe: Es verschwindet aus der Bibliothek der Person, wenn die Zeit abläuft. Bei einer Anfrage und bei der Antwort auf deine Anfrage bekommst du eine E-Mail; im Profil lässt sie sich ausschalten. Es ist eine Leihe zwischen Personen, die sich kennen, kein Kopierschutz: Achte die Rechte der Autorinnen und Autoren.',
           },
           {
             title: 'Speicher',
-            text: 'Die Konto-Seite zeigt, wie viel Platz deine Dateien belegen, und lässt dich Dateien entfernen. In der Cloud liegen die Dateien unter internen Nummern; die Liste zeigt den Titel jedes Buchs, und die Suche findet Bücher nach Titel oder Autor.',
+            text: 'Die Konto-Seite zeigt, wie viel Platz deine Dateien belegen, und lässt dich Dateien entfernen. In der Cloud liegen die Dateien unter internen Nummern; die Liste zeigt den Titel jedes Buchs, und die Suche findet Bücher nach Titel oder Autor. «Cover verkleinern» auf derselben Seite verkleinert grosse Cover (oft von 1 bis 2 MB auf etwa 100 KB), auf diesem Gerät und in der Cloud.',
           },
           {
             title: 'Bibliothek sichern',
