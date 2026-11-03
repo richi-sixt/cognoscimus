@@ -1726,7 +1726,7 @@
   "Could not load shared books": "Geteilte Bücher konnten nicht geladen werden",
   "Could not open the shared book": "Das geteilte Buch konnte nicht geöffnet werden",
   "Nobody has shared a book with you at the moment.": "Im Moment hat niemand ein Buch mit dir geteilt.",
-  "From {{email}}": "Von {{email}}",
+  "From {{name}}": "Von {{name}}",
   "Manage Shared Books": "Geteilte Bücher verwalten",
   "Shared Books": "Geteilte Bücher",
   "You have not shared any books yet. Use the Share action on a book.": "Du hast noch keine Bücher geteilt. Nutze die Aktion „Teilen“ an einem Buch.",
@@ -1977,5 +1977,10 @@
   "{{count}} covers shrunk, {{size}} saved.": "{{count}} Cover verkleinert, {{size}} gespart.",
   "{{count}} could not be uploaded.": "{{count}} konnten nicht hochgeladen werden.",
   "E-mail me about borrow requests": "Mich per E-Mail über Ausleih-Anfragen informieren",
-  "When someone asks to borrow a book, and when they answer your request.": "Wenn jemand ein Buch anfragt und wenn jemand deine Anfrage beantwortet."
+  "When someone asks to borrow a book, and when they answer your request.": "Wenn jemand ein Buch anfragt und wenn jemand deine Anfrage beantwortet.",
+  "This browser builds the backup in memory. For a large library use Brave or Chrome.": "Dieser Browser baut die Sicherung im Arbeitsspeicher auf. Für eine grosse Bibliothek nimm Brave oder Chrome.",
+  "{{count}} books came from the cloud.": "{{count}} Bücher kamen aus der Cloud.",
+  "{{count}} books could not be fetched and are not in the file:": "{{count}} Bücher konnten nicht geladen werden und fehlen in der Datei:",
+  "Also include books that are only in the cloud, with their reading position and notes (downloaded for the backup).": "Auch Bücher einschliessen, die nur in der Cloud liegen, samt Leseposition und Notizen (sie werden für die Sicherung heruntergeladen).",
+  "Reading positions and notes could not be read from the server. The files are saved, but notes of books that are not on this device are missing.": "Leseposition und Notizen konnten nicht vom Server gelesen werden. Die Dateien sind gesichert, aber Notizen von Büchern, die nicht auf diesem Gerät liegen, fehlen."
 }

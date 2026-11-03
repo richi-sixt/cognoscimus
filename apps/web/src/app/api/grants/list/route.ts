@@ -37,21 +37,40 @@ export async function GET(request: Request) {
 
   const grants = (data ?? []) as GrantRow[];
 
-  // The other party's email, so people recognise who a grant is with.
+  // The other party, so people recognise who a grant is with. A person with a
+  // profile is shown by name and username, and then the address stays on the
+  // server: the username is the only name people agreed to share. The address
+  // is only a fallback for someone without a profile.
   const otherIds = [...new Set(grants.map((g) => (role === 'owner' ? g.grantee_id : g.owner_id)))];
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('user_id, handle, display_name')
+    .in('user_id', otherIds);
+  const labels = new Map<string, string>();
+  for (const p of profiles ?? []) {
+    labels.set(p.user_id, p.display_name ? `${p.display_name} (@${p.handle})` : `@${p.handle}`);
+  }
   const emails = new Map<string, string>();
   await Promise.all(
-    otherIds.map(async (id) => {
-      const { data: found } = await supabase.auth.admin.getUserById(id);
-      if (found?.user?.email) emails.set(id, found.user.email);
-    }),
+    otherIds
+      .filter((id) => !labels.has(id))
+      .map(async (id) => {
+        const { data: found } = await supabase.auth.admin.getUserById(id);
+        if (found?.user?.email) emails.set(id, found.user.email);
+      }),
   );
+  const who = (id: string) => ({
+    label: labels.get(id) ?? emails.get(id) ?? null,
+    email: emails.get(id) ?? null,
+  });
 
   return NextResponse.json({
     grants: grants.map((g) => ({
       ...g,
-      grantee_email: emails.get(g.grantee_id) ?? null,
-      owner_email: emails.get(g.owner_id) ?? null,
+      grantee_label: who(g.grantee_id).label,
+      grantee_email: who(g.grantee_id).email,
+      owner_label: who(g.owner_id).label,
+      owner_email: who(g.owner_id).email,
     })),
   });
 }

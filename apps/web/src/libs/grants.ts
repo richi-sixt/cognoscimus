@@ -14,6 +14,10 @@ export interface BookGrant {
   expires_at: string;
   revoked_at: string | null;
   created_at: string;
+  /** Name and username of the other party, or their address when they have no profile. */
+  grantee_label?: string | null;
+  owner_label?: string | null;
+  /** Only set for someone without a profile. */
   grantee_email: string | null;
   owner_email: string | null;
 }

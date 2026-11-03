@@ -6,8 +6,18 @@ import { Book, BookConfig, BookNote } from '@/types/book';
 import { SystemSettings } from '@/types/settings';
 import type { PageStatEvent, StatBook } from '@/types/statistics';
 import { StatisticsDb } from '@/services/statistics/statisticsDb';
-import { getBookDirOfPath, getLibraryFilename } from '@/utils/book';
+import {
+  getBookDirOfPath,
+  getCoverFilename,
+  getLibraryFilename,
+  getLocalBookFilename,
+  getRemoteBookFilename,
+  isBookFile,
+} from '@/utils/book';
+import { CLOUD_BOOKS_SUBDIR } from '@/services/constants';
 import { stampBookConfigSchema } from '@/utils/serializer';
+import { transformBookConfigFromDB, transformBookNoteFromDB } from '@/utils/transform';
+import type { DBBookConfig, DBBookNote } from '@/types/records';
 import { configureZip } from '@/utils/zip';
 
 /** Book file extensions for identifying book files in backup directories. */
@@ -29,6 +39,32 @@ export interface BackupOptions {
    * defaults to false.
    */
   includeCredentials?: boolean;
+  /**
+   * Also fetch the files of books that live only in the cloud and put them in
+   * the archive, one at a time, without storing them on this device. Books with
+   * no config.json on this device also get their reading position and notes
+   * from the server, so nothing a cloud-only book holds is left out.
+   */
+  includeCloudBooks?: boolean;
+}
+
+/** What a backup run ended up with, for the summary the user sees. */
+export interface BackupSummary {
+  /** Files written from this device. */
+  files: number;
+  /** Books whose files came from the cloud. */
+  cloudBooks: number;
+  /** Cloud books that could not be fetched, by title. */
+  skipped: string[];
+  /** Books whose reading position or notes came from the server. */
+  configs: number;
+  /** The server's positions and notes could not be read. */
+  configsFailed: boolean;
+}
+
+export interface BackupExtras {
+  signal?: AbortSignal;
+  onSummary?: (summary: BackupSummary) => void;
 }
 
 /**
@@ -271,6 +307,10 @@ interface BackupPlan {
   texts: { name: string; content: string }[];
   /** Book files, `file.path` relative to the Books dir, `entryName` with forward slashes. */
   files: { file: FileItem; entryName: string }[];
+  /** Live books with a cloud copy and no book file on this device. */
+  cloudBooks: { book: Book; hasLocalCover: boolean }[];
+  /** Live books with no config.json on this device. */
+  withoutConfig: Book[];
 }
 
 /**
@@ -335,7 +375,91 @@ async function collectBackupEntries(
     .map((file) => ({ file, entryName: file.path.replace(/\\/g, '/') }))
     // A restore killed mid-file leaves its `.part` temp file behind.
     .filter(({ entryName }) => !entryName.endsWith('.part'));
-  return { texts, files: bookFiles };
+  const dirsWithBook = new Set(
+    bookFiles
+      .filter(({ entryName }) => isBookFile(entryName))
+      .map(({ entryName }) => getBookDirOfPath(entryName)),
+  );
+  const dirsWithCover = new Set(
+    bookFiles
+      .filter(({ entryName }) => entryName.endsWith('/cover.png'))
+      .map(({ entryName }) => getBookDirOfPath(entryName)),
+  );
+  const cloudBooks = books
+    .filter((b) => !b.deletedAt && !!b.uploadedAt && !dirsWithBook.has(b.hash))
+    .map((book) => ({ book, hasLocalCover: dirsWithCover.has(book.hash) }));
+  const dirsWithConfig = new Set(
+    bookFiles
+      .filter(({ entryName }) => entryName.endsWith('/config.json'))
+      .map(({ entryName }) => getBookDirOfPath(entryName)),
+  );
+  const withoutConfig = books.filter((b) => !b.deletedAt && !dirsWithConfig.has(b.hash));
+  return { texts, files: bookFiles, cloudBooks, withoutConfig };
+}
+
+const CLOUD_BATCH = 20;
+
+/**
+ * A config.json for each book that has none on this device, built from what the
+ * server holds: reading position, settings and notes. Restore merges it with the
+ * current config, keeping the further position and every note.
+ */
+async function serverConfigs(books: Book[]): Promise<Map<string, string>> {
+  const { SyncClient } = await import('@/libs/sync');
+  const client = new SyncClient();
+  const [{ configs }, { notes }] = await Promise.all([
+    client.pullChanges(0, 'configs'),
+    client.pullChanges(0, 'notes'),
+  ]);
+  const wanted = new Set(books.map((b) => b.hash));
+  // Pulled rows are DB-shaped (snake_case) despite the record types.
+  const configByHash = new Map<string, DBBookConfig>();
+  for (const row of (configs ?? []) as unknown as DBBookConfig[]) {
+    if (wanted.has(row.book_hash) && !row.deleted_at) configByHash.set(row.book_hash, row);
+  }
+  const notesByHash = new Map<string, BookNote[]>();
+  for (const row of (notes ?? []) as unknown as DBBookNote[]) {
+    if (!wanted.has(row.book_hash) || row.deleted_at) continue;
+    const list = notesByHash.get(row.book_hash) ?? [];
+    list.push(transformBookNoteFromDB(row));
+    notesByHash.set(row.book_hash, list);
+  }
+  const result = new Map<string, string>();
+  for (const hash of wanted) {
+    const row = configByHash.get(hash);
+    const booknotes = notesByHash.get(hash);
+    if (!row && !booknotes) continue;
+    const config: Partial<BookConfig> = row
+      ? transformBookConfigFromDB(row)
+      : { bookHash: hash, updatedAt: 0 };
+    result.set(
+      `${hash}/config.json`,
+      JSON.stringify(stampBookConfigSchema({ ...config, booknotes: booknotes ?? [] })),
+    );
+  }
+  return result;
+}
+
+const throwIfAborted = (signal?: AbortSignal) => {
+  if (signal?.aborted) throw new DOMException('Backup cancelled', 'AbortError');
+};
+
+/**
+ * Fetches one cloud file whole. The signed address can have expired by the time a
+ * long run reaches it, so a refused request asks for a fresh one once.
+ */
+async function fetchCloudFile(
+  file: { lfp: string; cfp: string; downloadUrl?: string },
+  refresh: (file: { lfp: string; cfp: string }) => Promise<string | undefined>,
+): Promise<Uint8Array | null> {
+  let url = file.downloadUrl;
+  for (let attempt = 0; attempt < 2 && url; attempt++) {
+    const response = await fetch(url);
+    if (response.ok) return new Uint8Array(await response.arrayBuffer());
+    if (response.status !== 401 && response.status !== 403) return null;
+    url = await refresh(file);
+  }
+  return null;
 }
 
 /**
@@ -346,26 +470,103 @@ export async function addBackupEntriesToZip(
   appService: AppService,
   options: BackupOptions,
   onProgress?: ProgressCallback,
-): Promise<void> {
+  extras: BackupExtras = {},
+): Promise<BackupSummary> {
   const { Uint8ArrayReader } = await import('@zip.js/zip.js');
-  const { texts, files } = await collectBackupEntries(appService, options);
+  const { texts, files, cloudBooks, withoutConfig } = await collectBackupEntries(
+    appService,
+    options,
+  );
+  const summary: BackupSummary = {
+    files: 0,
+    cloudBooks: 0,
+    skipped: [],
+    configs: 0,
+    configsFailed: false,
+  };
+  const fromCloud = options.includeCloudBooks ? cloudBooks : [];
 
   for (const { name, content } of texts) {
     await writer.add(name, new Uint8ArrayReader(new TextEncoder().encode(content)));
   }
 
-  const total = files.length;
+  const total = files.length + fromCloud.length;
   for (let i = 0; i < files.length; i++) {
+    throwIfAborted(extras.signal);
     const { file, entryName } = files[i]!;
     onProgress?.(i + 1, total, file.path);
     try {
       const content = await appService.readFile(file.path, 'Books', 'binary');
       const data = new Uint8Array(content as ArrayBuffer);
       await writer.add(entryName, new Uint8ArrayReader(data), { level: 0 });
+      summary.files++;
     } catch (error) {
       console.warn(`Skipping file ${file.path}:`, error);
     }
   }
+
+  if (fromCloud.length > 0) {
+    const { batchGetDownloadUrls } = await import('@/libs/storage');
+    const refresh = async (file: { lfp: string; cfp: string }) =>
+      (await batchGetDownloadUrls([file]))[0]?.downloadUrl;
+
+    for (let start = 0; start < fromCloud.length; start += CLOUD_BATCH) {
+      throwIfAborted(extras.signal);
+      const batch = fromCloud.slice(start, start + CLOUD_BATCH);
+      const wanted = batch.flatMap(({ book, hasLocalCover }) => [
+        {
+          lfp: getLocalBookFilename(book),
+          cfp: `${CLOUD_BOOKS_SUBDIR}/${getRemoteBookFilename(book)}`,
+        },
+        ...(hasLocalCover
+          ? []
+          : [
+              {
+                lfp: getCoverFilename(book),
+                cfp: `${CLOUD_BOOKS_SUBDIR}/${getCoverFilename(book)}`,
+              },
+            ]),
+      ]);
+      const urls = new Map<string, { lfp: string; cfp: string; downloadUrl?: string }>(
+        (await batchGetDownloadUrls(wanted)).map((f) => [f.lfp, f]),
+      );
+
+      for (let i = 0; i < batch.length; i++) {
+        throwIfAborted(extras.signal);
+        const { book, hasLocalCover } = batch[i]!;
+        onProgress?.(files.length + start + i + 1, total, getLocalBookFilename(book));
+        const bookFile = urls.get(getLocalBookFilename(book));
+        const data = bookFile ? await fetchCloudFile(bookFile, refresh).catch(() => null) : null;
+        if (!data) {
+          summary.skipped.push(book.title);
+          continue;
+        }
+        await writer.add(getLocalBookFilename(book), new Uint8ArrayReader(data), { level: 0 });
+        summary.cloudBooks++;
+        // A missing cover only costs the picture; the book itself is saved.
+        const coverFile = hasLocalCover ? undefined : urls.get(getCoverFilename(book));
+        const cover = coverFile ? await fetchCloudFile(coverFile, refresh).catch(() => null) : null;
+        if (cover)
+          await writer.add(getCoverFilename(book), new Uint8ArrayReader(cover), { level: 0 });
+      }
+    }
+  }
+
+  if (options.includeCloudBooks && withoutConfig.length > 0) {
+    throwIfAborted(extras.signal);
+    try {
+      for (const [name, content] of await serverConfigs(withoutConfig)) {
+        await writer.add(name, new Uint8ArrayReader(new TextEncoder().encode(content)));
+        summary.configs++;
+      }
+    } catch (error) {
+      console.warn('Skipping reading positions and notes from the server:', error);
+      summary.configsFailed = true;
+    }
+  }
+
+  extras.onSummary?.(summary);
+  return summary;
 }
 
 const ZIP_WRITE_CONFIG: Partial<Configuration> = {
@@ -381,13 +582,14 @@ export async function createBackupZip(
   appService: AppService,
   options: BackupOptions = {},
   onProgress?: ProgressCallback,
+  extras: BackupExtras = {},
 ): Promise<ArrayBuffer> {
   await configureZip(ZIP_WRITE_CONFIG);
   const { BlobWriter, ZipWriter } = await import('@zip.js/zip.js');
 
   const blobWriter = new BlobWriter('application/zip');
   const writer = new ZipWriter(blobWriter);
-  await addBackupEntriesToZip(writer, appService, options, onProgress);
+  await addBackupEntriesToZip(writer, appService, options, onProgress, extras);
   await writer.close();
   const blob = await blobWriter.getData();
   return await blob.arrayBuffer();
@@ -630,7 +832,58 @@ export async function saveBackupFile(
   filename: string,
   options: BackupOptions = {},
   onProgress?: ProgressCallback,
+  extras: BackupExtras = {},
 ): Promise<boolean> {
-  const zipData = await createBackupZip(appService, options, onProgress);
+  const zipData = await createBackupZip(appService, options, onProgress, extras);
   return appService.saveFile(filename, zipData, { mimeType: 'application/zip' });
+}
+
+interface SaveFilePickerWindow {
+  showSaveFilePicker?: (options: {
+    suggestedName: string;
+    types: { description: string; accept: Record<string, string[]> }[];
+  }) => Promise<{ createWritable: () => Promise<WritableStream & { abort: () => Promise<void> }> }>;
+}
+
+/** Whether the browser can write the backup straight into a file on disk. */
+export const canStreamBackup = () =>
+  typeof window !== 'undefined' &&
+  typeof (window as unknown as SaveFilePickerWindow).showSaveFilePicker === 'function';
+
+/**
+ * Writes the backup into a file the user picks, entry by entry, so the archive
+ * never has to fit in memory. Returns false when the picker was dismissed. The
+ * picker has to open from the click, so it comes before any other await.
+ */
+export async function saveBackupStreaming(
+  appService: AppService,
+  filename: string,
+  options: BackupOptions = {},
+  onProgress?: ProgressCallback,
+  extras: BackupExtras = {},
+): Promise<boolean> {
+  const picker = (window as unknown as SaveFilePickerWindow).showSaveFilePicker!;
+  let handle: Awaited<ReturnType<NonNullable<SaveFilePickerWindow['showSaveFilePicker']>>>;
+  try {
+    handle = await picker({
+      suggestedName: filename,
+      types: [{ description: 'ZIP', accept: { 'application/zip': ['.zip'] } }],
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') return false;
+    throw error;
+  }
+  await configureZip(ZIP_WRITE_CONFIG);
+  const { ZipWriter } = await import('@zip.js/zip.js');
+  const writable = await handle.createWritable();
+  try {
+    const writer = new ZipWriter(writable);
+    await addBackupEntriesToZip(writer, appService, options, onProgress, extras);
+    await writer.close();
+    return true;
+  } catch (error) {
+    // Drop the half-written file instead of leaving a broken archive behind.
+    await writable.abort().catch(() => undefined);
+    throw error;
+  }
 }

@@ -74,7 +74,8 @@ const SharedBooksSection: React.FC = () => {
                 <div className='min-w-0'>
                   <div className='truncate font-medium'>{grant.book_title}</div>
                   <div className='text-base-content/60 truncate text-xs'>
-                    {grant.grantee_email ?? _('Unknown user')} · {stateLabel[state]}
+                    {grant.grantee_label ?? grant.grantee_email ?? _('Unknown user')} ·{' '}
+                    {stateLabel[state]}
                     {state === 'active' &&
                       ` · ${_('Until {{date}}', { date: formatDate(grant.expires_at) })}`}
                   </div>

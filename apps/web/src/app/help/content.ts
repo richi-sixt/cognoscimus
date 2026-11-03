@@ -60,7 +60,7 @@ export const HELP_CONTENT: Record<LandingLang, HelpContent> = {
           },
           {
             title: 'Lend a book',
-            text: 'Share a single book with another user for 1, 7 or 30 days. It leaves their library when the time is up, or when you revoke it. Books lent to you appear under "Shared with me".',
+            text: 'Share a single book with another user for 1, 7 or 30 days. It leaves their library when the time is up, or when you revoke it. Books lent to you appear under "Shared with me". Lists show the other person by name and username; an e-mail address appears only for someone who has not chosen a username yet.',
           },
           {
             title: 'Browse and borrow from people you follow',
@@ -72,7 +72,7 @@ export const HELP_CONTENT: Record<LandingLang, HelpContent> = {
           },
           {
             title: 'Back up your library',
-            text: '"Backup & Restore" under "Advanced settings" creates a ZIP file with your library, settings, reading statistics and the book files. Only books that are stored on this device are included. Books marked with a cloud symbol live only in the cloud, so download them first, otherwise the backup holds their entries but not the files. Restoring merges the backup with your current library.',
+            text: '"Backup & Restore" under "Advanced settings" saves your library as one ZIP file. It holds: the library list (titles, authors, series, tags, reading progress), your settings, the reading statistics, and for every book its file and cover. Notes, highlights, bookmarks and the reading position come along too: from this device, and for books that are only in the cloud from the server. Books marked with a cloud symbol are included and downloaded one by one for the backup (switch it off in the window to save only what is on this device). Not included: books lent to you, deleted books and account sign-in data (unless you tick the box for credentials). In Brave and Chrome the file is written straight to disk, so even a large library works; other browsers build it in memory. Restoring merges the backup with your current library and keeps the further reading position and every note.',
           },
         ],
       },
@@ -234,7 +234,7 @@ export const HELP_CONTENT: Record<LandingLang, HelpContent> = {
           },
           {
             title: 'Ein Buch ausleihen',
-            text: 'Ein einzelnes Buch für 1, 7 oder 30 Tage mit einem anderen Nutzer teilen. Es verschwindet aus dessen Bibliothek, wenn die Zeit abläuft oder du den Zugriff widerrufst. Bücher, die dir geliehen wurden, findest du unter «Mit mir geteilt».',
+            text: 'Ein einzelnes Buch für 1, 7 oder 30 Tage mit einem anderen Nutzer teilen. Es verschwindet aus dessen Bibliothek, wenn die Zeit abläuft oder du den Zugriff widerrufst. Bücher, die dir geliehen wurden, findest du unter «Mit mir geteilt». In den Listen siehst du die andere Person mit Name und Benutzername; eine E-Mail-Adresse erscheint nur bei jemandem, der noch keinen Benutzernamen gewählt hat.',
           },
           {
             title: 'Bei gefolgten Personen stöbern und ausleihen',
@@ -246,7 +246,7 @@ export const HELP_CONTENT: Record<LandingLang, HelpContent> = {
           },
           {
             title: 'Bibliothek sichern',
-            text: '«Sichern & Wiederherstellen» unter «Erweiterte Einstellungen» erstellt eine ZIP-Datei mit Bibliothek, Einstellungen, Lesestatistik und den Buchdateien. Gesichert werden nur Bücher, die auf diesem Gerät liegen. Bücher mit einem Wolken-Symbol liegen nur in der Cloud: Lade sie vorher herunter, sonst enthält die Sicherung zwar ihre Einträge, aber nicht die Dateien. Beim Wiederherstellen wird die Sicherung mit der aktuellen Bibliothek zusammengeführt.',
+            text: '«Sichern & Wiederherstellen» unter «Erweiterte Einstellungen» speichert deine Bibliothek als eine ZIP-Datei. Darin stecken: die Bibliotheksliste (Titel, Autoren, Reihen, Tags, Lesefortschritt), deine Einstellungen, die Lesestatistik und von jedem Buch die Datei und das Cover. Auch Notizen, Markierungen, Lesezeichen und die Leseposition kommen mit: von diesem Gerät, bei Büchern, die nur in der Cloud liegen, vom Server. Bücher mit einem Wolken-Symbol werden mitgesichert und dafür einzeln heruntergeladen (im Fenster lässt sich das ausschalten, dann kommt nur, was auf diesem Gerät liegt). Nicht enthalten: dir geliehene Bücher, gelöschte Bücher und Anmeldedaten des Kontos (ausser du setzt das Häkchen bei den Zugangsdaten). In Brave und Chrome wird die Datei direkt auf die Platte geschrieben, so funktioniert auch eine grosse Bibliothek; andere Browser bauen sie im Arbeitsspeicher auf. Beim Wiederherstellen wird die Sicherung mit der aktuellen Bibliothek zusammengeführt; die weitere Leseposition und alle Notizen bleiben erhalten.',
           },
         ],
       },

@@ -92,8 +92,8 @@ const SharedWithMePage = () => {
                       .join(' · ')}
                   </div>
                   <div className='text-base-content/60 truncate text-xs'>
-                    {grant.owner_email
-                      ? `${_('From {{email}}', { email: grant.owner_email })} · `
+                    {grant.owner_label || grant.owner_email
+                      ? `${_('From {{name}}', { name: grant.owner_label ?? grant.owner_email })} · `
                       : ''}
                     {_('Until {{date}}', { date: formatExpiry(grant.expires_at) })}
                   </div>

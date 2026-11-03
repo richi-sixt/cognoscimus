@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   RiCheckboxCircleFill,
   RiErrorWarningFill,
@@ -10,7 +10,13 @@ import { useEnv } from '@/context/EnvContext';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useFileSelector } from '@/hooks/useFileSelector';
 import { useScreenWakeLock } from '@/hooks/useScreenWakeLock';
-import { restoreFromBackupZip, saveBackupFile } from '@/services/backupService';
+import {
+  type BackupSummary,
+  canStreamBackup,
+  restoreFromBackupZip,
+  saveBackupFile,
+  saveBackupStreaming,
+} from '@/services/backupService';
 import { useLibraryStore } from '@/store/libraryStore';
 import Dialog from '@/components/Dialog';
 
@@ -37,6 +43,7 @@ interface BackupResult {
   booksAdded?: number;
   booksUpdated?: number;
   settingsRestored?: boolean;
+  summary?: BackupSummary;
 }
 
 interface BackupWindowProps {
@@ -54,6 +61,8 @@ export const BackupWindow: React.FC<BackupWindowProps> = ({ onPullLibrary }) => 
   const [errorMessage, setErrorMessage] = useState('');
   const [result, setResult] = useState<BackupResult | null>(null);
   const [includeCredentials, setIncludeCredentials] = useState(false);
+  const [includeCloudBooks, setIncludeCloudBooks] = useState(true);
+  const abortRef = useRef<AbortController | null>(null);
 
   const isProcessing = status === 'backing-up' || status === 'restoring';
   // Keep the screen on while a backup or restore runs, otherwise Android
@@ -66,6 +75,7 @@ export const BackupWindow: React.FC<BackupWindowProps> = ({ onPullLibrary }) => 
     setErrorMessage('');
     setResult(null);
     setIncludeCredentials(false);
+    setIncludeCloudBooks(true);
   };
 
   useEffect(() => {
@@ -98,24 +108,42 @@ export const BackupWindow: React.FC<BackupWindowProps> = ({ onPullLibrary }) => 
     try {
       const timestamp = new Date().toISOString().slice(0, 10);
       const filename = `cognoscimus-backup-${timestamp}.zip`;
-      const saved = await saveBackupFile(
+      const controller = new AbortController();
+      abortRef.current = controller;
+      let summary: BackupSummary | undefined;
+      const extras = {
+        signal: controller.signal,
+        onSummary: (value: BackupSummary) => {
+          summary = value;
+        },
+      };
+      const onProgress = (current: number, total: number, currentFile?: string) => {
+        setProgress({ current, total, currentFile });
+      };
+      const save = canStreamBackup() ? saveBackupStreaming : saveBackupFile;
+      const saved = await save(
         appService,
         filename,
-        { includeCredentials },
-        (current, total, currentFile) => {
-          setProgress({ current, total, currentFile });
-        },
+        { includeCredentials, includeCloudBooks },
+        onProgress,
+        extras,
       );
       if (saved) {
-        setResult({ type: 'backup' });
+        setResult({ type: 'backup', ...(summary ? { summary } : {}) });
         setStatus('completed');
       } else {
         setStatus('idle');
       }
     } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        setStatus('idle');
+        return;
+      }
       console.error('Backup failed:', error);
       setErrorMessage(_('Backup failed: {{error}}', { error: String(error) }));
       setStatus('error');
+    } finally {
+      abortRef.current = null;
     }
   };
 
@@ -211,6 +239,28 @@ export const BackupWindow: React.FC<BackupWindowProps> = ({ onPullLibrary }) => 
                 </span>
               </label>
 
+              <label className='flex cursor-pointer items-start gap-2'>
+                <input
+                  type='checkbox'
+                  checked={includeCloudBooks}
+                  onChange={(e) => setIncludeCloudBooks(e.target.checked)}
+                  className='checkbox checkbox-sm mt-0.5 shrink-0'
+                />
+                <span className='text-base-content/70 text-sm'>
+                  {_(
+                    'Also include books that are only in the cloud, with their reading position and notes (downloaded for the backup).',
+                  )}
+                </span>
+              </label>
+
+              {!canStreamBackup() && includeCloudBooks && (
+                <p className='text-warning text-xs'>
+                  {_(
+                    'This browser builds the backup in memory. For a large library use Brave or Chrome.',
+                  )}
+                </p>
+              )}
+
               <button className='btn btn-outline w-full gap-2' onClick={handleBackup}>
                 <RiUploadCloud2Line className='h-5 w-5' />
                 {_('Backup Library')}
@@ -278,13 +328,41 @@ export const BackupWindow: React.FC<BackupWindowProps> = ({ onPullLibrary }) => 
               <div className='bg-success/10 border-success/20 rounded-lg border p-3'>
                 <p className='text-success/80 text-sm'>
                   {result.type === 'backup'
-                    ? _('Your library and settings have been saved to the selected location.')
+                    ? _('Your library and settings have been saved to the selected location.') +
+                      (result.summary?.cloudBooks
+                        ? ' ' +
+                          _('{{count}} books came from the cloud.', {
+                            count: result.summary.cloudBooks,
+                          })
+                        : '')
                     : _('{{added}} books added, {{updated}} books updated.', {
                         added: result.booksAdded ?? 0,
                         updated: result.booksUpdated ?? 0,
                       }) + (result.settingsRestored ? ' ' + _('Settings have been restored.') : '')}
                 </p>
               </div>
+              {result.summary?.configsFailed && (
+                <div className='bg-warning/10 border-warning/20 rounded-lg border p-3'>
+                  <p className='text-warning text-sm'>
+                    {_(
+                      'Reading positions and notes could not be read from the server. The files are saved, but notes of books that are not on this device are missing.',
+                    )}
+                  </p>
+                </div>
+              )}
+              {result.summary && result.summary.skipped.length > 0 && (
+                <div className='bg-warning/10 border-warning/20 rounded-lg border p-3'>
+                  <p className='text-warning text-sm'>
+                    {_('{{count}} books could not be fetched and are not in the file:', {
+                      count: result.summary.skipped.length,
+                    })}
+                  </p>
+                  <p className='text-base-content/70 mt-1 break-words text-xs'>
+                    {result.summary.skipped.slice(0, 10).join(', ')}
+                    {result.summary.skipped.length > 10 ? ', …' : ''}
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
@@ -315,11 +393,13 @@ export const BackupWindow: React.FC<BackupWindowProps> = ({ onPullLibrary }) => 
                 )}
               </>
             ) : (
-              !isProcessing && (
-                <button className='btn btn-outline flex-1' onClick={handleClose}>
-                  {_('Cancel')}
-                </button>
-              )
+              <button
+                className='btn btn-outline flex-1'
+                onClick={isProcessing ? () => abortRef.current?.abort() : handleClose}
+                disabled={status === 'restoring'}
+              >
+                {_('Cancel')}
+              </button>
             )}
           </div>
         </div>

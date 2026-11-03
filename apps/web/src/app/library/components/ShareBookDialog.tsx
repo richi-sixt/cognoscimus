@@ -284,7 +284,7 @@ const ShareBookDialog: React.FC<ShareBookDialogProps> = ({ isOpen, book, onClose
                 <li key={grant.id} className='flex items-center justify-between gap-3 px-4 py-2'>
                   <div className='min-w-0'>
                     <div className='truncate text-sm'>
-                      {grant.grantee_email ?? _('Unknown user')}
+                      {grant.grantee_label ?? grant.grantee_email ?? _('Unknown user')}
                     </div>
                     <div className='text-base-content/60 text-xs'>
                       {_('Until {{date}}', { date: formatDate(grant.expires_at) })}
