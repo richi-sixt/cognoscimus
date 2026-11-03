@@ -50,15 +50,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .maybeSingle();
     if (fetchError) return res.status(500).json({ error: fetchError.message });
 
-    // A re-upload is signed with the recorded size and adds nothing to usage.
     // A new file's row is its reservation: insert it first, then check the
     // quota against the sum of all live rows, which includes this upload and
     // every one committed before it. Checking before the insert let concurrent
     // requests all pass against the same usage.
-    let objSize = fileSize;
+    // A re-upload of the same key (an edited cover, say) is signed with the size
+    // it will really have, since S3 rejects a body that differs from the signed
+    // length. The row takes the new size first, so the same quota check covers
+    // the growth; it goes back to the old size if the upload cannot proceed.
+    const objSize = fileSize;
     let insertedId: string | null = null;
+    let previousSize: number | null = null;
     if (existingRecord) {
-      objSize = existingRecord.file_size;
+      const recordedSize: number = existingRecord.file_size;
+      if (recordedSize !== fileSize) {
+        const { error: resizeError } = await supabase
+          .from('files')
+          .update({ file_size: fileSize })
+          .eq('user_id', user.id)
+          .eq('file_key', fileKey);
+        if (resizeError) return res.status(500).json({ error: resizeError.message });
+        previousSize = recordedSize;
+      }
     } else {
       const { data: inserted, error: insertError } = await supabase
         .from('files')
@@ -80,6 +93,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const dropReservation = async () => {
       if (insertedId) await supabase.from('files').delete().eq('id', insertedId);
+      else if (previousSize !== null) {
+        await supabase
+          .from('files')
+          .update({ file_size: previousSize })
+          .eq('user_id', user.id)
+          .eq('file_key', fileKey);
+      }
     };
 
     const { data: usageBytes, error: usageError } = await supabase.rpc('storage_usage_bytes', {
@@ -91,7 +111,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     const usage = Number(usageBytes ?? 0);
 
-    if (insertedId && usage > quota + STORAGE_QUOTA_GRACE_BYTES) {
+    const grows = insertedId !== null || (previousSize !== null && fileSize > previousSize);
+    if (grows && usage > quota + STORAGE_QUOTA_GRACE_BYTES) {
       await dropReservation();
       return res.status(403).json({ error: 'Insufficient storage quota', usage: usage - fileSize });
     }

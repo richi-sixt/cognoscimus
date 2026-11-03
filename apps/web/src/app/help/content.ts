@@ -64,7 +64,7 @@ export const HELP_CONTENT: Record<LandingLang, HelpContent> = {
           },
           {
             title: 'Browse and borrow from people you follow',
-            text: 'Switch on "People who follow me can browse my library" in your profile (off by default). Followers then see title, author and cover under "Explore" in the menu, never your reading progress or notes. In a book\'s share dialog you can hide single books. A follower can ask to borrow a book; under "People" you lend it for 1, 7 or 30 days or decline. A lent book works like any other loan: it leaves their library when the time is up. You get an e-mail when someone asks and when your request is answered; switch it off in your profile. It is a loan between people who know each other, not copy protection: respect the rights of the authors.',
+            text: 'Switch on "People who follow me can browse my library" in your profile (off by default). Followers then see title, author and cover under "Explore" in the menu, never your reading progress or notes. In a book\'s share dialog you can hide single books. A follower can ask to borrow a book; under "People" you lend it for 1, 7 or 30 days or decline. A lent book works like any other loan: it leaves their library when the time is up. You get an e-mail when someone asks and when your request is answered; switch it off in your profile. Follow requests and books you share directly by e-mail address send no mail. It is a loan between people who know each other, not copy protection: respect the rights of the authors.',
           },
           {
             title: 'Storage',
@@ -238,7 +238,7 @@ export const HELP_CONTENT: Record<LandingLang, HelpContent> = {
           },
           {
             title: 'Bei gefolgten Personen stöbern und ausleihen',
-            text: 'Schalte im Profil «Personen, die mir folgen, dürfen meine Bibliothek durchstöbern» ein (standardmässig aus). Follower sehen dann unter «Entdecken» im Menü Titel, Autor und Cover, nie deinen Lesefortschritt oder deine Notizen. Im Teilen-Dialog eines Buchs kannst du einzelne Bücher verbergen. Ein Follower kann ein Buch zum Ausleihen anfragen; unter «Personen» verleihst du es für 1, 7 oder 30 Tage oder lehnst ab. Ein verliehenes Buch funktioniert wie jede Leihgabe: Es verschwindet aus der Bibliothek der Person, wenn die Zeit abläuft. Bei einer Anfrage und bei der Antwort auf deine Anfrage bekommst du eine E-Mail; im Profil lässt sie sich ausschalten. Es ist eine Leihe zwischen Personen, die sich kennen, kein Kopierschutz: Achte die Rechte der Autorinnen und Autoren.',
+            text: 'Schalte im Profil «Personen, die mir folgen, dürfen meine Bibliothek durchstöbern» ein (standardmässig aus). Follower sehen dann unter «Entdecken» im Menü Titel, Autor und Cover, nie deinen Lesefortschritt oder deine Notizen. Im Teilen-Dialog eines Buchs kannst du einzelne Bücher verbergen. Ein Follower kann ein Buch zum Ausleihen anfragen; unter «Personen» verleihst du es für 1, 7 oder 30 Tage oder lehnst ab. Ein verliehenes Buch funktioniert wie jede Leihgabe: Es verschwindet aus der Bibliothek der Person, wenn die Zeit abläuft. Bei einer Anfrage und bei der Antwort auf deine Anfrage bekommst du eine E-Mail; im Profil lässt sie sich ausschalten. Follow-Anfragen und Bücher, die du direkt per E-Mail-Adresse teilst, lösen keine Mail aus. Es ist eine Leihe zwischen Personen, die sich kennen, kein Kopierschutz: Achte die Rechte der Autorinnen und Autoren.',
           },
           {
             title: 'Speicher',

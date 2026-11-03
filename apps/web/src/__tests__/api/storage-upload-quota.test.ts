@@ -42,7 +42,8 @@ const db = {
 const usageOf = () => db.files.reduce((sum, f) => sum + f.file_size, 0);
 
 const query = (_table: string) => {
-  let op: 'select' | 'insert' | 'delete' = 'select';
+  let op: 'select' | 'insert' | 'delete' | 'update' = 'select';
+  let patch: Partial<FileRow> = {};
   let rows: Omit<FileRow, 'id'>[] = [];
   const filters: Record<string, unknown> = {};
   const run = async (single: 'single' | 'maybe' | false) => {
@@ -55,6 +56,10 @@ const query = (_table: string) => {
     const matched = db.files.filter((f) =>
       Object.entries(filters).every(([k, v]) => f[k as keyof FileRow] === v),
     );
+    if (op === 'update') {
+      for (const f of matched) Object.assign(f, patch);
+      return { data: null, error: null };
+    }
     if (op === 'delete') {
       db.files = db.files.filter((f) => !matched.includes(f));
       return { data: null, error: null };
@@ -74,6 +79,11 @@ const query = (_table: string) => {
     },
     delete: () => {
       op = 'delete';
+      return builder;
+    },
+    update: (p: Partial<FileRow>) => {
+      op = 'update';
+      patch = p;
       return builder;
     },
     eq: (k: string, v: unknown) => {
@@ -182,7 +192,7 @@ describe('POST /api/storage/upload — quota', () => {
     expect(usageOf()).toBeLessThanOrEqual(QUOTA + GRACE);
   });
 
-  it('signs a re-upload with its recorded size and does not count it twice', async () => {
+  it('signs a re-upload with its new size and updates the row', async () => {
     seed('user-1/Cognoscimus/Books/hash.epub', 777);
 
     const res = await post({ fileName: 'Cognoscimus/Books/hash.epub', fileSize: 999 });
@@ -190,11 +200,33 @@ describe('POST /api/storage/upload — quota', () => {
     expect(statusOf(res)).toBe(200);
     expect(getUploadSignedUrlMock).toHaveBeenCalledWith(
       'user-1/Cognoscimus/Books/hash.epub',
-      777,
+      999,
       1800,
     );
-    expect(res.json.mock.calls[0]![0]).toMatchObject({ usage: 777 });
+    expect(res.json.mock.calls[0]![0]).toMatchObject({ usage: 999 });
     expect(db.files).toHaveLength(1);
+    expect(db.files[0]!.file_size).toBe(999);
+  });
+
+  it('refuses a re-upload that grows past quota and restores the old size', async () => {
+    seed('user-1/Cognoscimus/Books/hash.epub', 10 * MB);
+    seed('user-1/Cognoscimus/Books/other.epub', QUOTA - 10 * MB);
+
+    const res = await post({ fileName: 'Cognoscimus/Books/hash.epub', fileSize: 60 * MB });
+
+    expect(statusOf(res)).toBe(403);
+    expect(getUploadSignedUrlMock).not.toHaveBeenCalled();
+    expect(db.files.find((f) => f.file_key.endsWith('hash.epub'))!.file_size).toBe(10 * MB);
+  });
+
+  it('lets a smaller re-upload through even when usage is over quota', async () => {
+    seed('user-1/Cognoscimus/Books/hash.epub', 2 * MB);
+    seed('user-1/Cognoscimus/Books/other.epub', QUOTA);
+
+    const res = await post({ fileName: 'Cognoscimus/Books/hash.epub', fileSize: MB });
+
+    expect(statusOf(res)).toBe(200);
+    expect(db.files.find((f) => f.file_key.endsWith('hash.epub'))!.file_size).toBe(MB);
   });
 
   it('drops a fresh row when signing fails', async () => {
@@ -215,6 +247,7 @@ describe('POST /api/storage/upload — quota', () => {
 
     expect(statusOf(res)).toBe(500);
     expect(db.files).toHaveLength(1);
+    expect(db.files[0]!.file_size).toBe(777);
   });
 
   it('fails closed and drops its row when the usage read fails', async () => {
