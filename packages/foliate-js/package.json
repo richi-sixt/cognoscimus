@@ -17,7 +17,7 @@
     "./*.js": "./*.js"
   },
   "devDependencies": {
-    "@eslint/js": "^9.9.1",
+    "@eslint/js": "^10.0.1",
     "@rollup/plugin-node-resolve": "^15.2.3",
     "@rollup/plugin-terser": "^0.4.4",
     "@zip.js/zip.js": "^2.7.52",

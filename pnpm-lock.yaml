@@ -196,7 +196,7 @@ importers:
         version: 8.2.1
       i18next-http-backend:
         specifier: '>=4.0.4 <5'
-        version: 4.0.9
+        version: 4.0.7
       iso-639-2:
         specifier: ^3.0.2
         version: 3.0.2
@@ -455,8 +455,8 @@ importers:
         version: 3.1.0
     devDependencies:
       '@eslint/js':
-        specifier: ^9.9.1
-        version: 9.39.4
+        specifier: ^10.0.1
+        version: 10.0.1
       '@rollup/plugin-node-resolve':
         specifier: ^15.2.3
         version: 15.3.1(rollup@4.60.3)
@@ -1082,9 +1082,14 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@eslint/js@9.39.4':
-    resolution: {integrity: sha512-nE7DEIchvtiFTwBw4Lfbu59PG+kCofhjsKaCWzxTpt4lfRjRMqG6uMBzKXuEcyXhOHoUp9riAm7/aWYGhXZ9cw==}
-    engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+  '@eslint/js@10.0.1':
+    resolution: {integrity: sha512-zeR9k5pd4gxjZ0abRoIaxdc7I3nDktoXZk2qOv9gCNWx3mVwEn32VRhyLaRsDiJjTs0xq/T8mfPtyuXu7GWBcA==}
+    engines: {node: ^20.19.0 || ^22.13.0 || >=24}
+    peerDependencies:
+      eslint: ^10.0.0
+    peerDependenciesMeta:
+      eslint:
+        optional: true
 
   '@exodus/bytes@1.15.0':
     resolution: {integrity: sha512-UY0nlA+feH81UGSHv92sLEPLCeZFjXOuHhrIo0HQydScuQc8s0A7kL/UdgwgDq8g8ilksmuoF35YVTNphV2aBQ==}
@@ -1895,7 +1900,7 @@ packages:
   '@smithy/core@3.24.1':
     resolution: {integrity: sha512-3mT7o4qQyUWttYnVK3A0Z/u3Xha3E81tXn32Tz6vjZiUXhBrkEivpw1hBYfh84iFF9CSzkBU9Y1DJ3Q6RQ231g==}
     engines: {node: '>=18.0.0'}
-    deprecated: Deprecated due to bug in browser bundling instructions https://github.com/smithy-lang/smithy-typescript/issues/2025
+    deprecated: Deprecated due to a bug in custom logger data redaction. See https://github.com/aws/aws-sdk-js-v3/issues/8393.
 
   '@smithy/credential-provider-imds@4.3.1':
     resolution: {integrity: sha512-0S/acwHnqX4WrjXzhdiDRxsG2s9SC0cpPIK9nZ1R6UOHd+j7uL28+4bHu22urbLk2TVw3fkp6na/+fkUt/pLNQ==}
@@ -3221,8 +3226,8 @@ packages:
   i18next-browser-languagedetector@8.2.1:
     resolution: {integrity: sha512-bZg8+4bdmaOiApD7N7BPT9W8MLZG+nPTOFlLiJiT8uzKXFjhxw4v2ierCXOwB5sFDMtuA5G4kgYZ0AznZxQ/cw==}
 
-  i18next-http-backend@4.0.9:
-    resolution: {integrity: sha512-OrdH7wL9zNcmUwH3PatOCIa/NdL6NOGtlwjGqSHSS6fsh9sqm5BtHj6FRt+6coWSxro1LbM61ay+Jc2bbppGkw==}
+  i18next-http-backend@4.0.7:
+    resolution: {integrity: sha512-SQy3OPy66YzumNJ43boHDBtzzMISnoPhQ0Zqjetk+luW74Tok8Ez9ujJJbJHKSHkG5sjDGldHznjuPtSxBwvuw==}
     engines: {node: '>=18'}
 
   i18next-scanner@4.6.0:
@@ -5465,7 +5470,7 @@ snapshots:
   '@esbuild/win32-x64@0.28.1':
     optional: true
 
-  '@eslint/js@9.39.4': {}
+  '@eslint/js@10.0.1': {}
 
   '@exodus/bytes@1.15.0(@noble/hashes@1.8.0)':
     optionalDependencies:
@@ -7397,7 +7402,7 @@ snapshots:
     dependencies:
       '@babel/runtime': 7.29.2
 
-  i18next-http-backend@4.0.9: {}
+  i18next-http-backend@4.0.7: {}
 
   i18next-scanner@4.6.0(typescript@7.0.2):
     dependencies:
