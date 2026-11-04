@@ -6,12 +6,9 @@ import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/utils/supabase';
 import { useTheme } from '@/hooks/useTheme';
 import { sessionNeedsMfa } from '@/utils/mfa';
+import { safeInternalPath } from '@/utils/nav';
 import AuthPanel from './components/AuthPanel';
 import MfaChallenge from './components/MfaChallenge';
-
-// Only same-origin paths may be used as a post-login target (no open redirect).
-const safeRedirect = (target: string | null): string =>
-  target && target.startsWith('/') && !target.startsWith('//') ? target : '/library';
 
 export default function AuthPage() {
   const router = useRouter();
@@ -26,7 +23,7 @@ export default function AuthPage() {
       setMfaPending(sessionNeedsMfa(session));
       if (session?.access_token && session.user && !sessionNeedsMfa(session)) {
         login(session.access_token, session.user);
-        const redirectTo = safeRedirect(
+        const redirectTo = safeInternalPath(
           new URLSearchParams(window.location.search).get('redirect'),
         );
         const lastRedirectAtKey = 'lastRedirectAt';

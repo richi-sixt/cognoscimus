@@ -1,3 +1,4 @@
+import { safeFetch } from './safeFetch';
 import { assertPublicHttpUrl, FetchBlockedError } from './ssrf';
 
 export const FETCH_TIMEOUT_MS = 10_000;
@@ -70,15 +71,15 @@ export const fetchPage = async (start: URL): Promise<{ html: string; finalUrl: U
 
     let response: Response;
     try {
-      response = await fetch(url, {
-        redirect: 'manual',
+      response = await safeFetch(url, {
         signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
         headers: {
           'User-Agent': 'Mozilla/5.0 (compatible; CognoscimusLater/1.0)',
           Accept: 'text/html,application/xhtml+xml',
         },
       });
-    } catch {
+    } catch (error) {
+      if (error instanceof FetchBlockedError) throw error;
       throw new FetchPageError('fetch_failed', 'The page could not be loaded');
     }
 

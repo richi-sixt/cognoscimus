@@ -1,0 +1,26 @@
+# Weekly dependency updates. Minor and patch bumps are grouped into one pull
+# request per directory, so a week brings a handful of PRs, not twenty. Major
+# versions stay separate on purpose: each needs its own look.
+#
+# Security alerts are separate from this file (Settings > Code security >
+# Dependabot alerts / security updates).
+version: 2
+updates:
+  - package-ecosystem: npm
+    # The pnpm workspace (apps/web, packages/foliate-js) shares the root lockfile;
+    # the two packages below keep lockfiles of their own.
+    directories:
+      - "/"
+      - "/packages/js-mdict"
+      - "/packages/simplecc-wasm"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps"
+    groups:
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch

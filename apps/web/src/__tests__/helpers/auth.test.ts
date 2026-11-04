@@ -175,7 +175,7 @@ describe('handleAuthCallback', () => {
   });
 
   it('should login and navigate to next URL on successful auth', async () => {
-    mockSetSession.mockResolvedValue({ error: null });
+    mockSetSession.mockResolvedValue({ data: { session: null }, error: null });
     mockGetUser.mockResolvedValue({ data: { user: fakeUser } });
 
     handleAuthCallback({
@@ -194,7 +194,7 @@ describe('handleAuthCallback', () => {
   });
 
   it('should default next to "/" when not specified', async () => {
-    mockSetSession.mockResolvedValue({ error: null });
+    mockSetSession.mockResolvedValue({ data: { session: null }, error: null });
     mockGetUser.mockResolvedValue({ data: { user: fakeUser } });
 
     handleAuthCallback({
@@ -210,7 +210,7 @@ describe('handleAuthCallback', () => {
   });
 
   it('should navigate to /auth/recovery when type is "recovery"', async () => {
-    mockSetSession.mockResolvedValue({ error: null });
+    mockSetSession.mockResolvedValue({ data: { session: null }, error: null });
     mockGetUser.mockResolvedValue({ data: { user: fakeUser } });
 
     handleAuthCallback({
@@ -232,7 +232,7 @@ describe('handleAuthCallback', () => {
   });
 
   it('should navigate to /auth/error when getUser returns null user', async () => {
-    mockSetSession.mockResolvedValue({ error: null });
+    mockSetSession.mockResolvedValue({ data: { session: null }, error: null });
     mockGetUser.mockResolvedValue({ data: { user: null } });
 
     handleAuthCallback({
@@ -250,7 +250,7 @@ describe('handleAuthCallback', () => {
   });
 
   it('should not call login when user is undefined from getUser', async () => {
-    mockSetSession.mockResolvedValue({ error: null });
+    mockSetSession.mockResolvedValue({ data: { session: null }, error: null });
     mockGetUser.mockResolvedValue({ data: { user: undefined } });
 
     handleAuthCallback({
@@ -268,7 +268,7 @@ describe('handleAuthCallback', () => {
   });
 
   it('should pass the correct session parameters to setSession', async () => {
-    mockSetSession.mockResolvedValue({ error: null });
+    mockSetSession.mockResolvedValue({ data: { session: null }, error: null });
     mockGetUser.mockResolvedValue({ data: { user: fakeUser } });
 
     handleAuthCallback({
@@ -284,5 +284,24 @@ describe('handleAuthCallback', () => {
         refresh_token: 'my-refresh-token',
       });
     });
+  });
+});
+
+describe('handleAuthCallback - redirect target', () => {
+  it('does not follow a next that leaves the app', async () => {
+    mockSetSession.mockResolvedValue({ data: { session: null }, error: null });
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } } });
+    const navigate = vi.fn();
+
+    handleAuthCallback({
+      accessToken: 'a',
+      refreshToken: 'r',
+      login: vi.fn(),
+      navigate,
+      next: '/\\evil.example',
+    });
+    await vi.waitFor(() => expect(navigate).toHaveBeenCalled());
+
+    expect(navigate).toHaveBeenCalledWith('/');
   });
 });

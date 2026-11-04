@@ -1,6 +1,7 @@
 import { XMLParser } from 'fast-xml-parser';
 import { parseHTML } from 'linkedom';
 import { normalizeUrl } from './fetchPage';
+import { safeFetch } from './safeFetch';
 import { assertPublicHttpUrl, FetchBlockedError } from './ssrf';
 
 export const FEED_TIMEOUT_MS = 10_000;
@@ -212,12 +213,12 @@ export const fetchFeed = async (
 
     let response: Response;
     try {
-      response = await fetch(url, {
-        redirect: 'manual',
+      response = await safeFetch(url, {
         signal: AbortSignal.timeout(FEED_TIMEOUT_MS),
         headers,
       });
-    } catch {
+    } catch (error) {
+      if (error instanceof FetchBlockedError) throw error;
       throw new FeedError('fetch_failed', 'The feed could not be loaded');
     }
 

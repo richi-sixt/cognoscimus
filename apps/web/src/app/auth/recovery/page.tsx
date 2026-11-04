@@ -8,6 +8,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
 import { Auth } from '@supabase/auth-ui-react';
 import { supabase } from '@/utils/supabase';
+import { safeInternalPath } from '@/utils/nav';
 
 export default function ResetPasswordPage() {
   const _ = useTranslation();
@@ -34,7 +35,7 @@ export default function ResetPasswordPage() {
       if (session?.access_token && session.user && event === 'USER_UPDATED') {
         login(session.access_token, session.user);
         const redirectTo = new URLSearchParams(window.location.search).get('redirect');
-        router.push(redirectTo ?? '/library');
+        router.push(safeInternalPath(redirectTo));
       }
     });
 

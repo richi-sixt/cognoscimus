@@ -2,6 +2,16 @@ import { redirect, useRouter } from 'next/navigation';
 import { isPWA, isWebAppPlatform } from '@/services/environment';
 import { BOOK_IDS_SEPARATOR } from '@/services/constants';
 
+/**
+ * The path when it stays inside the app, else the fallback. A redirect target comes
+ * from the address bar, so it must not lead to another site: browsers read a
+ * backslash as '/', so '/\\host' and '//host' both leave the app.
+ */
+export const safeInternalPath = (target: string | null | undefined, fallback = '/library') =>
+  target && target.startsWith('/') && !target.startsWith('//') && !target.includes('\\')
+    ? target
+    : fallback;
+
 export const navigateToReader = (
   router: ReturnType<typeof useRouter>,
   bookIds: string[],
@@ -39,8 +49,7 @@ export const navigateBackFromProfile = (
   redirect: string | null | undefined,
 ) => {
   document.documentElement.setAttribute('data-nav-direction', 'back');
-  // Browsers read a backslash as '/', so a redirect like '/\host' leaves the app.
-  if (redirect?.startsWith('/') && !redirect.startsWith('//') && !redirect.includes('\\')) {
+  if (redirect && safeInternalPath(redirect, '') === redirect) {
     // /later is served without cross-origin isolation, so reaching it needs a
     // full page load rather than a client-side route change.
     if (redirect === '/later' || redirect.startsWith('/later/') || redirect.startsWith('/later?')) {

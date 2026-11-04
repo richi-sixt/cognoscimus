@@ -26,17 +26,49 @@ const isPrivateIPv4 = (ip: string): boolean => {
   );
 };
 
+/** The eight 16-bit groups of an IPv6 address, or null when it does not parse. */
+const ipv6Groups = (ip: string): number[] | null => {
+  let text = ip.toLowerCase().split('%')[0]!;
+  // A dotted IPv4 tail ("::ffff:1.2.3.4") is the last two groups.
+  const tail = text.match(/(\d+\.\d+\.\d+\.\d+)$/);
+  if (tail) {
+    const [a, b, c, d] = ipv4Parts(tail[1]!);
+    text = `${text.slice(0, -tail[1]!.length)}${((a << 8) | b).toString(16)}:${((c << 8) | d).toString(16)}`;
+  }
+  const halves = text.split('::');
+  if (halves.length > 2) return null;
+  const head = halves[0] ? halves[0].split(':') : [];
+  const rest = halves[1] ? halves[1].split(':') : [];
+  const missing = 8 - head.length - rest.length;
+  if (halves.length === 1 ? missing !== 0 : missing < 1) return null;
+  const groups = [
+    ...head,
+    ...Array<string>(halves.length === 2 ? missing : 0).fill('0'),
+    ...rest,
+  ].map((g) => parseInt(g, 16));
+  return groups.length === 8 && groups.every((g) => g >= 0 && g <= 0xffff) ? groups : null;
+};
+
 const isPrivateIPv6 = (ip: string): boolean => {
-  const lower = ip.toLowerCase();
-  const mapped = lower.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
-  if (mapped) return isPrivateIPv4(mapped[1]!);
+  const g = ipv6Groups(ip);
+  if (!g) return true;
+  const v4 = (hi: number, lo: number) =>
+    isPrivateIPv4(`${hi >> 8}.${hi & 255}.${lo >> 8}.${lo & 255}`);
+  const zeros = (n: number) => g.slice(0, n).every((x) => x === 0);
+  if (zeros(8) || (zeros(7) && g[7] === 1)) return true; // :: and ::1
+  if (zeros(5) && g[5] === 0xffff) return v4(g[6]!, g[7]!); // IPv4-mapped, either spelling
+  if (zeros(6)) return v4(g[6]!, g[7]!); // IPv4-compatible
+  // NAT64 (64:ff9b::/96) and 6to4 (2002::/16) carry an IPv4 address that decides
+  if (g[0] === 0x64 && g[1] === 0xff9b && g.slice(2, 6).every((x) => x === 0)) {
+    return v4(g[6]!, g[7]!);
+  }
+  if (g[0] === 0x2002) return v4(g[1]!, g[2]!);
+  const first = g[0]!;
   return (
-    lower === '::' ||
-    lower === '::1' ||
-    lower.startsWith('fc') || // unique local
-    lower.startsWith('fd') ||
-    /^fe[89ab]/.test(lower) || // link-local
-    lower.startsWith('ff') // multicast
+    (first & 0xfe00) === 0xfc00 || // unique local fc00::/7
+    (first & 0xffc0) === 0xfe80 || // link-local fe80::/10
+    (first & 0xffc0) === 0xfec0 || // site-local fec0::/10
+    (first & 0xff00) === 0xff00 // multicast
   );
 };
 
@@ -51,9 +83,10 @@ export const isPrivateAddress = (ip: string): boolean => {
  * Throws unless the URL is plain http(s) and its host resolves only to public
  * addresses. Called for every hop of a redirect chain.
  *
- * DNS is resolved here and again by fetch, so a host that flips its answer
- * between the two lookups could still slip through. The save route only returns
- * sanitised article text, never the raw response, which keeps that gap narrow.
+ * This check alone leaves a gap: DNS is resolved here and again when the request
+ * connects, and a host can flip its answer between the two. `safeFetch` closes it
+ * by checking the address the connection really uses; this call stays for the
+ * early, readable error and for hosts given as an IP address.
  */
 export const assertPublicHttpUrl = async (url: URL): Promise<void> => {
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {

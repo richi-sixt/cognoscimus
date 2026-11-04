@@ -24,11 +24,25 @@ describe('isPrivateAddress', () => {
     'fd00::1',
     'fe80::1',
     '::ffff:127.0.0.1',
+    '::ffff:7f00:1',
+    '0:0:0:0:0:ffff:a00:1',
+    '::127.0.0.1',
+    '64:ff9b::7f00:1',
+    '2002:7f00:1::',
+    'fec0::1',
+    'ff02::1',
+    '::',
     'not-an-ip',
   ])('blocks %s', (ip) => expect(isPrivateAddress(ip)).toBe(true));
 
-  it.each(['93.184.216.34', '8.8.8.8', '172.32.0.1', '2606:4700:4700::1111'])('allows %s', (ip) =>
-    expect(isPrivateAddress(ip)).toBe(false));
+  it.each([
+    '93.184.216.34',
+    '8.8.8.8',
+    '172.32.0.1',
+    '2606:4700:4700::1111',
+    '::ffff:5db8:d822',
+    '2002:5db8:d822::1',
+  ])('allows %s', (ip) => expect(isPrivateAddress(ip)).toBe(false));
 });
 
 describe('assertPublicHttpUrl', () => {

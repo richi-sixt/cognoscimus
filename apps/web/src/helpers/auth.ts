@@ -1,6 +1,7 @@
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/utils/supabase';
 import { sessionNeedsMfa } from '@/utils/mfa';
+import { safeInternalPath } from '@/utils/nav';
 
 interface UseAuthCallbackOptions {
   accessToken?: string | null;
@@ -87,7 +88,7 @@ export function handleAuthCallback({
         navigate('/auth/recovery');
         return;
       }
-      navigate(next);
+      navigate(safeInternalPath(next, '/'));
     } else {
       console.error('Error fetching user data');
       navigate('/auth/error');
