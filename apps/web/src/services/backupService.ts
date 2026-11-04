@@ -462,10 +462,11 @@ const throwIfAborted = (signal?: AbortSignal) => {
 async function fetchCloudFile(
   file: { lfp: string; cfp: string; downloadUrl?: string },
   refresh: (file: { lfp: string; cfp: string }) => Promise<string | undefined>,
+  signal?: AbortSignal,
 ): Promise<Uint8Array | null> {
   let url = file.downloadUrl;
   for (let attempt = 0; attempt < 2 && url; attempt++) {
-    const response = await fetch(url);
+    const response = await fetch(url, { signal });
     if (response.ok) return new Uint8Array(await response.arrayBuffer());
     if (response.status !== 401 && response.status !== 403) return null;
     url = await refresh(file);

@@ -255,9 +255,7 @@ export const BackupWindow: React.FC<BackupWindowProps> = ({ onPullLibrary }) => 
 
               {!canStreamBackup() && includeCloudBooks && (
                 <p className='text-warning text-xs'>
-                  {_(
-                    'This browser builds the backup in memory. For a large library use Brave or Chrome.',
-                  )}
+                  {_('This browser builds the backup in memory. For a large library use Chrome.')}
                 </p>
               )}
 

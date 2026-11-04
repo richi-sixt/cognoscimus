@@ -26,6 +26,7 @@ import AtmosphereOverlay from '@/components/AtmosphereOverlay';
 import AppLockScreen from '@/components/AppLockScreen';
 import AppLockDialog from '@/components/settings/AppLockDialog';
 import PassphrasePrompt from '@/components/PassphrasePrompt';
+import ExportProgress from '@/components/ExportProgress';
 import { cryptoSession } from '@/libs/crypto/session';
 import { useAppLockStore } from '@/store/appLockStore';
 import { initSettingsSync } from '@/services/sync/replicaSettingsSync';
@@ -157,6 +158,7 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
                   <CommandPalette />
                   <AtmosphereOverlay />
                   <PassphrasePrompt />
+                  <ExportProgress />
                 </div>
                 <AppLockDialog />
                 {showAppLockScreen && <AppLockScreen />}

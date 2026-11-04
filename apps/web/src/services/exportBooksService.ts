@@ -100,7 +100,9 @@ export async function addBooksToZip(
         data = local.data;
       } else {
         const file = urls.get(getLocalBookFilename(book));
-        data = file ? await fetchCloudFile(file, refresh).catch(() => null) : null;
+        data = file ? await fetchCloudFile(file, refresh, extras.signal).catch(() => null) : null;
+        // A cancelled download is not a missing file.
+        throwIfAborted(extras.signal);
       }
       if (!data) {
         summary.skipped.push(book.title);
