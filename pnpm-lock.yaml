@@ -196,7 +196,7 @@ importers:
         version: 8.2.1
       i18next-http-backend:
         specifier: '>=4.0.4 <5'
-        version: 4.0.9
+        version: 4.0.7
       iso-639-2:
         specifier: ^3.0.2
         version: 3.0.2
@@ -228,14 +228,14 @@ importers:
         specifier: ^1.12.0
         version: 1.12.0
       marked:
-        specifier: ^15.0.12
-        version: 15.0.12
+        specifier: ^18.1.2
+        version: 18.1.2
       marked-footnote:
         specifier: ^1.4.0
-        version: 1.4.0(marked@15.0.12)
+        version: 1.4.0(marked@18.1.2)
       marked-katex-extension:
         specifier: ^5.1.13
-        version: 5.1.13(katex@0.18.11)(marked@15.0.12)
+        version: 5.1.13(katex@0.18.11)(marked@18.1.2)
       music-metadata:
         specifier: 12.1.0
         version: 12.1.0
@@ -1895,7 +1895,7 @@ packages:
   '@smithy/core@3.24.1':
     resolution: {integrity: sha512-3mT7o4qQyUWttYnVK3A0Z/u3Xha3E81tXn32Tz6vjZiUXhBrkEivpw1hBYfh84iFF9CSzkBU9Y1DJ3Q6RQ231g==}
     engines: {node: '>=18.0.0'}
-    deprecated: Deprecated due to bug in browser bundling instructions https://github.com/smithy-lang/smithy-typescript/issues/2025
+    deprecated: Deprecated due to a bug in custom logger data redaction. See https://github.com/aws/aws-sdk-js-v3/issues/8393.
 
   '@smithy/credential-provider-imds@4.3.1':
     resolution: {integrity: sha512-0S/acwHnqX4WrjXzhdiDRxsG2s9SC0cpPIK9nZ1R6UOHd+j7uL28+4bHu22urbLk2TVw3fkp6na/+fkUt/pLNQ==}
@@ -3221,8 +3221,8 @@ packages:
   i18next-browser-languagedetector@8.2.1:
     resolution: {integrity: sha512-bZg8+4bdmaOiApD7N7BPT9W8MLZG+nPTOFlLiJiT8uzKXFjhxw4v2ierCXOwB5sFDMtuA5G4kgYZ0AznZxQ/cw==}
 
-  i18next-http-backend@4.0.9:
-    resolution: {integrity: sha512-OrdH7wL9zNcmUwH3PatOCIa/NdL6NOGtlwjGqSHSS6fsh9sqm5BtHj6FRt+6coWSxro1LbM61ay+Jc2bbppGkw==}
+  i18next-http-backend@4.0.7:
+    resolution: {integrity: sha512-SQy3OPy66YzumNJ43boHDBtzzMISnoPhQ0Zqjetk+luW74Tok8Ez9ujJJbJHKSHkG5sjDGldHznjuPtSxBwvuw==}
     engines: {node: '>=18'}
 
   i18next-scanner@4.6.0:
@@ -3601,9 +3601,9 @@ packages:
       katex: '>=0.18.11 <0.19'
       marked: '>=4 <19'
 
-  marked@15.0.12:
-    resolution: {integrity: sha512-8dD6FusOQSrpv9Z1rdNMdlSgQOIP880DHqnohobOmYLElGEqAL/JvxvuxZO16r4HtjTlfPRDC1hbvxC9dPN2nA==}
-    engines: {node: '>= 18'}
+  marked@18.1.2:
+    resolution: {integrity: sha512-DfOnvLAQ6WYeWxWO1u4RyFOeqyHup6dks5PPqnoFiooU7ipRvidO/2j8plhAHIiZg574E9ZlzSjUiPMLAzFkgg==}
+    engines: {node: '>= 20'}
     hasBin: true
 
   matchmediaquery@0.4.2:
@@ -7397,7 +7397,7 @@ snapshots:
     dependencies:
       '@babel/runtime': 7.29.2
 
-  i18next-http-backend@4.0.9: {}
+  i18next-http-backend@4.0.7: {}
 
   i18next-scanner@4.6.0(typescript@7.0.2):
     dependencies:
@@ -7778,16 +7778,16 @@ snapshots:
       underscore: 1.13.8
       xmlbuilder: 10.1.1
 
-  marked-footnote@1.4.0(marked@15.0.12):
+  marked-footnote@1.4.0(marked@18.1.2):
     dependencies:
-      marked: 15.0.12
+      marked: 18.1.2
 
-  marked-katex-extension@5.1.13(katex@0.18.11)(marked@15.0.12):
+  marked-katex-extension@5.1.13(katex@0.18.11)(marked@18.1.2):
     dependencies:
       katex: 0.18.11
-      marked: 15.0.12
+      marked: 18.1.2
 
-  marked@15.0.12: {}
+  marked@18.1.2: {}
 
   matchmediaquery@0.4.2:
     dependencies:
