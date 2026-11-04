@@ -55,6 +55,11 @@ export const getRemoteBookFilename = (book: Book) => {
 export const getLocalBookFilename = (book: Book) => {
   return `${book.hash}/${makeSafeFilename(book.sourceTitle || book.title)}.${EXTS[book.format]}`;
 };
+/** Name of a book's file in a backup: the current title, which is the master. */
+export const getBackupBookFilename = (book: Book) => {
+  const title = book.title || book.sourceTitle || book.hash;
+  return `${book.hash}/${makeSafeFilename(title)}.${EXTS[book.format]}`;
+};
 export const getCoverFilename = (book: Book) => {
   return `${book.hash}/cover.png`;
 };

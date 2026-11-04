@@ -56,14 +56,14 @@ afterEach(() => {
 describe('addBackupEntriesToZip - live-hash filter edges (#5837)', () => {
   it('still skips zero-byte files inside a live book dir', async () => {
     const files: FileItem[] = [
-      { path: `${LIVE_HASH}/book.epub`, size: 1000 },
+      { path: `${LIVE_HASH}/Book.epub`, size: 1000 },
       { path: `${LIVE_HASH}/cover.png`, size: 0 },
     ];
     const { writer, names } = makeCapturingWriter();
 
     await addBackupEntriesToZip(writer, makeAppService([makeBook({})], files), {});
 
-    expect(names.filter((n) => n.includes('/'))).toEqual([`${LIVE_HASH}/book.epub`]);
+    expect(names.filter((n) => n.includes('/'))).toEqual([`${LIVE_HASH}/Book.epub`]);
   });
 
   it('reports progress over the filtered file list using the host path', async () => {
@@ -95,7 +95,7 @@ describe('addBackupEntriesToZip - live-hash filter edges (#5837)', () => {
   it('skips a file that cannot be read and keeps exporting the rest', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const files: FileItem[] = [
-      { path: `${LIVE_HASH}/book.epub`, size: 1000 },
+      { path: `${LIVE_HASH}/Book.epub`, size: 1000 },
       { path: `${LIVE_HASH}/cover.png`, size: 200 },
       { path: `${LIVE_HASH}/config.json`, size: 50 },
     ];
@@ -108,7 +108,7 @@ describe('addBackupEntriesToZip - live-hash filter edges (#5837)', () => {
     await addBackupEntriesToZip(writer, makeAppService([makeBook({})], files, readFile), {});
 
     expect(names.filter((n) => n.includes('/'))).toEqual([
-      `${LIVE_HASH}/book.epub`,
+      `${LIVE_HASH}/Book.epub`,
       `${LIVE_HASH}/config.json`,
     ]);
     expect(warn).toHaveBeenCalledWith(

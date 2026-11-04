@@ -7,6 +7,7 @@ import { SystemSettings } from '@/types/settings';
 import type { PageStatEvent, StatBook } from '@/types/statistics';
 import { StatisticsDb } from '@/services/statistics/statisticsDb';
 import {
+  getBackupBookFilename,
   getBookDirOfPath,
   getCoverFilename,
   getLibraryFilename,
@@ -370,9 +371,19 @@ async function collectBackupEntries(
   // backslash (e.g. `hash\cover.png`). Zip entry names must use forward
   // slashes so the backup restores on every platform — restore matches a
   // book's files by `${hash}/` (see `restoreFromBackupZip`). Issue #4703.
+  const bookByHash = new Map(books.map((b) => [b.hash, b]));
   const bookFiles = files
     .filter((file) => file.size > 0 && isExported(file.path))
-    .map((file) => ({ file, entryName: file.path.replace(/\\/g, '/') }))
+    .map((file) => {
+      const entryName = file.path.replace(/\\/g, '/');
+      // The file on disk is named after the title the book was imported with;
+      // the archive names it after the current title instead.
+      const book = bookByHash.get(getBookDirOfPath(entryName) ?? '');
+      return {
+        file,
+        entryName: book && isBookFile(entryName) ? getBackupBookFilename(book) : entryName,
+      };
+    })
     // A restore killed mid-file leaves its `.part` temp file behind.
     .filter(({ entryName }) => !entryName.endsWith('.part'));
   const dirsWithBook = new Set(
@@ -541,7 +552,7 @@ export async function addBackupEntriesToZip(
           summary.skipped.push(book.title);
           continue;
         }
-        await writer.add(getLocalBookFilename(book), new Uint8ArrayReader(data), { level: 0 });
+        await writer.add(getBackupBookFilename(book), new Uint8ArrayReader(data), { level: 0 });
         summary.cloudBooks++;
         // A missing cover only costs the picture; the book itself is saved.
         const coverFile = hasLocalCover ? undefined : urls.get(getCoverFilename(book));
@@ -671,6 +682,10 @@ export async function restoreFromBackupZip(
   const configMerges: FileEntry[] = [];
   const bulkEntries: FileEntry[] = [];
   const orphanImports: FileEntry[] = [];
+  // A book file is named after the title in the archive but lives under the
+  // name the app looks it up by (getLocalBookFilename), so it is renamed on
+  // the way in. Backups made before the rename carry that name already.
+  const bookOfFile = new Map<FileEntry, Book>();
 
   for (const backupBook of backupBooks) {
     const existingBook = currentBooksMap.get(backupBook.hash);
@@ -683,6 +698,7 @@ export async function restoreFromBackupZip(
       // Update: override book file and cover, merge config
       for (const entry of bookFileEntries) {
         (entry.filename.endsWith('/config.json') ? configMerges : bulkEntries).push(entry);
+        if (isBookFile(entry.filename)) bookOfFile.set(entry, existingBook);
       }
 
       // Merge book metadata (timestamps, deletedAt reconciliation). A book
@@ -698,6 +714,9 @@ export async function restoreFromBackupZip(
         await appService.createDir(bookDir, 'Books');
       }
       bulkEntries.push(...bookFileEntries);
+      for (const entry of bookFileEntries) {
+        if (isBookFile(entry.filename)) bookOfFile.set(entry, backupBook);
+      }
       currentBooks.push(backupBook);
       currentBooksMap.set(backupBook.hash, backupBook);
       booksAdded++;
@@ -744,9 +763,17 @@ export async function restoreFromBackupZip(
     mergedConfigs.push({ filename: entry.filename, json: JSON.stringify(mergedConfig) });
   }
 
-  await extractEntries(appService, bulkEntries, (current, _bulkTotal, name) => {
-    onProgress?.(configMerges.length + current, total, name);
-  });
+  await extractEntries(
+    appService,
+    bulkEntries,
+    (current, _bulkTotal, name) => {
+      onProgress?.(configMerges.length + current, total, name);
+    },
+    (entry) => {
+      const book = bookOfFile.get(entry);
+      return book ? getLocalBookFilename(book) : entry.filename;
+    },
+  );
   done = configMerges.length + bulkEntries.length;
   for (const { filename, json } of mergedConfigs) {
     await appService.writeFile(filename, 'Books', json);
@@ -816,13 +843,14 @@ async function extractEntries(
   appService: AppService,
   entries: FileEntry[],
   onProgress?: ProgressCallback,
+  targetOf: (entry: FileEntry) => string = (entry) => entry.filename,
 ): Promise<void> {
   const { Uint8ArrayWriter } = await import('@zip.js/zip.js');
   for (let i = 0; i < entries.length; i++) {
     const entry = entries[i]!;
     onProgress?.(i + 1, entries.length, entry.filename);
     const data = await entry.getData!(new Uint8ArrayWriter());
-    await appService.writeFile(entry.filename, 'Books', data.buffer as ArrayBuffer);
+    await appService.writeFile(targetOf(entry), 'Books', data.buffer as ArrayBuffer);
   }
 }
 
@@ -851,16 +879,14 @@ export const canStreamBackup = () =>
   typeof (window as unknown as SaveFilePickerWindow).showSaveFilePicker === 'function';
 
 /**
- * Writes the backup into a file the user picks, entry by entry, so the archive
- * never has to fit in memory. Returns false when the picker was dismissed. The
- * picker has to open from the click, so it comes before any other await.
+ * Writes a zip into a file the user picks, entry by entry, so the archive never
+ * has to fit in memory. `fill` adds the entries. Returns false when the picker
+ * was dismissed. The picker has to open from the click, so it comes before any
+ * other await.
  */
-export async function saveBackupStreaming(
-  appService: AppService,
+export async function streamZipToFile(
   filename: string,
-  options: BackupOptions = {},
-  onProgress?: ProgressCallback,
-  extras: BackupExtras = {},
+  fill: (writer: ZipWriter<unknown>) => Promise<void>,
 ): Promise<boolean> {
   const picker = (window as unknown as SaveFilePickerWindow).showSaveFilePicker!;
   let handle: Awaited<ReturnType<NonNullable<SaveFilePickerWindow['showSaveFilePicker']>>>;
@@ -878,7 +904,7 @@ export async function saveBackupStreaming(
   const writable = await handle.createWritable();
   try {
     const writer = new ZipWriter(writable);
-    await addBackupEntriesToZip(writer, appService, options, onProgress, extras);
+    await fill(writer);
     await writer.close();
     return true;
   } catch (error) {
@@ -887,3 +913,18 @@ export async function saveBackupStreaming(
     throw error;
   }
 }
+
+/** Writes the backup into a file the user picks. See `streamZipToFile`. */
+export async function saveBackupStreaming(
+  appService: AppService,
+  filename: string,
+  options: BackupOptions = {},
+  onProgress?: ProgressCallback,
+  extras: BackupExtras = {},
+): Promise<boolean> {
+  return streamZipToFile(filename, async (writer) => {
+    await addBackupEntriesToZip(writer, appService, options, onProgress, extras);
+  });
+}
+
+export { ZIP_WRITE_CONFIG, CLOUD_BATCH, throwIfAborted, fetchCloudFile };

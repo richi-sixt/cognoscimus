@@ -53,6 +53,7 @@ import BookshelfItem from './BookshelfItem';
 import SelectModeActions from './SelectModeActions';
 import ShareBookDialog from './ShareBookDialog';
 import { createCollectionPack, COGNOSCIMUS_PACK_MIME } from '@/services/pack/packService';
+import { exportBooksAsZip } from '@/services/exportBooksService';
 import { useAuth } from '@/context/AuthContext';
 import GroupingModal from './GroupingModal';
 import TaggingModal from './TaggingModal';
@@ -567,6 +568,56 @@ const Bookshelf: React.FC<BookshelfProps> = ({
     }
   };
 
+  const handleExportZipSelectedBooks = async () => {
+    if (!appService) return;
+    const ids = expandBookshelfSelection(getSelectedBooks(), sortedBookshelfItems);
+    const books = ids
+      .map((id) => filteredBooks.find((book) => book.hash === id))
+      .filter((book): book is Book => !!book && !book.grant);
+    if (books.length === 0) return;
+
+    setShowSelectModeActions(false);
+    handleSetSelectMode(false);
+
+    eventDispatcher.dispatch('toast', {
+      type: 'info',
+      message: _('Saving {{count}} book(s) as ZIP...', { count: books.length }),
+      timeout: 3000,
+    });
+
+    // The save dialog has to open from the click, so nothing is awaited before this call.
+    const filename = `cognoscimus-books-${new Date().toISOString().slice(0, 10)}.zip`;
+    try {
+      let summary: { saved: number; skipped: string[] } | undefined;
+      const saved = await exportBooksAsZip(appService, books, filename, undefined, {
+        onSummary: (result) => {
+          summary = result;
+        },
+      });
+      if (!saved) return;
+      const skipped = summary?.skipped ?? [];
+      eventDispatcher.dispatch('toast', {
+        type: skipped.length > 0 ? 'warning' : 'success',
+        message:
+          skipped.length > 0
+            ? _('{{saved}} book(s) saved, {{skipped}} skipped: {{titles}}', {
+                saved: summary?.saved ?? 0,
+                skipped: skipped.length,
+                titles: skipped.slice(0, 5).join(', '),
+              })
+            : _('Saved {{count}} book(s) as ZIP', { count: summary?.saved ?? 0 }),
+        timeout: skipped.length > 0 ? 8000 : 3000,
+      });
+    } catch (err) {
+      console.error('Failed to save books as ZIP:', err);
+      eventDispatcher.dispatch('toast', {
+        type: 'error',
+        message: _('Failed to save books as ZIP'),
+        timeout: 3000,
+      });
+    }
+  };
+
   const updateBooksStatus = async (status: ReadingStatus | undefined) => {
     const selectedIds = getSelectedBooks();
     const booksToUpdate: Book[] = [];
@@ -914,6 +965,7 @@ const Bookshelf: React.FC<BookshelfProps> = ({
             onStatus={showStatusSelection}
             onDownload={downloadSelectedBooks}
             onPack={handlePackSelectedBooks}
+            onExportZip={handleExportZipSelectedBooks}
             onDelete={deleteSelectedBooks}
             onCancel={() => handleSetSelectMode(false)}
           />

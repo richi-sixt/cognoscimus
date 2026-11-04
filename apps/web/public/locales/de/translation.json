@@ -1982,5 +1982,12 @@
   "{{count}} books came from the cloud.": "{{count}} Bücher kamen aus der Cloud.",
   "{{count}} books could not be fetched and are not in the file:": "{{count}} Bücher konnten nicht geladen werden und fehlen in der Datei:",
   "Also include books that are only in the cloud, with their reading position and notes (downloaded for the backup).": "Auch Bücher einschliessen, die nur in der Cloud liegen, samt Leseposition und Notizen (sie werden für die Sicherung heruntergeladen).",
-  "Reading positions and notes could not be read from the server. The files are saved, but notes of books that are not on this device are missing.": "Leseposition und Notizen konnten nicht vom Server gelesen werden. Die Dateien sind gesichert, aber Notizen von Büchern, die nicht auf diesem Gerät liegen, fehlen."
+  "Reading positions and notes could not be read from the server. The files are saved, but notes of books that are not on this device are missing.": "Leseposition und Notizen konnten nicht vom Server gelesen werden. Die Dateien sind gesichert, aber Notizen von Büchern, die nicht auf diesem Gerät liegen, fehlen.",
+  "Save as ZIP": "Als ZIP laden",
+  "Saving {{count}} book(s) as ZIP..._one": "{{count}} Buch wird als ZIP gespeichert...",
+  "Saving {{count}} book(s) as ZIP..._other": "{{count}} Bücher werden als ZIP gespeichert...",
+  "Saved {{count}} book(s) as ZIP_one": "{{count}} Buch als ZIP gespeichert",
+  "Saved {{count}} book(s) as ZIP_other": "{{count}} Bücher als ZIP gespeichert",
+  "{{saved}} book(s) saved, {{skipped}} skipped: {{titles}}": "{{saved}} Bücher gespeichert, {{skipped}} übersprungen: {{titles}}",
+  "Failed to save books as ZIP": "Die Bücher konnten nicht als ZIP gespeichert werden"
 }

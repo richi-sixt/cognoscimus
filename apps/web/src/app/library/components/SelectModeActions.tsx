@@ -10,6 +10,7 @@ import {
   MdLabelOutline,
   MdOutlineCollectionsBookmark,
   MdOutlineArchive,
+  MdOutlineFolderZip,
 } from 'react-icons/md';
 import { LuFolderPlus } from 'react-icons/lu';
 import { useKeyDownActions } from '@/hooks/useKeyDownActions';
@@ -31,6 +32,8 @@ interface SelectModeActionsProps {
   // Queues every cloud-only book in the selection, groups included (#5244).
   onDownload: () => void;
   onPack?: () => void;
+  // Streams the selection, cloud-only books included, into one ZIP of plain book files.
+  onExportZip?: () => void;
   onDelete: () => void;
   onCancel: () => void;
   // Reports the popup's rendered height (including its safe-area padding) so the
@@ -51,6 +54,7 @@ const SelectModeActions: React.FC<SelectModeActionsProps> = ({
   onStatus,
   onDownload,
   onPack,
+  onExportZip,
   onDelete,
   onCancel,
   onHeightChange,
@@ -181,6 +185,18 @@ const SelectModeActions: React.FC<SelectModeActionsProps> = ({
           >
             <MdOutlineArchive />
             <div>{_('Pack')}</div>
+          </button>
+        )}
+        {onExportZip && (
+          <button
+            onClick={onExportZip}
+            className={clsx(
+              'flex flex-col items-center justify-center gap-1',
+              (!hasSelection || !hasValidBooks) && 'btn-disabled opacity-50',
+            )}
+          >
+            <MdOutlineFolderZip />
+            <div>{_('Save as ZIP')}</div>
           </button>
         )}
         <button

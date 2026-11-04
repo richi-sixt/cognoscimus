@@ -20,7 +20,7 @@ const BOOK_HASH = '6afdd0136531fbe028e0503a14ba234c';
  */
 function makeAppService(files: FileItem[]): AppService {
   return {
-    loadLibraryBooks: async () => [{ hash: BOOK_HASH }],
+    loadLibraryBooks: async () => [{ hash: BOOK_HASH, title: 'Book', format: 'EPUB' }],
     loadSettings: async () => ({}) as never,
     resolveFilePath: async () => 'C:/Users/me/AppData/Books',
     readDirectory: async () => files,
@@ -56,7 +56,7 @@ describe('addBackupEntriesToZip - cross-platform entry names (#4703)', () => {
     // Restore filters book files by `${hash}/`; the Windows export must match.
     const bookEntries = names.filter((n) => n.startsWith(`${BOOK_HASH}/`));
     expect(bookEntries).toEqual([
-      `${BOOK_HASH}/book.epub`,
+      `${BOOK_HASH}/Book.epub`,
       `${BOOK_HASH}/cover.png`,
       `${BOOK_HASH}/config.json`,
     ]);
@@ -72,6 +72,6 @@ describe('addBackupEntriesToZip - cross-platform entry names (#4703)', () => {
     await addBackupEntriesToZip(writer, makeAppService(posixFiles), {});
 
     const bookEntries = names.filter((n) => n.startsWith(`${BOOK_HASH}/`));
-    expect(bookEntries).toEqual([`${BOOK_HASH}/book.epub`, `${BOOK_HASH}/cover.png`]);
+    expect(bookEntries).toEqual([`${BOOK_HASH}/Book.epub`, `${BOOK_HASH}/cover.png`]);
   });
 });

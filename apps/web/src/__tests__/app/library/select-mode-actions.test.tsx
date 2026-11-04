@@ -170,3 +170,26 @@ describe('SelectModeActions pack', () => {
     expect(getAction('Pack').className).toContain('btn-disabled');
   });
 });
+
+describe('SelectModeActions save as ZIP', () => {
+  it('calls onExportZip when the action is clicked', () => {
+    const onExportZip = vi.fn();
+    render(<SelectModeActions {...baseProps} onExportZip={onExportZip} />);
+
+    fireEvent.click(getAction('Save as ZIP'));
+
+    expect(onExportZip).toHaveBeenCalledTimes(1);
+  });
+
+  it('disables the action when no books are selected', () => {
+    render(<SelectModeActions {...baseProps} selectedBooks={[]} onExportZip={vi.fn()} />);
+
+    expect(getAction('Save as ZIP').className).toContain('btn-disabled');
+  });
+
+  it('is absent without a handler', () => {
+    render(<SelectModeActions {...baseProps} />);
+
+    expect(screen.queryByText('Save as ZIP')).toBeNull();
+  });
+});

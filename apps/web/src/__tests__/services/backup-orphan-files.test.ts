@@ -53,7 +53,7 @@ describe('addBackupEntriesToZip - only live library books are exported (#5837)',
   const files: FileItem[] = [
     { path: 'library.json', size: 10 },
     { path: 'library.json.bak', size: 10 },
-    { path: `${LIVE_HASH}/book.epub`, size: 1000 },
+    { path: `${LIVE_HASH}/Book.epub`, size: 1000 },
     { path: `${LIVE_HASH}/cover.png`, size: 200 },
     { path: `${LIVE_HASH}/config.json`, size: 50 },
     { path: `${DELETED_HASH}/book.epub`, size: 1000 },
@@ -73,7 +73,7 @@ describe('addBackupEntriesToZip - only live library books are exported (#5837)',
 
     const bookEntries = names.filter((n) => n.includes('/'));
     expect(bookEntries).toEqual([
-      `${LIVE_HASH}/book.epub`,
+      `${LIVE_HASH}/Book.epub`,
       `${LIVE_HASH}/cover.png`,
       `${LIVE_HASH}/config.json`,
     ]);
@@ -122,7 +122,7 @@ describe('addBackupEntriesToZip - only live library books are exported (#5837)',
       {},
     );
 
-    expect(names.filter((n) => n.includes('/'))).toEqual([`${LIVE_HASH}/book.epub`]);
+    expect(names.filter((n) => n.includes('/'))).toEqual([`${LIVE_HASH}/Book.epub`]);
   });
 
   // Offline Audiobookshelf audio is re-downloadable and can run to gigabytes,
