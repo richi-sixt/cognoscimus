@@ -138,7 +138,7 @@
     "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^5.1.1",
     "@vitest/browser-playwright": "^4.1.12",
-    "@vitest/coverage-v8": "^4.1.12",
+    "@vitest/coverage-v8": "^5.0.5",
     "caniuse-lite": "^1.0.30001746",
     "cpx2": "^8.0.0",
     "daisyui": "^5.7.22",
