@@ -41,36 +41,40 @@ export const useBooksSync = () => {
     if (syncPendingRef.current) handleAutoSyncRef.current();
   }, []);
 
-  const getNewBooks = useCallback(() => {
-    if (!user) return {};
-    const library = useLibraryStore.getState().library;
-    const newBooks = library
-      // Books shared with this account stay on this device (see Book.grant).
-      .filter((book) => !book.grant)
-      .filter(
-        (book) =>
-          !book.syncedAt ||
-          lastSyncedAtBooks < getBookChangedAt(book) ||
-          lastSyncedAtBooks < (book.deletedAt ?? 0),
-      )
-      // book.filePath is a device-local absolute path used by the in-place
-      // import flow to point at a file outside Books/<hash>/. It is
-      // meaningless on any other device, so strip it before pushing to the
-      // cloud — peers always rehydrate via the hash-keyed copy that
-      // cloudService.downloadBook lands under Books/<hash>/. Keeping the
-      // source device's path in the cloud record would be dead data at
-      // best, and would become an active footgun if isBookAvailable ever
-      // got its branch order swapped (it currently checks Books/<hash>
-      // before falling back to filePath; flipping that order would make
-      // peers chase a non-existent path instead of downloading).
-      // `altFilePaths` (the other on-disk names that resolve to the same book)
-      // is device-local for exactly the same reason.
-      .map(({ filePath: _filePath, altFilePaths: _altFilePaths, ...rest }): Book => rest);
-    return {
-      books: newBooks,
-      lastSyncedAt: lastSyncedAtBooks,
-    };
-  }, [user, lastSyncedAtBooks]);
+  const getNewBooks = useCallback(
+    (forceAll = false) => {
+      if (!user) return {};
+      const library = useLibraryStore.getState().library;
+      const newBooks = library
+        // Books shared with this account stay on this device (see Book.grant).
+        .filter((book) => !book.grant)
+        .filter(
+          (book) =>
+            forceAll ||
+            !book.syncedAt ||
+            lastSyncedAtBooks < getBookChangedAt(book) ||
+            lastSyncedAtBooks < (book.deletedAt ?? 0),
+        )
+        // book.filePath is a device-local absolute path used by the in-place
+        // import flow to point at a file outside Books/<hash>/. It is
+        // meaningless on any other device, so strip it before pushing to the
+        // cloud — peers always rehydrate via the hash-keyed copy that
+        // cloudService.downloadBook lands under Books/<hash>/. Keeping the
+        // source device's path in the cloud record would be dead data at
+        // best, and would become an active footgun if isBookAvailable ever
+        // got its branch order swapped (it currently checks Books/<hash>
+        // before falling back to filePath; flipping that order would make
+        // peers chase a non-existent path instead of downloading).
+        // `altFilePaths` (the other on-disk names that resolve to the same book)
+        // is device-local for exactly the same reason.
+        .map(({ filePath: _filePath, altFilePaths: _altFilePaths, ...rest }): Book => rest);
+      return {
+        books: newBooks,
+        lastSyncedAt: lastSyncedAtBooks,
+      };
+    },
+    [user, lastSyncedAtBooks],
+  );
 
   const pullLibrary = useCallback(
     async (fullRefresh = false, verbose = false) => {
@@ -82,8 +86,14 @@ export const useBooksSync = () => {
       try {
         const library = useLibraryStore.getState().library;
         const since = (libraryLoaded && library.length === 0) || fullRefresh ? 0 : undefined;
+        // A full refresh also re-pushes every local row, in batches. Changes
+        // that never reached the cloud (an old failed bulk push whose cursor
+        // already moved past them) are otherwise never retried. The server
+        // merges per field on each row's own clock, so rows already in sync are
+        // left untouched and a stale cloud copy loses to the newer local group.
+        const pushAll = fullRefresh && library.length > 0 ? (getNewBooks(true).books ?? []) : [];
         // The pull swallows its own errors (returns a count, never throws).
-        const synced = (await syncBooks([], 'pull', since)) ?? 0;
+        const synced = (await syncBooks(pushAll, pushAll.length ? 'both' : 'pull', since)) ?? 0;
 
         if (verbose) {
           eventDispatcher.dispatch('toast', {
@@ -95,7 +105,7 @@ export const useBooksSync = () => {
         releaseSyncLock();
       }
     },
-    [_, user, libraryLoaded, syncBooks, releaseSyncLock],
+    [_, user, libraryLoaded, syncBooks, getNewBooks, releaseSyncLock],
   );
 
   // eslint-disable-next-line react-hooks/exhaustive-deps

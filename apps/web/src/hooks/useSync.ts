@@ -13,6 +13,7 @@ import { DBBook, DBBookConfig, DBBookNote } from '@/types/records';
 import { Book, BookConfig, BookDataRecord, BookNote } from '@/types/book';
 import { navigateToLogin } from '@/utils/nav';
 import { useReaderStore } from '@/store/readerStore';
+import { getBookChangedAt } from '@/utils/book';
 
 const transformsFromDB = {
   books: transformBookFromDB,
@@ -106,6 +107,46 @@ export async function pullBooksPaged(
   return [...byHash.values()];
 }
 
+export const BOOKS_PUSH_BATCH_SIZE = 100;
+
+/**
+ * Push books in bounded batches. A bulk edit (regrouping a whole library)
+ * used to go out as ONE request that could hit the client timeout or the
+ * Worker's resource limits; the failure was swallowed, the pull then advanced
+ * the cursor past the unpushed rows, and they never synced again. Batches are
+ * sent in order and the walk stops at the first failure — a dead connection
+ * should not cost one timeout per batch. Returns the books NOT pushed (empty
+ * on full success) so the caller can hold its cursor back.
+ */
+export async function pushBooksBatched(
+  books: Book[],
+  push: (batch: Book[]) => Promise<boolean>,
+  batchSize = BOOKS_PUSH_BATCH_SIZE,
+): Promise<Book[]> {
+  for (let i = 0; i < books.length; i += batchSize) {
+    const ok = await push(books.slice(i, i + batchSize));
+    if (!ok) return books.slice(i);
+  }
+  return [];
+}
+
+/**
+ * The newest cursor a pull may persist while some local changes are still
+ * unpushed: just below the oldest unpushed change, so `getNewBooks`
+ * (lastSyncedAt < changedAt) selects them again on the next sync. Undefined
+ * when nothing is unpushed. Books with no stamp at all are ignored — they are
+ * selected by the `!syncedAt` clause instead.
+ */
+export const unpushedCursorCeiling = (unpushed: Book[]): number | undefined => {
+  let ceiling: number | undefined;
+  for (const book of unpushed) {
+    const changedAt = getBookChangedAt(book);
+    if (changedAt <= 0) continue;
+    ceiling = ceiling === undefined ? changedAt - 1 : Math.min(ceiling, changedAt - 1);
+  }
+  return ceiling;
+};
+
 const ONE_DAY_IN_MS = 24 * 60 * 60 * 1000;
 export function useSync(bookKey?: string) {
   const router = useRouter();
@@ -174,9 +215,12 @@ export function useSync(bookKey?: string) {
     setSyncing: React.Dispatch<React.SetStateAction<boolean>>,
     bookId?: string,
     metaHash?: string,
+    cursorCeiling?: number,
   ) => {
     setSyncing(true);
     setSyncError(null);
+    const clampCursor = (cursor: number) =>
+      cursorCeiling === undefined ? cursor : Math.min(cursor, cursorCeiling);
 
     try {
       let records: BookDataRecord[] | null | undefined;
@@ -190,9 +234,10 @@ export function useSync(bookKey?: string) {
           (cursor) => {
             // Persist the cursor per page so an interrupted initial sync
             // resumes from the last page instead of restarting from `since`.
-            setLastSyncedAt(cursor);
+            const held = clampCursor(cursor);
+            setLastSyncedAt(held);
             const settings = useSettingsStore.getState().settings;
-            settings.lastSyncedAtBooks = cursor;
+            settings.lastSyncedAtBooks = held;
             setSettings(settings);
           },
         );
@@ -203,7 +248,7 @@ export function useSync(bookKey?: string) {
       setSyncResult({ ...syncResult, [type]: records });
       if (since > 1000 && !records?.length) return 0;
       // For since <= 1000, we set lastSyncedAt to now if no records returned
-      const maxTime = records?.length ? computeMaxTimestamp(records) : Date.now();
+      const maxTime = clampCursor(records?.length ? computeMaxTimestamp(records) : Date.now());
       setLastSyncedAt(maxTime);
 
       // due to closures in React hooks the settings might be stale
@@ -284,8 +329,10 @@ export function useSync(bookKey?: string) {
     async (books?: Book[], op: SyncOp = 'both', since?: number) => {
       if (!lastSyncedAtInited) return;
       if (!isSyncCategoryEnabled('book')) return;
+      let cursorCeiling: number | undefined;
       if ((op === 'push' || op === 'both') && books?.length) {
-        await pushChanges({ books });
+        const unpushed = await pushBooksBatched(books, (batch) => pushChanges({ books: batch }));
+        cursorCeiling = unpushed.length ? unpushedCursorCeiling(unpushed) : undefined;
       }
       if (op === 'pull' || op === 'both') {
         return await pullChanges(
@@ -293,6 +340,9 @@ export function useSync(bookKey?: string) {
           since ?? lastSyncedAtBooks + 1,
           setLastSyncedAtBooks,
           setSyncingBooks,
+          undefined,
+          undefined,
+          cursorCeiling,
         );
       }
       return;
