@@ -7,6 +7,7 @@ import { supabase } from '@/utils/supabase';
 import { useTheme } from '@/hooks/useTheme';
 import { sessionNeedsMfa } from '@/utils/mfa';
 import { safeInternalPath } from '@/utils/nav';
+import { startPathOf } from '@/utils/startApp';
 import AuthPanel from './components/AuthPanel';
 import MfaChallenge from './components/MfaChallenge';
 
@@ -23,8 +24,10 @@ export default function AuthPage() {
       setMfaPending(sessionNeedsMfa(session));
       if (session?.access_token && session.user && !sessionNeedsMfa(session)) {
         login(session.access_token, session.user);
+        // Without a target the account's own start app decides.
         const redirectTo = safeInternalPath(
           new URLSearchParams(window.location.search).get('redirect'),
+          startPathOf(session.user),
         );
         const lastRedirectAtKey = 'lastRedirectAt';
         const lastRedirectAt = parseInt(localStorage.getItem(lastRedirectAtKey) || '0', 10);

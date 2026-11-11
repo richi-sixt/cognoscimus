@@ -20,6 +20,7 @@ import AccountActions from './components/AccountActions';
 import { InboxSection } from './components/InboxSection';
 import { MfaSection } from './components/MfaSection';
 import { ProfileSection } from './components/ProfileSection';
+import { StartAppSection } from './components/StartAppSection';
 import CoverOptimizer from './components/CoverOptimizer';
 import StorageManager from './components/StorageManager';
 import SharedBooksSection from './components/SharedBooksSection';
@@ -173,6 +174,7 @@ const ProfilePage = () => {
               ) : (
                 <div className='flex flex-col gap-y-8 px-6'>
                   <ProfileSection onSaved={setProfile} />
+                  <StartAppSection />
                   <InboxSection />
                   <MfaSection />
                   <AccountActions

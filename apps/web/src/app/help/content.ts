@@ -33,7 +33,7 @@ export const HELP_CONTENT: Record<LandingLang, HelpContent> = {
         steps: [
           {
             title: 'Sign in',
-            text: 'Access is by invitation. After signing in you land in the library. The buttons "Library" and "Later" at the top switch between the two parts.',
+            text: 'Access is by invitation. After signing in you land in the library, or in Later if you chose that under "Start with" in your account. The buttons "Library" and "Later" at the top switch between the two parts.',
           },
           {
             title: 'Choose a username',
@@ -211,7 +211,7 @@ export const HELP_CONTENT: Record<LandingLang, HelpContent> = {
         steps: [
           {
             title: 'Anmelden',
-            text: 'Der Zugang ist nur auf Einladung möglich. Nach der Anmeldung landest du in der Bibliothek. Die Schaltflächen «Bibliothek» und «Later» oben wechseln zwischen den beiden Teilen.',
+            text: 'Der Zugang ist nur auf Einladung möglich. Nach der Anmeldung landest du in der Bibliothek, oder in Later, wenn du das im Konto unter «Starten mit» gewählt hast. Die Schaltflächen «Bibliothek» und «Later» oben wechseln zwischen den beiden Teilen.',
           },
           {
             title: 'Benutzernamen wählen',

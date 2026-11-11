@@ -98,6 +98,7 @@ export const AboutWindow = () => {
             className='flex flex-1 flex-col items-center justify-start gap-2 px-4 text-center'
             dir='ltr'
           >
+            <p className='text-neutral-content text-sm'>© 2026 Rüchan Sixt</p>
             <p className='text-neutral-content text-sm'>
               {_('A fork of Readest, © {{year}} Bilingify LLC.', { year: 2026 })}
             </p>

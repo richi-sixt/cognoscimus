@@ -2006,5 +2006,7 @@
   "Connected. You can close this tab.": "Verbunden. Du kannst diesen Tab schliessen.",
   "The extension could not be connected.": "Die Erweiterung konnte nicht verbunden werden.",
   "Save as link": "Als Link speichern",
-  "Save as a link? The stored text and its highlights are removed. \"Save as article\" fetches the page again.": "Als Link speichern? Der gespeicherte Text und seine Markierungen werden entfernt. «Als Artikel speichern» holt die Seite erneut."
+  "Save as a link? The stored text and its highlights are removed. \"Save as article\" fetches the page again.": "Als Link speichern? Der gespeicherte Text und seine Markierungen werden entfernt. «Als Artikel speichern» holt die Seite erneut.",
+  "Start with": "Starten mit",
+  "The part that opens after you sign in and when you start the app, on every device.": "Der Teil, der nach der Anmeldung und beim Start der App geöffnet wird, auf jedem Gerät."
 }

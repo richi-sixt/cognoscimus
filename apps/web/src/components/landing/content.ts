@@ -72,7 +72,7 @@ export const LANDING_CONTENT: Record<LandingLang, LandingContent> = {
     ],
     help: 'Help',
     license:
-      'Cognoscimus is a modified version of Readest, © Bilingify LLC, licensed under the GNU AGPL v3.0.',
+      '© 2026 Rüchan Sixt. Cognoscimus is a modified version of Readest, © Bilingify LLC, licensed under the GNU AGPL v3.0.',
     languageLabel: 'Language',
     contact: 'Contact',
     upstreamUrl: 'https://readest.com',
@@ -126,7 +126,7 @@ export const LANDING_CONTENT: Record<LandingLang, LandingContent> = {
     ],
     help: 'Hilfe',
     license:
-      'Cognoscimus ist eine veränderte Version von Readest, © Bilingify LLC, lizenziert unter der GNU AGPL v3.0.',
+      '© 2026 Rüchan Sixt. Cognoscimus ist eine veränderte Version von Readest, © Bilingify LLC, lizenziert unter der GNU AGPL v3.0.',
     languageLabel: 'Sprache',
     contact: 'Kontakt',
     upstreamUrl: 'https://readest.com/de',
