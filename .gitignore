@@ -29,3 +29,6 @@ next-env.d.ts
 
 # git hooks (local only)
 .husky/
+
+# Xcode project generated from apps/extension for Safari
+apps/extension-safari/

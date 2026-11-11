@@ -1,0 +1,47 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title data-i18n="optionsTitle"></title>
+    <style>
+      body {
+        font: 14px/1.4 system-ui, sans-serif;
+        margin: 16px;
+        min-width: 320px;
+        color-scheme: light dark;
+      }
+      label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 4px;
+      }
+      input {
+        box-sizing: border-box;
+        width: 100%;
+        padding: 6px 8px;
+        font: inherit;
+      }
+      p {
+        margin: 6px 0 12px;
+        opacity: 0.75;
+      }
+      button {
+        padding: 6px 14px;
+        font: inherit;
+      }
+      #status {
+        margin-inline-start: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <form id="form">
+      <label for="server" data-i18n="serverLabel"></label>
+      <input id="server" type="url" autocomplete="off" spellcheck="false" />
+      <p data-i18n="serverHint"></p>
+      <button type="submit" data-i18n="saveSettings"></button>
+      <span id="status" role="status"></span>
+    </form>
+    <script src="options.js"></script>
+  </body>
+</html>

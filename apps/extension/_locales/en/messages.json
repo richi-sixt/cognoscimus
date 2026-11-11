@@ -1,0 +1,17 @@
+{
+  "name": { "message": "Cognoscimus Later" },
+  "description": {
+    "message": "Saves the current page or a link to Later on your own Cognoscimus server."
+  },
+  "save": { "message": "Save to Later" },
+  "optionsTitle": { "message": "Cognoscimus Later" },
+  "serverLabel": { "message": "Server address" },
+  "serverHint": {
+    "message": "The address of your Cognoscimus server, for example https://books.example.com"
+  },
+  "saveSettings": { "message": "Save" },
+  "saved": { "message": "Saved." },
+  "invalidServer": {
+    "message": "Enter an address that starts with https:// (or http://localhost)."
+  }
+}

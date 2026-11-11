@@ -35,6 +35,12 @@ const SaveFromAnywhere = () => {
           {_('Save to Later')}
         </a>
         <p>
+          <span className='text-base-content font-medium'>{_('Browser extension')}:</span>{' '}
+          {_(
+            'For Chrome, Firefox and Safari. It is in the project folder apps/extension; enter the address of this server in its options.',
+          )}
+        </p>
+        <p>
           <span className='text-base-content font-medium'>Android:</span>{' '}
           {_('Install the app (browser menu, "Install app"), then use Share and pick Cognoscimus.')}
         </p>
