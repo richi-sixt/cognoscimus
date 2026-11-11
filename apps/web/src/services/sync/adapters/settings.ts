@@ -173,13 +173,17 @@ export const writePath = (obj: Record<string, unknown>, path: string, value: unk
   let cur: Record<string, unknown> = obj;
   for (let i = 0; i < parts.length - 1; i++) {
     const k = parts[i]!;
+    // Checked again at each step so the guard sits next to the write.
+    if (k === '__proto__' || k === 'constructor' || k === 'prototype') return;
     const next = cur[k];
     if (next === undefined || next === null || typeof next !== 'object') {
       cur[k] = {};
     }
     cur = cur[k] as Record<string, unknown>;
   }
-  cur[parts[parts.length - 1]!] = value;
+  const last = parts[parts.length - 1]!;
+  if (last === '__proto__' || last === 'constructor' || last === 'prototype') return;
+  cur[last] = value;
 };
 
 /**

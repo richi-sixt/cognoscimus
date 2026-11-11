@@ -212,11 +212,18 @@ export const filterSSMLWithLang = (
     const combinedContent = langBlocks
       .map((block) => {
         const firstMarkIndex = block.content.search(/<mark\b[^>]*\/>/i);
-        const textBeforeFirstMark = block.content
-          .slice(0, firstMarkIndex < 0 ? undefined : firstMarkIndex)
-          .replace(/<[^>]+>/g, '')
-          .trim();
-        if (!textBeforeFirstMark) return block.match;
+        // Only asks whether any text sits before the first mark. Tags are
+        // removed until nothing changes, so nested leftovers cannot form one.
+        let textBeforeFirstMark = block.content.slice(
+          0,
+          firstMarkIndex < 0 ? undefined : firstMarkIndex,
+        );
+        let previous: string;
+        do {
+          previous = textBeforeFirstMark;
+          textBeforeFirstMark = textBeforeFirstMark.replace(/<[^>]+>/g, '');
+        } while (textBeforeFirstMark !== previous);
+        if (!textBeforeFirstMark.trim()) return block.match;
 
         // Foliate can place the mark for the first translated sentence
         // immediately before its <lang> block. Keep that existing mark when

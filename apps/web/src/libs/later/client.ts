@@ -297,16 +297,6 @@ export const refetchItem = async (
   await postJson<{ id: string }>('/refetch', { id, asArticle: options.asArticle });
 };
 
-export const countPending = async (): Promise<number> => {
-  const { count, error } = await supabase
-    .from('later_items')
-    .select('id', { count: 'exact', head: true })
-    .eq('fetch_state', 'pending')
-    .is('deleted_at', null);
-  if (error) throw error;
-  return count ?? 0;
-};
-
 /** Fetches the text of every link still waiting for it, a few at a time. */
 export const loadPending = async (onProgress: (done: number, total: number) => void) => {
   const { data, error } = await supabase
@@ -424,12 +414,6 @@ export const moveCollection = async (id: string, parentId: string | null) => {
     .update({ parent_id: parentId })
     .eq('id', id);
   if (error) throw error;
-};
-
-/** Re-sorts saved articles by what their address and length say; returns how many changed. */
-export const recheckKinds = async (): Promise<number> => {
-  const { changed } = await postJson<{ changed: number }>('/recheck', {});
-  return changed;
 };
 
 export const setItemCollection = async (itemId: string, collectionId: string | null) => {

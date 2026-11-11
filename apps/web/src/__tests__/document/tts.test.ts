@@ -30,7 +30,15 @@ const createPlainHTMLDoc = (html: string): Document => {
 };
 
 /** Strip all XML tags to get plain text content from SSML */
-const stripTags = (ssml: string): string => ssml.replace(/<[^>]+\/?>/g, '').trim();
+const stripTags = (ssml: string): string => {
+  let text = ssml;
+  let previous: string;
+  do {
+    previous = text;
+    text = text.replace(/<[^>]+\/?>/g, '');
+  } while (text !== previous);
+  return text.trim();
+};
 
 const highlight = vi.fn();
 

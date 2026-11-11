@@ -18,10 +18,8 @@ const SaveFromAnywhere = () => {
   }, []);
 
   return (
-    <details className='bg-base-200/60 rounded-2xl px-4 py-3 text-sm'>
-      <summary className='cursor-pointer font-medium'>
-        {_('Save from other pages and apps')}
-      </summary>
+    <section className='bg-base-200/60 rounded-2xl px-4 py-3 text-sm'>
+      <h2 className='font-medium'>{_('Save from other pages and apps')}</h2>
       <div className='text-base-content/70 mt-3 flex flex-col gap-3'>
         <p>
           <span className='text-base-content font-medium'>{_('Bookmarklet')}:</span>{' '}
@@ -48,7 +46,7 @@ const SaveFromAnywhere = () => {
           <code className='break-all'>{'/later/add?url=<link>'}</code>
         </p>
       </div>
-    </details>
+    </section>
   );
 };
 

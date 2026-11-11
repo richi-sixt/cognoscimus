@@ -13,7 +13,15 @@ import type { BookDoc } from '@/libs/document';
 const vendorDir = join(process.cwd(), 'public/vendor');
 
 /** Strip all XML/SSML tags to get plain text content */
-const stripTags = (ssml: string): string => ssml.replace(/<[^>]+\/?>/g, '').trim();
+const stripTags = (ssml: string): string => {
+  let text = ssml;
+  let previous: string;
+  do {
+    previous = text;
+    text = text.replace(/<[^>]+\/?>/g, '');
+  } while (text !== previous);
+  return text.trim();
+};
 
 const highlight = vi.fn();
 

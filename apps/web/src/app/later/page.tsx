@@ -7,12 +7,10 @@ import {
   IoHelpCircleOutline,
   IoMenuOutline,
   IoPersonCircleOutline,
+  IoSettingsOutline,
 } from 'react-icons/io5';
 import AppSwitcher from '@/components/AppSwitcher';
 import BulkBar from './components/BulkBar';
-import ImportRaindrop from './components/ImportRaindrop';
-import SaveFromAnywhere from './components/SaveFromAnywhere';
-import Maintenance from './components/Maintenance';
 import Sidebar from './components/Sidebar';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/hooks/useTheme';
@@ -23,7 +21,6 @@ import {
   bulkSetCollection,
   bulkSetState,
   bulkTrash,
-  countPending,
   createLabel,
   createSavedSearch,
   deleteSavedSearch,
@@ -32,7 +29,6 @@ import {
   listItems,
   listLabels,
   listSavedSearches,
-  loadPending,
   purgeTrash,
   saveArticle,
   type LaterItem,
@@ -82,8 +78,6 @@ const LaterPage = () => {
   const [newFeedEntries, setNewFeedEntries] = useState(0);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([]);
-  const [pending, setPending] = useState(0);
-  const [loadProgress, setLoadProgress] = useState<{ done: number; total: number } | null>(null);
 
   useEffect(() => setMounted(true), []);
   useEffect(() => {
@@ -109,7 +103,6 @@ const LaterPage = () => {
         }),
       );
       setCounts(await getSidebarCounts());
-      setPending(await countPending());
       // Labels disappear with their last article, so the list is refreshed too.
       const currentLabels = await listLabels();
       setLabels(currentLabels);
@@ -241,27 +234,6 @@ const LaterPage = () => {
     }
   };
 
-  // Fetches the article text of imported links; the list refreshes as it goes.
-  const loadWaiting = async () => {
-    if (loadProgress) return;
-    setLoadProgress({ done: 0, total: pending });
-    try {
-      let lastRefresh = 0;
-      await loadPending((done, total) => {
-        setLoadProgress({ done, total });
-        if (done - lastRefresh >= 10) {
-          lastRefresh = done;
-          void load();
-        }
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : _('Something went wrong'));
-    } finally {
-      setLoadProgress(null);
-      await load();
-    }
-  };
-
   const emptyTrash = async () => {
     if (!window.confirm(_('Delete everything in the trash for good?'))) return;
     try {
@@ -346,9 +318,17 @@ const LaterPage = () => {
           >
             <IoMenuOutline className='h-6 w-6' />
           </button>
-          <AppSwitcher />
         </div>
-        <div className='flex items-center'>
+        <div className='flex items-center gap-1'>
+          <AppSwitcher className='me-1' />
+          <Link
+            href='/later/settings'
+            className='btn btn-ghost btn-circle btn-sm'
+            aria-label={_('Settings')}
+            title={_('Settings')}
+          >
+            <IoSettingsOutline className='h-6 w-6' />
+          </Link>
           {/* /help is served with cross-origin isolation, so this is a full page load. */}
           <button
             type='button'
@@ -420,30 +400,6 @@ const LaterPage = () => {
               {saving ? <span className='loading loading-spinner loading-sm' /> : _('Save')}
             </button>
           </form>
-
-          <SaveFromAnywhere />
-          <Maintenance onDone={() => void load()} />
-          <ImportRaindrop
-            onImported={() => {
-              setScope({ kind: 'inbox' });
-              void load().then(loadWaiting);
-            }}
-          />
-
-          {pending > 0 && (
-            <div className='bg-base-200/60 flex items-center justify-between gap-3 rounded-2xl px-4 py-3 text-sm'>
-              <span>
-                {loadProgress
-                  ? _('Loading articles {{done}} / {{total}}', loadProgress)
-                  : _('{{count}} saved links are waiting for their text.', { count: pending })}
-              </span>
-              {!loadProgress && (
-                <button type='button' className='btn btn-sm' onClick={loadWaiting}>
-                  {_('Load now')}
-                </button>
-              )}
-            </div>
-          )}
 
           <div className='flex flex-wrap items-center gap-2'>
             <h1 className='min-w-0 truncate text-lg font-semibold'>{scopeTitle}</h1>

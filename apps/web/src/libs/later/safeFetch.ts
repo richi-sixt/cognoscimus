@@ -4,12 +4,13 @@ import https from 'node:https';
 import type { LookupFunction } from 'node:net';
 import { Readable } from 'node:stream';
 import { createBrotliDecompress, createGunzip, createInflate } from 'node:zlib';
-import { FetchBlockedError, isPrivateAddress } from './ssrf';
+import { assertPublicHttpUrl, FetchBlockedError, isPrivateAddress } from './ssrf';
 
 // A fetch that cannot be sent to a private address by DNS tricks. The check and
 // the connection share one lookup, so a host that answers with a public address
-// first and a private one second never gets through (DNS rebinding). Redirects are
-// not followed: the caller decides, and checks every hop.
+// first and a private one second never gets through (DNS rebinding). Node skips
+// the lookup for a host given as an IP address, so `assertPublicHttpUrl` runs
+// here as well. Redirects are not followed: the caller decides, and checks every hop.
 
 const guardedLookup: LookupFunction = (hostname, options, callback) => {
   dnsLookup(hostname, { ...options, all: true }, (error, addresses) => {
@@ -29,11 +30,12 @@ const decoderFor = (encoding: string | undefined) => {
   return null;
 };
 
-export const safeFetch = (
+export const safeFetch = async (
   url: URL,
   init: { headers?: Record<string, string>; signal?: AbortSignal } = {},
-): Promise<Response> =>
-  new Promise((resolve, reject) => {
+): Promise<Response> => {
+  await assertPublicHttpUrl(url);
+  return new Promise((resolve, reject) => {
     const transport = url.protocol === 'https:' ? https : http;
     const request = transport.request(
       url,
@@ -68,3 +70,4 @@ export const safeFetch = (
     request.on('error', reject);
     request.end();
   });
+};

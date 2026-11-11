@@ -5,10 +5,6 @@ import { copy } from 'fs-extra'
 const copyPDFJS = () => ({
     name: 'copy-pdfjs',
     async writeBundle() {
-        await copy('node_modules/pdfjs-dist/build/pdf.mjs', 'vendor/pdfjs/pdf.mjs')
-        await copy('node_modules/pdfjs-dist/build/pdf.mjs.map', 'vendor/pdfjs/pdf.mjs.map')
-        await copy('node_modules/pdfjs-dist/build/pdf.worker.mjs', 'vendor/pdfjs/pdf.worker.mjs')
-        await copy('node_modules/pdfjs-dist/build/pdf.worker.mjs.map', 'vendor/pdfjs/pdf.worker.mjs.map')
         await copy('node_modules/pdfjs-dist/cmaps', 'vendor/pdfjs/cmaps')
         await copy('node_modules/pdfjs-dist/standard_fonts', 'vendor/pdfjs/standard_fonts')
     },

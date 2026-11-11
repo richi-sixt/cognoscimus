@@ -87,7 +87,7 @@ export const HELP_CONTENT: Record<LandingLang, HelpContent> = {
         steps: [
           {
             title: 'Save a link',
-            text: 'Paste an address into the field at the top and press "Save". Under the field you also find a bookmarklet: drag it to your bookmarks bar and click it on any page. On a phone, install the app from the browser menu and use Share.',
+            text: 'Paste an address into the field at the top and press "Save". The settings (gear icon at the top right) hold a bookmarklet: drag it to your bookmarks bar and click it on any page. On a phone, install the app from the browser menu and use Share.',
           },
           {
             title: 'Articles, links, videos, documents',
@@ -125,7 +125,7 @@ export const HELP_CONTENT: Record<LandingLang, HelpContent> = {
           },
           {
             title: 'Moving from Raindrop',
-            text: 'Under "Tidy up" you can import a Raindrop export. Its folders become collections, labels or are ignored, as you choose.',
+            text: 'In the settings (gear icon at the top right) you can import a Raindrop export. Its folders become collections, labels or are ignored, as you choose.',
           },
         ],
       },
@@ -265,7 +265,7 @@ export const HELP_CONTENT: Record<LandingLang, HelpContent> = {
         steps: [
           {
             title: 'Einen Link speichern',
-            text: 'Eine Adresse oben ins Feld einfügen und «Speichern» drücken. Unter dem Feld findest du auch ein Bookmarklet: in die Lesezeichenleiste ziehen und auf einer beliebigen Seite anklicken. Auf dem Handy die App über das Browsermenü installieren und «Teilen» nutzen.',
+            text: 'Eine Adresse oben ins Feld einfügen und «Speichern» drücken. In den Einstellungen (Zahnrad oben rechts) findest du ein Bookmarklet: in die Lesezeichenleiste ziehen und auf einer beliebigen Seite anklicken. Auf dem Handy die App über das Browsermenü installieren und «Teilen» nutzen.',
           },
           {
             title: 'Artikel, Links, Videos, Dokumente',
@@ -303,7 +303,7 @@ export const HELP_CONTENT: Record<LandingLang, HelpContent> = {
           },
           {
             title: 'Umzug von Raindrop',
-            text: 'Unter «Aufräumen» kannst du einen Raindrop-Export importieren. Seine Ordner werden Sammlungen, Labels oder werden ignoriert, wie du es wählst.',
+            text: 'In den Einstellungen (Zahnrad oben rechts) kannst du einen Raindrop-Export importieren. Seine Ordner werden Sammlungen, Labels oder werden ignoriert, wie du es wählst.',
           },
         ],
       },

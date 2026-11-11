@@ -67,7 +67,9 @@ describe('OpenAICompatibleSpeechProvider', () => {
       ...OPENAI_TTS_VOICES.map((v) => `s3:${v}`),
     ]);
     expect(voices[0]!.name).toBe('af_heart');
-    const [url, init] = fetchMock.mock.calls.find(([u]) => u.includes('tts.example.com'))!;
+    const [url, init] = fetchMock.mock.calls.find(
+      ([u]) => new URL(u).hostname === 'tts.example.com',
+    )!;
     expect(url).toBe('https://tts.example.com/v1/audio/voices');
     expect(init.headers.Authorization).toBe('Bearer sk-test');
   });

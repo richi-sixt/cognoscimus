@@ -6,7 +6,7 @@ import { importEntries } from '@/libs/later/client';
 import { type ParsedImport, parseRaindropExport } from '@/libs/later/importRaindrop';
 
 // Imports the HTML backup from Raindrop.io: the links are stored at once and
-// the page owner (see LaterPage) loads their article text afterwards.
+// the page owner (see LaterSettingsPage) loads their article text afterwards.
 const ImportRaindrop = ({ onImported }: { onImported: () => void }) => {
   const _ = useTranslation();
   const [parsed, setParsed] = useState<ParsedImport | null>(null);
@@ -56,8 +56,8 @@ const ImportRaindrop = ({ onImported }: { onImported: () => void }) => {
   };
 
   return (
-    <details className='bg-base-200/60 rounded-2xl px-4 py-3 text-sm'>
-      <summary className='cursor-pointer font-medium'>{_('Import from Raindrop')}</summary>
+    <section className='bg-base-200/60 rounded-2xl px-4 py-3 text-sm'>
+      <h2 className='font-medium'>{_('Import from Raindrop')}</h2>
       <div className='text-base-content/70 mt-3 flex flex-col gap-3'>
         <p>
           {_(
@@ -119,7 +119,7 @@ const ImportRaindrop = ({ onImported }: { onImported: () => void }) => {
           </p>
         )}
       </div>
-    </details>
+    </section>
   );
 };
 

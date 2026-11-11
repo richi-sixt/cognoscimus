@@ -2,13 +2,18 @@
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { gzipSync } from 'node:zlib';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { safeFetch } from '@/libs/later/safeFetch';
 import { FetchBlockedError } from '@/libs/later/ssrf';
 
 // The connection itself refuses a private address, whatever the host name says at
 // the time it is checked. A host given as an IP address skips the lookup, which is
-// what lets these tests reach a server on this machine.
+// what lets these tests reach a server on this machine. The check of the URL that
+// safeFetch runs first is switched off here; ssrf.test.ts covers it.
+vi.mock('@/libs/later/ssrf', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/libs/later/ssrf')>()),
+  assertPublicHttpUrl: vi.fn(async () => undefined),
+}));
 
 let server: http.Server;
 let base: string;

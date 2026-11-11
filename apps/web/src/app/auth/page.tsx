@@ -33,7 +33,11 @@ export default function AuthPage() {
         if (now - lastRedirectAt > 3000) {
           // /later is served without cross-origin isolation: it needs a full page load.
           if (redirectTo === '/later' || redirectTo.startsWith('/later/')) {
-            window.location.assign(redirectTo);
+            // Rebuilt from its parts so the target can only be on this origin.
+            const target = new URL(redirectTo, window.location.origin);
+            if (target.origin === window.location.origin) {
+              window.location.assign(`${target.pathname}${target.search}${target.hash}`);
+            }
           } else {
             router.push(redirectTo);
           }

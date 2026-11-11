@@ -340,7 +340,14 @@ describe('mountAdditionalFonts', () => {
 
     // Verify at least one link points to Google Fonts
     const hrefs = Array.from(links).map((l) => l.getAttribute('href') || '');
-    expect(hrefs.some((h) => h.includes('fonts.googleapis.com'))).toBe(true);
+    const hosts = hrefs.map((h) => {
+      try {
+        return new URL(h, 'https://localhost').hostname;
+      } catch {
+        return '';
+      }
+    });
+    expect(hosts.some((h) => h === 'fonts.googleapis.com')).toBe(true);
   });
 
   it('should set crossOrigin on link tags', async () => {
@@ -360,7 +367,14 @@ describe('mountAdditionalFonts', () => {
 
     const links = document.head.querySelectorAll('link');
     const hrefs = Array.from(links).map((l) => l.getAttribute('href') || '');
-    expect(hrefs.some((h) => h.includes('jsdelivr.net'))).toBe(false);
+    const hosts = hrefs.map((h) => {
+      try {
+        return new URL(h, 'https://localhost').hostname;
+      } catch {
+        return '';
+      }
+    });
+    expect(hosts.some((h) => h === 'jsdelivr.net' || h.endsWith('.jsdelivr.net'))).toBe(false);
   });
 
   it('should mount CJK fonts when isCJK is true', async () => {
@@ -380,7 +394,14 @@ describe('mountAdditionalFonts', () => {
     // Should have CJK-specific link tags
     const links = document.head.querySelectorAll('link');
     const hrefs = Array.from(links).map((l) => l.getAttribute('href') || '');
-    expect(hrefs.some((h) => h.includes('jsdelivr.net'))).toBe(true);
+    const hosts = hrefs.map((h) => {
+      try {
+        return new URL(h, 'https://localhost').hostname;
+      } catch {
+        return '';
+      }
+    });
+    expect(hosts.some((h) => h === 'jsdelivr.net' || h.endsWith('.jsdelivr.net'))).toBe(true);
   });
 
   it('should mount CJK fonts when isCJKEnv returns true', async () => {
