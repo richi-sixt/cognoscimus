@@ -2004,5 +2004,7 @@
   "Let the extension in this browser ({{browser}}) save pages to your Later library? It can save links, and set their note, collection and labels. It cannot read your library or change your account.": "Darf die Erweiterung in diesem Browser ({{browser}}) Seiten in deiner Later-Bibliothek speichern? Sie kann Links speichern und deren Notiz, Sammlung und Tags setzen. Sie kann deine Bibliothek nicht lesen und dein Konto nicht ändern.",
   "Connect": "Verbinden",
   "Connected. You can close this tab.": "Verbunden. Du kannst diesen Tab schliessen.",
-  "The extension could not be connected.": "Die Erweiterung konnte nicht verbunden werden."
+  "The extension could not be connected.": "Die Erweiterung konnte nicht verbunden werden.",
+  "Save as link": "Als Link speichern",
+  "Save as a link? The stored text and its highlights are removed. \"Save as article\" fetches the page again.": "Als Link speichern? Der gespeicherte Text und seine Markierungen werden entfernt. «Als Artikel speichern» holt die Seite erneut."
 }

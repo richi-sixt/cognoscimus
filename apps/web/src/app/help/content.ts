@@ -91,7 +91,7 @@ export const HELP_CONTENT: Record<LandingLang, HelpContent> = {
           },
           {
             title: 'Articles, links, videos, documents',
-            text: 'Pages with readable text become articles. Shops, repositories and pages with little text become links, video sites become videos and files such as PDFs become documents. You can filter by type.',
+            text: 'Pages with readable text become articles. Shops, repositories and pages with little text become links, video sites become videos and files such as PDFs become documents. You can filter by type. If the type is wrong, change it in the reader: "Save as article" on a link fetches the page again and keeps its text; the chain icon at the top of an article turns it into a link and removes the stored text and its highlights. Mails and documents keep their type.',
           },
           {
             title: 'Read, highlight, add notes',
@@ -269,7 +269,7 @@ export const HELP_CONTENT: Record<LandingLang, HelpContent> = {
           },
           {
             title: 'Artikel, Links, Videos, Dokumente',
-            text: 'Seiten mit lesbarem Text werden Artikel. Shops, Repositories und Seiten mit wenig Text werden Links, Videoseiten werden Videos und Dateien wie PDFs werden Dokumente. Du kannst nach Art filtern.',
+            text: 'Seiten mit lesbarem Text werden Artikel. Shops, Repositories und Seiten mit wenig Text werden Links, Videoseiten werden Videos und Dateien wie PDFs werden Dokumente. Du kannst nach Art filtern. Stimmt die Art nicht, änderst du sie im Reader: «Als Artikel speichern» bei einem Link holt die Seite erneut und behält ihren Text; das Ketten-Symbol oben bei einem Artikel macht daraus einen Link und entfernt den gespeicherten Text samt Markierungen. Mails und Dokumente behalten ihre Art.',
           },
           {
             title: 'Lesen, markieren, Notizen',

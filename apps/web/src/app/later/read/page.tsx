@@ -9,6 +9,7 @@ import {
   IoArrowUndoOutline,
   IoClose,
   IoCreateOutline,
+  IoLinkOutline,
   IoOpenOutline,
   IoTrashOutline,
 } from 'react-icons/io5';
@@ -26,6 +27,7 @@ import {
   listItemLabelIds,
   listLabels,
   refetchItem,
+  saveAsLink,
   restoreItem,
   setItemCollection,
   setItemNote,
@@ -197,6 +199,19 @@ const Reader = () => {
       setLoadingText(false);
     });
 
+  // The opposite direction: an article whose text is of no use becomes a link.
+  const turnIntoLink = () =>
+    run(async () => {
+      if (!item) return;
+      const question = _(
+        'Save as a link? The stored text and its highlights are removed. "Save as article" fetches the page again.',
+      );
+      if (!window.confirm(question)) return;
+      await saveAsLink(item.id);
+      const fresh = await getItem(item.id);
+      if (fresh) setItem(fresh);
+    });
+
   const restore = () =>
     run(async () => {
       if (!item) return;
@@ -317,6 +332,17 @@ const Reader = () => {
                   </span>
                 )}
                 <IoCreateOutline className='h-5 w-5' />
+              </button>
+            )}
+            {item.kind === 'article' && !isMailUrl(item.url) && !item.deleted_at && (
+              <button
+                type='button'
+                onClick={turnIntoLink}
+                className='btn btn-ghost btn-circle btn-sm'
+                aria-label={_('Save as link')}
+                title={_('Save as link')}
+              >
+                <IoLinkOutline className='h-5 w-5' />
               </button>
             )}
             {!isMailUrl(item.url) && (

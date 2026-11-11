@@ -298,6 +298,11 @@ export const importEntries = async (
   return total;
 };
 
+/** Turns an article into a plain link; its stored text and highlights are dropped. */
+export const saveAsLink = async (id: string): Promise<void> => {
+  await postJson<{ id: string }>('/aslink', { id });
+};
+
 /** `asArticle` keeps the readable text of a page that was filed as a bookmark. */
 export const refetchItem = async (
   id: string,
