@@ -10,10 +10,12 @@
         min-width: 320px;
         color-scheme: light dark;
       }
-      label {
+      label,
+      h2 {
         display: block;
+        font-size: 14px;
         font-weight: 600;
-        margin-bottom: 4px;
+        margin: 0 0 4px;
       }
       input {
         box-sizing: border-box;
@@ -32,6 +34,9 @@
       #status {
         margin-inline-start: 8px;
       }
+      section {
+        margin-top: 24px;
+      }
     </style>
   </head>
   <body>
@@ -42,6 +47,15 @@
       <button type="submit" data-i18n="saveSettings"></button>
       <span id="status" role="status"></span>
     </form>
+
+    <section>
+      <h2 data-i18n="connection"></h2>
+      <p id="connection-state" role="status"></p>
+      <button type="button" id="connect" data-i18n="connect" hidden></button>
+      <button type="button" id="disconnect" data-i18n="disconnect" hidden></button>
+    </section>
+
+    <script src="lib.js"></script>
     <script src="options.js"></script>
   </body>
 </html>

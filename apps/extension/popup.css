@@ -1,0 +1,103 @@
+:root {
+  color-scheme: light dark;
+}
+body {
+  font:
+    14px / 1.4 system-ui,
+    sans-serif;
+  margin: 0;
+  padding: 14px;
+  width: 340px;
+}
+p {
+  margin: 0 0 10px;
+}
+header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 10px;
+}
+#title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#state {
+  font-size: 12px;
+  opacity: 0.7;
+}
+label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  margin: 10px 0 4px;
+  opacity: 0.8;
+}
+textarea,
+select,
+input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 6px 8px;
+  font: inherit;
+  border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+}
+textarea {
+  resize: vertical;
+}
+#chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+#chips:not(:empty) {
+  margin-bottom: 6px;
+}
+.chip {
+  padding: 2px 8px;
+  font: inherit;
+  font-size: 12px;
+  border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 14px;
+}
+button {
+  padding: 6px 14px;
+  font: inherit;
+  border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+button.primary {
+  background: #3b6fd9;
+  border-color: #3b6fd9;
+  color: #fff;
+}
+button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+#form-error,
+#failed-text {
+  color: #c0392b;
+}
+#form-error:empty {
+  display: none;
+}
+#form-error {
+  margin: 10px 0 0;
+}

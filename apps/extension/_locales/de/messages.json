@@ -15,7 +15,7 @@
     "message": "Server-Adresse"
   },
   "serverHint": {
-    "message": "Die Adresse deines Cognoscimus-Servers, zum Beispiel https://books.example.com. Beim Speichern wird der Zugriff auf diesen Server erfragt: darüber übergibt die Erweiterung die Seite, die du speicherst."
+    "message": "Die Adresse deines Cognoscimus-Servers, zum Beispiel https://books.example.com. Beim Speichern wird der Zugriff auf diesen Server erfragt; die Erweiterung spricht mit keiner anderen Seite."
   },
   "saveSettings": {
     "message": "Speichern"
@@ -23,10 +23,85 @@
   "saved": {
     "message": "Gespeichert."
   },
+  "savedNoAccess": {
+    "message": "Gespeichert, aber ohne Zugriff auf den Server kann die Erweiterung nicht arbeiten. Speichere nochmals und erlaube den Zugriff."
+  },
   "invalidServer": {
     "message": "Gib eine Adresse ein, die mit https:// beginnt (oder http://localhost)."
   },
-  "savedLinkOnly": {
-    "message": "Gespeichert. Ohne Zugriff auf den Server wird nur der Link geschickt und der Server holt die Seite selbst."
+  "connection": {
+    "message": "Verbindung"
+  },
+  "connectionNeedsServer": {
+    "message": "Trage zuerst die Server-Adresse ein und erlaube den Zugriff darauf."
+  },
+  "connected": {
+    "message": "Mit deinem Konto verbunden."
+  },
+  "notConnected": {
+    "message": "Nicht verbunden. Verbinden öffnet deinen Server, dort bestätigst du eingeloggt."
+  },
+  "connect": {
+    "message": "Verbinden"
+  },
+  "disconnect": {
+    "message": "Trennen"
+  },
+  "needsSetup": {
+    "message": "Trage zuerst in den Optionen die Adresse deines Servers ein."
+  },
+  "openOptions": {
+    "message": "Optionen öffnen"
+  },
+  "needsConnect": {
+    "message": "Verbinde die Erweiterung mit deinem Konto, um Seiten zu speichern."
+  },
+  "cannotSave": {
+    "message": "Diese Seite kann nicht gespeichert werden."
+  },
+  "saving": {
+    "message": "Speichern…"
+  },
+  "retry": {
+    "message": "Erneut versuchen"
+  },
+  "savedToLater": {
+    "message": "In Later gespeichert"
+  },
+  "note": {
+    "message": "Notiz"
+  },
+  "collection": {
+    "message": "Sammlung"
+  },
+  "unsorted": {
+    "message": "Unsortiert"
+  },
+  "labels": {
+    "message": "Tags"
+  },
+  "addLabel": {
+    "message": "Tag hinzufügen…"
+  },
+  "removeLabel": {
+    "message": "Entfernen"
+  },
+  "read": {
+    "message": "Lesen"
+  },
+  "saveDetails": {
+    "message": "Speichern"
+  },
+  "detailsSaved": {
+    "message": "Gespeichert."
+  },
+  "detailsFailed": {
+    "message": "Notiz, Sammlung und Tags konnten nicht gespeichert werden."
+  },
+  "saveFailed": {
+    "message": "Die Seite konnte nicht gespeichert werden."
+  },
+  "serverUnreachable": {
+    "message": "Der Server ist nicht erreichbar."
   }
 }

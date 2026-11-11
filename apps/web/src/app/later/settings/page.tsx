@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { IoArrowBack } from 'react-icons/io5';
+import ConnectedExtensions from '../components/ConnectedExtensions';
 import ImportRaindrop from '../components/ImportRaindrop';
 import SaveFromAnywhere from '../components/SaveFromAnywhere';
 import { useAuth } from '@/context/AuthContext';
@@ -54,6 +55,7 @@ const LaterSettingsPage = () => {
 
       <main className='mx-auto flex max-w-2xl flex-col gap-4 px-4 pb-16'>
         <SaveFromAnywhere />
+        <ConnectedExtensions />
         <ImportRaindrop onImported={() => void loadImported()} />
 
         {loadProgress && (

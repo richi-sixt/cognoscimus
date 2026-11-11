@@ -523,3 +523,29 @@ export const deleteSavedSearch = async (id: string) => {
   const { error } = await supabase.from('later_saved_searches').delete().eq('id', id);
   if (error) throw error;
 };
+
+/** A browser extension that was connected to the account. */
+export interface ExtensionToken {
+  id: string;
+  name: string;
+  created_at: string;
+  last_used_at: string | null;
+}
+
+export const listExtensionTokens = async (): Promise<ExtensionToken[]> => {
+  const { data, error } = await supabase
+    .from('later_extension_tokens')
+    .select('id, name, created_at, last_used_at')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as ExtensionToken[];
+};
+
+export const deleteExtensionToken = async (id: string) => {
+  const { error } = await supabase.from('later_extension_tokens').delete().eq('id', id);
+  if (error) throw error;
+};
+
+/** Creates the token for a browser extension; the server shows it only this once. */
+export const createExtensionToken = (name: string) =>
+  postJson<{ id: string; token: string }>('/ext/token', { name });

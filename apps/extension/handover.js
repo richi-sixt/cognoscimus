@@ -1,25 +1,30 @@
-// Runs only on /later/add of the user's own server. When that page asks for it,
-// this fetches the HTML the background script captured and passes it on. The
-// page sends it to the server together with the link.
+// Runs only on /later/connect of the user's own server (after lib.js). It tells
+// that page the extension is there and passes the token the page creates on to
+// the background script. The token goes nowhere else.
 
-const api = globalThis.browser ?? globalThis.chrome;
+(() => {
+  const { api, browserName } = globalThis.later;
 
-const REQUEST = 'cognoscimus-later:request';
-const REPLY = 'cognoscimus-later:html';
+  const HELLO = 'cognoscimus-later:hello';
+  const PRESENT = 'cognoscimus-later:present';
+  const TOKEN = 'cognoscimus-later:token';
+  const STORED = 'cognoscimus-later:stored';
 
-const key = new URLSearchParams(location.search).get('ext');
+  const nonce = new URLSearchParams(location.search).get('ext');
 
-window.addEventListener('message', async (event) => {
-  if (event.source !== window || event.origin !== location.origin) return;
-  if (event.data?.type !== REQUEST) return;
-  let html = null;
-  try {
-    if (key) html = await api.runtime.sendMessage({ type: 'take-capture', key });
-  } catch {
-    // Without an answer the page saves the link alone.
-  }
-  window.postMessage(
-    { type: REPLY, html: typeof html === 'string' ? html : null },
-    location.origin,
-  );
-});
+  window.addEventListener('message', async (event) => {
+    if (event.source !== window || event.origin !== location.origin) return;
+    const type = event.data?.type;
+    if (type === HELLO) {
+      window.postMessage({ type: PRESENT, name: browserName() }, location.origin);
+    } else if (type === TOKEN) {
+      let ok = false;
+      try {
+        ok = await api.runtime.sendMessage({ type: 'store-token', token: event.data.token, nonce });
+      } catch {
+        ok = false;
+      }
+      window.postMessage({ type: STORED, ok: ok === true }, location.origin);
+    }
+  });
+})();

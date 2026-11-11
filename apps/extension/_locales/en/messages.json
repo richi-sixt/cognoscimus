@@ -15,7 +15,7 @@
     "message": "Server address"
   },
   "serverHint": {
-    "message": "The address of your Cognoscimus server, for example https://books.example.com. Saving asks for access to this server: the extension uses it to hand over the page you are saving."
+    "message": "The address of your Cognoscimus server, for example https://books.example.com. Saving asks for access to this server; the extension talks to no other site."
   },
   "saveSettings": {
     "message": "Save"
@@ -23,10 +23,85 @@
   "saved": {
     "message": "Saved."
   },
+  "savedNoAccess": {
+    "message": "Saved, but without access to the server the extension cannot work. Save again and allow the access."
+  },
   "invalidServer": {
     "message": "Enter an address that starts with https:// (or http://localhost)."
   },
-  "savedLinkOnly": {
-    "message": "Saved. Without access to the server only the link is sent and the server fetches the page itself."
+  "connection": {
+    "message": "Connection"
+  },
+  "connectionNeedsServer": {
+    "message": "Enter the server address first and allow access to it."
+  },
+  "connected": {
+    "message": "Connected to your account."
+  },
+  "notConnected": {
+    "message": "Not connected. Connecting opens your server, where you confirm while signed in."
+  },
+  "connect": {
+    "message": "Connect"
+  },
+  "disconnect": {
+    "message": "Disconnect"
+  },
+  "needsSetup": {
+    "message": "Enter the address of your server in the options first."
+  },
+  "openOptions": {
+    "message": "Open options"
+  },
+  "needsConnect": {
+    "message": "Connect the extension to your account to save pages."
+  },
+  "cannotSave": {
+    "message": "This page cannot be saved."
+  },
+  "saving": {
+    "message": "Saving…"
+  },
+  "retry": {
+    "message": "Try again"
+  },
+  "savedToLater": {
+    "message": "Saved to Later"
+  },
+  "note": {
+    "message": "Note"
+  },
+  "collection": {
+    "message": "Collection"
+  },
+  "unsorted": {
+    "message": "Unsorted"
+  },
+  "labels": {
+    "message": "Labels"
+  },
+  "addLabel": {
+    "message": "Add a label…"
+  },
+  "removeLabel": {
+    "message": "Remove"
+  },
+  "read": {
+    "message": "Read"
+  },
+  "saveDetails": {
+    "message": "Save"
+  },
+  "detailsSaved": {
+    "message": "Saved."
+  },
+  "detailsFailed": {
+    "message": "Note, collection and labels could not be saved."
+  },
+  "saveFailed": {
+    "message": "The page could not be saved."
+  },
+  "serverUnreachable": {
+    "message": "The server cannot be reached."
   }
 }

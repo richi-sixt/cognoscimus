@@ -1764,7 +1764,7 @@
   "Loading articles {{done}} / {{total}}": "Lade Artikel {{done}} / {{total}}",
   "Back to the list": "Zurück zur Liste",
   "Browser extension": "Browser-Erweiterung",
-  "For Chrome, Firefox and Safari. It is in the project folder apps/extension; enter the address of this server in its options. In Chrome and Firefox it sends the page as you see it, so pages behind a login keep their text.": "Für Chrome, Firefox und Safari. Sie liegt im Projektordner apps/extension; trage in ihren Optionen die Adresse dieses Servers ein. In Chrome und Firefox schickt sie die Seite so, wie du sie siehst; Seiten hinter einem Login behalten ihren Text.",
+  "For Chrome and Firefox. It is in the project folder apps/extension; enter the address of this server in its options and click \"Connect\". It saves the page as you see it, so pages behind a login keep their text, and lets you add a note, a collection and labels.": "Für Chrome und Firefox. Sie liegt im Projektordner apps/extension; trage in ihren Optionen die Adresse dieses Servers ein und klicke auf «Verbinden». Sie speichert die Seite so, wie du sie siehst (Seiten hinter einem Login behalten ihren Text), und du kannst Notiz, Sammlung und Tags ergänzen.",
   "Load now": "Jetzt laden",
   "Remove label filter": "Label-Filter entfernen",
   "Search articles": "Artikel durchsuchen",
@@ -1992,5 +1992,17 @@
   "Book {{current}} of {{total}}": "Buch {{current}} von {{total}}",
   "Finishing the file...": "Datei wird abgeschlossen...",
   "Almost done, the save dialog follows...": "Fast fertig, gleich erscheint der Speichern-Dialog...",
-  "This browser builds the file in memory. Keep the selection small or use Chrome.": "Dieser Browser baut die Datei im Arbeitsspeicher auf. Halte die Auswahl klein oder nimm Chrome."
+  "This browser builds the file in memory. Keep the selection small or use Chrome.": "Dieser Browser baut die Datei im Arbeitsspeicher auf. Halte die Auswahl klein oder nimm Chrome.",
+  "Connected browser extensions": "Verbundene Browser-Erweiterungen",
+  "None yet. Click \"Connect\" in the extension to let it save to your account without a window.": "Noch keine. Klicke in der Erweiterung auf «Verbinden», damit sie ohne Fenster in dein Konto speichern kann.",
+  "Connected on {{date}}": "Verbunden am {{date}}",
+  "last used on {{date}}": "zuletzt benutzt am {{date}}",
+  "not used yet": "noch nicht benutzt",
+  "Disconnect": "Trennen",
+  "Connect browser extension": "Browser-Erweiterung verbinden",
+  "The extension did not answer. Open this page with the \"Connect\" button of the extension.": "Die Erweiterung hat nicht geantwortet. Öffne diese Seite über den Knopf «Verbinden» der Erweiterung.",
+  "Let the extension in this browser ({{browser}}) save pages to your Later library? It can save links, and set their note, collection and labels. It cannot read your library or change your account.": "Darf die Erweiterung in diesem Browser ({{browser}}) Seiten in deiner Later-Bibliothek speichern? Sie kann Links speichern und deren Notiz, Sammlung und Tags setzen. Sie kann deine Bibliothek nicht lesen und dein Konto nicht ändern.",
+  "Connect": "Verbinden",
+  "Connected. You can close this tab.": "Verbunden. Du kannst diesen Tab schliessen.",
+  "The extension could not be connected.": "Die Erweiterung konnte nicht verbunden werden."
 }

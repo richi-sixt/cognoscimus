@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseAdminClient } from '@/utils/supabase';
-import { validateUserAndToken } from '@/utils/access';
 import { readCapturedHtml } from '@/libs/later/captured';
+import { authenticateLater } from '@/libs/later/extensionAuth';
 import { NoArticleError } from '@/libs/later/extract';
 import { fetchPage, FetchPageError, normalizeUrl } from '@/libs/later/fetchPage';
 import { bookmarkFromUrl, ingestPage, type IngestedItem, toRow } from '@/libs/later/ingest';
@@ -18,10 +18,12 @@ const URL_MAX_LENGTH = 2048;
 // the browser shows it (`html`); it then takes the place of the download and
 // goes through the same extraction and sanitising.
 export async function POST(request: Request) {
-  const { user, token } = await validateUserAndToken(request.headers.get('authorization'));
-  if (!user || !token) {
+  // The browser extension signs in with a token of its own.
+  const who = await authenticateLater(request);
+  if (!who) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
+  const user = { id: who.userId };
 
   let body: { url?: unknown; collectionId?: unknown; html?: unknown };
   try {
@@ -104,11 +106,29 @@ export async function POST(request: Request) {
         },
         { onConflict: 'user_id,url' },
       )
-      .select('id')
+      .select('id, title, kind, collection_id, note')
       .single();
     if (error) throw error;
 
-    return NextResponse.json({ id: data.id });
+    // A link that was saved before comes back with what it already carries, so
+    // the extension shows its note, collection and labels instead of blanks.
+    const { data: links, error: linksError } = await supabase
+      .from('later_item_labels')
+      .select('later_labels(name)')
+      .eq('item_id', data.id);
+    if (linksError) throw linksError;
+    const labels = (links ?? [])
+      .flatMap((link) => link.later_labels as { name: string } | { name: string }[] | null)
+      .flatMap((label) => (label ? [label.name] : []));
+
+    return NextResponse.json({
+      id: data.id,
+      title: data.title,
+      kind: data.kind,
+      collectionId: data.collection_id,
+      note: data.note,
+      labels,
+    });
   } catch (error) {
     if (error instanceof FetchBlockedError) {
       return NextResponse.json({ error: error.message, code: 'blocked_url' }, { status: 400 });

@@ -87,7 +87,7 @@ export const HELP_CONTENT: Record<LandingLang, HelpContent> = {
         steps: [
           {
             title: 'Save a link',
-            text: 'Paste an address into the field at the top and press "Save". The settings (gear icon at the top right) hold a bookmarklet: drag it to your bookmarks bar and click it on any page. There is also a browser extension for Chrome, Firefox and Safari; in Chrome and Firefox it saves the page as you see it, including pages behind a login. On a phone, install the app from the browser menu and use Share.',
+            text: 'Paste an address into the field at the top and press "Save". The settings (gear icon at the top right) hold a bookmarklet: drag it to your bookmarks bar and click it on any page. There is also a browser extension for Chrome and Firefox: its button saves the page as you see it, including pages behind a login, and lets you add a note, a collection and labels. Connect it once from its options. On a phone, install the app from the browser menu and use Share.',
           },
           {
             title: 'Articles, links, videos, documents',
@@ -265,7 +265,7 @@ export const HELP_CONTENT: Record<LandingLang, HelpContent> = {
         steps: [
           {
             title: 'Einen Link speichern',
-            text: 'Eine Adresse oben ins Feld einfügen und «Speichern» drücken. In den Einstellungen (Zahnrad oben rechts) findest du ein Bookmarklet: in die Lesezeichenleiste ziehen und auf einer beliebigen Seite anklicken. Es gibt auch eine Browser-Erweiterung für Chrome, Firefox und Safari; in Chrome und Firefox speichert sie die Seite so, wie du sie siehst, auch hinter einem Login. Auf dem Handy die App über das Browsermenü installieren und «Teilen» nutzen.',
+            text: 'Eine Adresse oben ins Feld einfügen und «Speichern» drücken. In den Einstellungen (Zahnrad oben rechts) findest du ein Bookmarklet: in die Lesezeichenleiste ziehen und auf einer beliebigen Seite anklicken. Es gibt auch eine Browser-Erweiterung für Chrome und Firefox: Ihr Knopf speichert die Seite so, wie du sie siehst, auch hinter einem Login, und du kannst Notiz, Sammlung und Tags ergänzen. Verbinde sie einmal in ihren Optionen. Auf dem Handy die App über das Browsermenü installieren und «Teilen» nutzen.',
           },
           {
             title: 'Artikel, Links, Videos, Dokumente',

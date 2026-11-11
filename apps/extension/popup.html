@@ -1,0 +1,58 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <section id="setup" hidden>
+      <p data-i18n="needsSetup"></p>
+      <button type="button" id="open-options" data-i18n="openOptions"></button>
+    </section>
+
+    <section id="connect" hidden>
+      <p data-i18n="needsConnect"></p>
+      <button type="button" id="start-connect" class="primary" data-i18n="connect"></button>
+    </section>
+
+    <section id="blocked" hidden>
+      <p data-i18n="cannotSave"></p>
+    </section>
+
+    <section id="saving" hidden>
+      <p data-i18n="saving"></p>
+    </section>
+
+    <section id="failed" hidden>
+      <p id="failed-text" role="alert"></p>
+      <button type="button" id="retry" data-i18n="retry"></button>
+    </section>
+
+    <form id="form" hidden>
+      <header>
+        <strong id="title"></strong>
+        <span id="state" role="status" data-i18n="savedToLater"></span>
+      </header>
+
+      <label for="note" data-i18n="note"></label>
+      <textarea id="note" rows="3" maxlength="2000"></textarea>
+
+      <label for="collection" data-i18n="collection"></label>
+      <select id="collection"></select>
+
+      <label for="label-input" data-i18n="labels"></label>
+      <div id="chips"></div>
+      <input id="label-input" list="label-list" maxlength="40" autocomplete="off" />
+      <datalist id="label-list"></datalist>
+
+      <footer>
+        <button type="button" id="read" data-i18n="read"></button>
+        <button type="submit" class="primary" data-i18n="saveDetails"></button>
+      </footer>
+      <p id="form-error" role="alert"></p>
+    </form>
+
+    <script src="lib.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>
