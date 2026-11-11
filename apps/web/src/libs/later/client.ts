@@ -58,14 +58,23 @@ const SUMMARY_COLUMNS =
 
 export type ItemVisibility = 'private' | 'followers';
 
-export const saveArticle = async (url: string, collectionId?: string | null): Promise<string> => {
+/** `html` is the page as the browser shows it, sent along by the browser extension. */
+export const saveArticle = async (
+  url: string,
+  collectionId?: string | null,
+  html?: string | null,
+): Promise<string> => {
   const token = await getAccessToken();
   if (!token) throw new LaterApiError(401, undefined, 'Not authenticated');
   const response = await fetch(`${getAPIBaseUrl()}/later/save`, {
     method: 'POST',
     cache: 'no-store',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ url, collectionId: collectionId ?? undefined }),
+    body: JSON.stringify({
+      url,
+      collectionId: collectionId ?? undefined,
+      html: html ?? undefined,
+    }),
   });
   const body = (await response.json().catch(() => ({}))) as {
     id?: string;

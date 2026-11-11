@@ -2,15 +2,22 @@
 
 Saves the current page or a link to Later. The extension opens
 `/later/add?url=…` on your own server in a small window; that page saves the
-link and asks you to sign in if needed. The extension holds no token and has
-no access to the pages you visit beyond the tab you click it on.
+link and asks you to sign in if needed. The extension holds no token.
+
+When you save the page in the current tab, the extension also reads its HTML as
+the browser shows it and hands it to that window, so pages behind a login or a
+paywall keep their text. This happens only on your click, only for that tab,
+and the HTML goes nowhere but to your server, which extracts and sanitises it
+like a page it fetched itself.
 
 There is no build step. The folder is the extension.
 
 ## Setup
 
 After loading, open the extension's options and enter the address of your
-server (for example `https://books.example.com`).
+server (for example `https://books.example.com`). Saving the address asks for
+access to that server; the extension needs it to hand over the page. If you
+decline, only the link is sent and the server fetches the page itself.
 
 Use the toolbar button, the context menu entry "Save to Later" (on a page or a
 link) or the shortcut `Alt+Shift+L`.
@@ -43,6 +50,10 @@ extensions" (Develop menu) has to be set again after each Safari restart.
 
 ## Limits
 
-- The server fetches the page itself, so content behind a login or a paywall is
-  saved as a link only.
+- A link saved from the context menu is fetched by the server, so content behind
+  a login or a paywall is saved as a link only. The same goes for pages larger
+  than 2 MB after scripts and styles are removed, and for Safari, where the
+  hand-over is not tested.
+- Images that only load when signed in are missing in the reader: the address
+  is stored, not the image.
 - Browser pages such as `chrome://…` cannot be saved.

@@ -1,17 +1,32 @@
 {
-  "name": { "message": "Cognoscimus Later" },
+  "name": {
+    "message": "Cognoscimus Later"
+  },
   "description": {
-    "message": "Speichert die aktuelle Seite oder einen Link in Later auf deinem eigenen Cognoscimus-Server."
+    "message": "Speichert die aktuelle Seite oder einen Link in Later auf deinem eigenen Cognoscimus-Server. Die Seite wird so geschickt, wie du sie siehst; Seiten hinter einem Login behalten ihren Text."
   },
-  "save": { "message": "In Later speichern" },
-  "optionsTitle": { "message": "Cognoscimus Later" },
-  "serverLabel": { "message": "Server-Adresse" },
+  "save": {
+    "message": "In Later speichern"
+  },
+  "optionsTitle": {
+    "message": "Cognoscimus Later"
+  },
+  "serverLabel": {
+    "message": "Server-Adresse"
+  },
   "serverHint": {
-    "message": "Die Adresse deines Cognoscimus-Servers, zum Beispiel https://books.example.com"
+    "message": "Die Adresse deines Cognoscimus-Servers, zum Beispiel https://books.example.com. Beim Speichern wird der Zugriff auf diesen Server erfragt: darüber übergibt die Erweiterung die Seite, die du speicherst."
   },
-  "saveSettings": { "message": "Speichern" },
-  "saved": { "message": "Gespeichert." },
+  "saveSettings": {
+    "message": "Speichern"
+  },
+  "saved": {
+    "message": "Gespeichert."
+  },
   "invalidServer": {
     "message": "Gib eine Adresse ein, die mit https:// beginnt (oder http://localhost)."
+  },
+  "savedLinkOnly": {
+    "message": "Gespeichert. Ohne Zugriff auf den Server wird nur der Link geschickt und der Server holt die Seite selbst."
   }
 }

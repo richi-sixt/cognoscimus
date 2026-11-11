@@ -1,17 +1,32 @@
 {
-  "name": { "message": "Cognoscimus Later" },
+  "name": {
+    "message": "Cognoscimus Later"
+  },
   "description": {
-    "message": "Saves the current page or a link to Later on your own Cognoscimus server."
+    "message": "Saves the current page or a link to Later on your own Cognoscimus server. The page is sent as you see it, so pages behind a login keep their text."
   },
-  "save": { "message": "Save to Later" },
-  "optionsTitle": { "message": "Cognoscimus Later" },
-  "serverLabel": { "message": "Server address" },
+  "save": {
+    "message": "Save to Later"
+  },
+  "optionsTitle": {
+    "message": "Cognoscimus Later"
+  },
+  "serverLabel": {
+    "message": "Server address"
+  },
   "serverHint": {
-    "message": "The address of your Cognoscimus server, for example https://books.example.com"
+    "message": "The address of your Cognoscimus server, for example https://books.example.com. Saving asks for access to this server: the extension uses it to hand over the page you are saving."
   },
-  "saveSettings": { "message": "Save" },
-  "saved": { "message": "Saved." },
+  "saveSettings": {
+    "message": "Save"
+  },
+  "saved": {
+    "message": "Saved."
+  },
   "invalidServer": {
     "message": "Enter an address that starts with https:// (or http://localhost)."
+  },
+  "savedLinkOnly": {
+    "message": "Saved. Without access to the server only the link is sent and the server fetches the page itself."
   }
 }

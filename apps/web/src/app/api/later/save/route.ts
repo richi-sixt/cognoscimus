@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseAdminClient } from '@/utils/supabase';
 import { validateUserAndToken } from '@/utils/access';
+import { readCapturedHtml } from '@/libs/later/captured';
 import { NoArticleError } from '@/libs/later/extract';
 import { fetchPage, FetchPageError, normalizeUrl } from '@/libs/later/fetchPage';
 import { bookmarkFromUrl, ingestPage, type IngestedItem, toRow } from '@/libs/later/ingest';
@@ -13,16 +14,18 @@ const URL_MAX_LENGTH = 2048;
 
 // POST /api/later/save — fetches a web page, extracts the readable article and
 // stores it for the signed-in user. Saving a link again refreshes the stored
-// copy and keeps its reading state.
+// copy and keeps its reading state. A browser extension may send the page as
+// the browser shows it (`html`); it then takes the place of the download and
+// goes through the same extraction and sanitising.
 export async function POST(request: Request) {
   const { user, token } = await validateUserAndToken(request.headers.get('authorization'));
   if (!user || !token) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
-  let body: { url?: unknown; collectionId?: unknown };
+  let body: { url?: unknown; collectionId?: unknown; html?: unknown };
   try {
-    body = (await request.json()) as { url?: unknown; collectionId?: unknown };
+    body = (await request.json()) as { url?: unknown; collectionId?: unknown; html?: unknown };
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
@@ -37,6 +40,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid collectionId' }, { status: 400 });
   }
 
+  const captured = readCapturedHtml(body.html);
+  if (!captured.ok) {
+    return NextResponse.json(
+      { error: 'Invalid or too large page content', code: captured.code },
+      { status: captured.code === 'too_large' ? 413 : 400 },
+    );
+  }
+
   try {
     const target = normalizeUrl(body.url);
     // Files such as PDFs are kept as bookmarks without being downloaded.
@@ -44,6 +55,8 @@ export async function POST(request: Request) {
     let article: IngestedItem;
     if (kindFromUrl(target) === 'document') {
       article = bookmarkFromUrl(target, 'document');
+    } else if (captured.html) {
+      article = ingestPage(captured.html, target.toString());
     } else {
       const page = await fetchPage(target);
       finalUrl = page.finalUrl;

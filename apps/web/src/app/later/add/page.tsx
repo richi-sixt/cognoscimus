@@ -8,6 +8,31 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { saveArticle } from '@/libs/later/client';
 import { pickSharedUrl } from '@/libs/later/shareUrl';
 
+// The browser extension opens this page with ext=<key> and hands over the HTML of
+// the page being saved through its content script. Without an answer the link
+// is saved as before and the server fetches the page itself.
+const HANDOVER_REQUEST = 'cognoscimus-later:request';
+const HANDOVER_REPLY = 'cognoscimus-later:html';
+const HANDOVER_TIMEOUT_MS = 2000;
+
+const requestCapturedHtml = (): Promise<string | null> =>
+  new Promise((resolve) => {
+    const finish = (html: string | null) => {
+      window.removeEventListener('message', onMessage);
+      window.clearTimeout(timer);
+      resolve(html);
+    };
+    const onMessage = (event: MessageEvent) => {
+      if (event.source !== window || event.origin !== window.location.origin) return;
+      const data = event.data as { type?: unknown; html?: unknown } | null;
+      if (data?.type !== HANDOVER_REPLY) return;
+      finish(typeof data.html === 'string' && data.html ? data.html : null);
+    };
+    const timer = window.setTimeout(() => finish(null), HANDOVER_TIMEOUT_MS);
+    window.addEventListener('message', onMessage);
+    window.postMessage({ type: HANDOVER_REQUEST }, window.location.origin);
+  });
+
 type Status =
   | { kind: 'saving' }
   | { kind: 'saved'; id: string }
@@ -27,6 +52,7 @@ const AddContent = () => {
     text: params?.get('text'),
     title: params?.get('title'),
   });
+  const fromExtension = Boolean(params?.get('ext'));
   const [status, setStatus] = useState<Status>(url ? { kind: 'saving' } : { kind: 'no-url' });
   const started = useRef(false);
 
@@ -40,15 +66,18 @@ const AddContent = () => {
       return;
     }
     started.current = true;
-    saveArticle(url).then(
-      (id) => setStatus({ kind: 'saved', id }),
-      (err) =>
-        setStatus({
-          kind: 'error',
-          message: err instanceof Error ? err.message : _('Could not save the article'),
-        }),
-    );
-  }, [url, user, _]);
+    const captured = fromExtension ? requestCapturedHtml() : Promise.resolve(null);
+    captured
+      .then((html) => saveArticle(url, null, html))
+      .then(
+        (id) => setStatus({ kind: 'saved', id }),
+        (err) =>
+          setStatus({
+            kind: 'error',
+            message: err instanceof Error ? err.message : _('Could not save the article'),
+          }),
+      );
+  }, [url, user, fromExtension, _]);
 
   const retry = () => {
     started.current = false;

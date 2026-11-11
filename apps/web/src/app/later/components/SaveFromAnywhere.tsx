@@ -37,7 +37,7 @@ const SaveFromAnywhere = () => {
         <p>
           <span className='text-base-content font-medium'>{_('Browser extension')}:</span>{' '}
           {_(
-            'For Chrome, Firefox and Safari. It is in the project folder apps/extension; enter the address of this server in its options.',
+            'For Chrome, Firefox and Safari. It is in the project folder apps/extension; enter the address of this server in its options. In Chrome and Firefox it sends the page as you see it, so pages behind a login keep their text.',
           )}
         </p>
         <p>

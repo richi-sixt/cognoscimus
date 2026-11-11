@@ -1764,7 +1764,7 @@
   "Loading articles {{done}} / {{total}}": "Lade Artikel {{done}} / {{total}}",
   "Back to the list": "Zurück zur Liste",
   "Browser extension": "Browser-Erweiterung",
-  "For Chrome, Firefox and Safari. It is in the project folder apps/extension; enter the address of this server in its options.": "Für Chrome, Firefox und Safari. Sie liegt im Projektordner apps/extension; trage in ihren Optionen die Adresse dieses Servers ein.",
+  "For Chrome, Firefox and Safari. It is in the project folder apps/extension; enter the address of this server in its options. In Chrome and Firefox it sends the page as you see it, so pages behind a login keep their text.": "Für Chrome, Firefox und Safari. Sie liegt im Projektordner apps/extension; trage in ihren Optionen die Adresse dieses Servers ein. In Chrome und Firefox schickt sie die Seite so, wie du sie siehst; Seiten hinter einem Login behalten ihren Text.",
   "Load now": "Jetzt laden",
   "Remove label filter": "Label-Filter entfernen",
   "Search articles": "Artikel durchsuchen",

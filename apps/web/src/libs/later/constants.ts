@@ -19,3 +19,6 @@ export const FEED_MAX_ERRORS = 10;
 
 /** Items that came by mail have no page; their url is "mail:" plus a hash. */
 export const isMailUrl = (url: string) => url.startsWith('mail:');
+
+/** Most characters of page HTML a browser extension may send along with a link. */
+export const CAPTURED_HTML_MAX = 2 * 1024 * 1024;
