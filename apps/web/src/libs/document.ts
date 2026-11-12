@@ -101,6 +101,10 @@ export type BookMetadata = {
   calibreColumns?: CalibreCustomColumn[];
   feedUrl?: string;
 
+  // The printed copy. On a book with a file it means "also on the shelf"; on a
+  // PHYSICAL entry `owned: false` marks the wishlist. Synced with the metadata.
+  physical?: { owned: boolean; location?: string };
+
   // Audiobookshelf mirrors. An ABS stub is fileless: its identity is the
   // synthetic `abs://<serverId>/<itemId>` filePath, and the library badge is
   // drawn from duration / media type / episode count. None of those have a
@@ -166,6 +170,8 @@ export const EXTS: Record<BookFormat, string> = {
   TXT: 'txt',
   MD: 'md',
   HTML: 'html',
+  // A printed book has no file; the extension only satisfies the Record.
+  PHYSICAL: 'physical',
   // ABS books stream from the server and never have a real on-disk file, so
   // this extension is never used to write or look up a file. It exists only
   // to satisfy the Record<BookFormat, string> exhaustiveness check.
@@ -184,6 +190,7 @@ export const MIMETYPES: Record<BookFormat, string[]> = {
   TXT: ['text/plain'],
   MD: ['text/markdown', 'text/x-markdown'],
   HTML: ['text/html'],
+  PHYSICAL: [],
   // Never matched against a real download; see the EXTS.ABS comment above.
   // OPDS audio is identified from the acquisition link (services/opds/formats),
   // never by looking a BookFormat up here.

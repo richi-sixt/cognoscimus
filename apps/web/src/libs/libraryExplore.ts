@@ -18,6 +18,10 @@ export interface SharedBook {
   cover_hash: string | null;
   /** Whether the file is uploaded, so the book can be borrowed. */
   has_file: boolean;
+  /** A printed book: lent by handing it over. Missing before migration 0025. */
+  is_physical?: boolean;
+  /** That printed book is with someone right now. */
+  lent?: boolean;
 }
 
 export const listLibraryOwners = async (): Promise<LibraryOwner[]> => {
@@ -130,7 +134,11 @@ export const requestBook = async (input: {
 
 export const answerBookRequest = async (
   id: string,
-  answer: { accept: false } | { accept: true; expirationDays: number },
+  answer:
+    | { accept: false }
+    | { accept: true; expirationDays: number }
+    // A printed book: handed over in person, with an optional return date.
+    | { accept: true; dueDate?: string },
 ): Promise<void> => {
   await post(`/requests/${id}/answer`, answer);
 };

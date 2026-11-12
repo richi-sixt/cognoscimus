@@ -20,7 +20,7 @@ import { useLibraryStore } from '@/store/libraryStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { isCognoscimusCloudStorageActive } from '@/services/sync/cloudSyncProvider';
 import { isSyncCategoryEnabled } from '@/services/sync/syncCategories';
-import { isFeedBook } from '@/services/rss/feedBookUrl';
+import { isFilelessBook } from '@/utils/physicalBook';
 import {
   TransferItem,
   TransferStatus,
@@ -202,7 +202,7 @@ const TransferQueuePanel: React.FC = () => {
   // Feed books are fileless (#5307): sweeping them into "Upload All" only fills
   // the queue with transfers that can never resolve a source.
   const booksToUpload = getVisibleLibrary().filter(
-    (book) => book.downloadedAt && !book.uploadedAt && !isFeedBook(book),
+    (book) => book.downloadedAt && !book.uploadedAt && !isFilelessBook(book),
   );
   const booksToDownload = cognoscimusStorageActive
     ? getVisibleLibrary().filter((book) => book.uploadedAt && !book.downloadedAt)

@@ -67,6 +67,14 @@ export const HELP_CONTENT: Record<LandingLang, HelpContent> = {
             text: 'Switch on "People who follow me can browse my library" in your profile (off by default). Followers then see title, author and cover under "Explore" in the menu, never your reading progress or notes. In a book\'s share dialog you can hide single books. A follower can ask to borrow a book; under "People" you lend it for 1, 7 or 30 days or decline. A lent book works like any other loan: it leaves their library when the time is up. You get an e-mail when someone asks and when your request is answered; switch it off in your profile. Follow requests and books you share directly by e-mail address send no mail. It is a loan between people who know each other, not copy protection: respect the rights of the authors.',
           },
           {
+            title: 'Printed books',
+            text: 'The library also keeps the books on your real shelf. Choose "Printed Book" in the import menu, then find the book by ISBN or title, scan the barcode on its back (in browsers that support it), paste a link to the book in a shop, or type the details yourself. What a search finds only fills the form; you can correct everything and choose your own cover picture. A printed book stands on the shelf like any other, with tags, groups and reading status; a click opens its details instead of the reader. Mark it "I own it" with a location such as "living room, shelf 2", or put it on the wishlist. For a book you have as a file, tick "I also own it as a printed book" in its details. Shelf filters know "Ownership", "Printed copy" and "Location".',
+          },
+          {
+            title: 'Lend a printed book',
+            text: 'In the details of a printed book, "Lend it to someone" notes who has it and, if you like, when it should be back; the person needs no account. "It is back" ends the loan. Followers who browse your library see printed books marked as such and can ask for them. If you lend one under "People", nothing is shared in the app: you hand the book over yourself, and it shows as lent until you mark it as back. The wishlist is never shown to followers.',
+          },
+          {
             title: 'Storage',
             text: 'The account page shows how much space your files use and lets you remove files. In the cloud the files are kept under internal numbers; the list shows the title of each book, and the search finds books by title or author. "Shrink covers" on the same page scales large covers down (often from 1 to 2 MB to about 100 KB), on this device and in the cloud.',
           },
@@ -243,6 +251,14 @@ export const HELP_CONTENT: Record<LandingLang, HelpContent> = {
           {
             title: 'Bei gefolgten Personen stöbern und ausleihen',
             text: 'Schalte im Profil «Personen, die mir folgen, dürfen meine Bibliothek durchstöbern» ein (standardmässig aus). Follower sehen dann unter «Entdecken» im Menü Titel, Autor und Cover, nie deinen Lesefortschritt oder deine Notizen. Im Teilen-Dialog eines Buchs kannst du einzelne Bücher verbergen. Ein Follower kann ein Buch zum Ausleihen anfragen; unter «Personen» verleihst du es für 1, 7 oder 30 Tage oder lehnst ab. Ein verliehenes Buch funktioniert wie jede Leihgabe: Es verschwindet aus der Bibliothek der Person, wenn die Zeit abläuft. Bei einer Anfrage und bei der Antwort auf deine Anfrage bekommst du eine E-Mail; im Profil lässt sie sich ausschalten. Follow-Anfragen und Bücher, die du direkt per E-Mail-Adresse teilst, lösen keine Mail aus. Es ist eine Leihe zwischen Personen, die sich kennen, kein Kopierschutz: Achte die Rechte der Autorinnen und Autoren.',
+          },
+          {
+            title: 'Gedruckte Bücher',
+            text: 'Die Bibliothek führt auch die Bücher in deinem echten Regal. Wähle im Import-Menü «Gedrucktes Buch» und suche das Buch nach ISBN oder Titel, scanne den Strichcode auf der Rückseite (in Browsern, die das können), füge den Link zum Buch in einem Shop ein oder tippe die Angaben selbst. Ein Treffer füllt nur das Formular; du kannst alles korrigieren und ein eigenes Coverbild wählen. Ein gedrucktes Buch steht im Regal wie jedes andere, mit Tags, Gruppen und Lesestatus; ein Klick öffnet die Details statt den Reader. Markiere es mit «Besitze ich» und einem Standort wie «Wohnzimmer, Regal 2» oder setze es auf die Wunschliste. Bei einem Buch, das du als Datei hast, setzt du in den Details «Ich besitze es auch als gedrucktes Buch». Die Regal-Filter kennen «Besitz», «Gedrucktes Exemplar» und «Standort».',
+          },
+          {
+            title: 'Gedrucktes Buch verleihen',
+            text: 'In den Details eines gedruckten Buchs hält «Jemandem leihen» fest, wer es hat und, wenn du willst, bis wann es zurück sein soll; die Person braucht kein Konto. «Ist zurück» beendet den Verleih. Follower, die deine Bibliothek durchstöbern, sehen gedruckte Bücher gekennzeichnet und können sie anfragen. Verleihst du eines unter «Personen», wird in der App nichts geteilt: Du übergibst das Buch selbst, und es gilt als verliehen, bis du es als zurück markierst. Die Wunschliste sehen Follower nie.',
           },
           {
             title: 'Speicher',

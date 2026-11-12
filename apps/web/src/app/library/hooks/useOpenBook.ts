@@ -7,6 +7,7 @@ import { useAppRouter } from '@/hooks/useAppRouter';
 import { hasFileSyncMirror, useMakeBookAvailable } from '@/hooks/useMakeBookAvailable';
 import { eventDispatcher } from '@/utils/event';
 import { navigateToReader } from '@/utils/nav';
+import { isPhysicalBook } from '@/utils/physicalBook';
 
 interface UseOpenBookOptions {
   setLoading: Dispatch<SetStateAction<boolean>>;
@@ -31,6 +32,11 @@ export const useOpenBook = ({ setLoading, handleBookDownload }: UseOpenBookOptio
 
   const openBook = useCallback(
     async (book: Book, cfi?: string, options?: { highlightSearchResult?: boolean }) => {
+      // A printed book has nothing to read here: show what is known about it.
+      if (isPhysicalBook(book)) {
+        eventDispatcher.dispatch('show-book-details', { book });
+        return;
+      }
       // A book shared with this account stops opening the moment its grant ends.
       if (book.grant && book.grant.expiresAt <= Date.now() && appService) {
         eventDispatcher.dispatch('toast', {

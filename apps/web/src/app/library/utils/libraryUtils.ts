@@ -15,7 +15,7 @@ import { md5Fingerprint } from '@/utils/md5';
 import type { TranslationFunc } from '@/hooks/useTranslation';
 import { stubTranslation as _ } from '@/utils/misc';
 import { SIZE_PER_LOC, SIZE_PER_TIME_UNIT } from '@/services/constants';
-import { isFeedBook } from '@/services/rss/feedBookUrl';
+import { isFilelessBook } from '@/utils/physicalBook';
 
 /** Valid sort types for the library */
 const VALID_SORT_TYPES: LibrarySortByType[] = Object.values(LibrarySortByType);
@@ -217,7 +217,7 @@ export const selectDownloadableBooks = (
     (book) =>
       hashes.has(book.hash) &&
       !book.deletedAt &&
-      !isFeedBook(book) &&
+      !isFilelessBook(book) &&
       !!book.uploadedAt &&
       !book.downloadedAt,
   );
@@ -1241,7 +1241,7 @@ export const getBookContextMenuItemIds = (book: Book): BookContextMenuItemId[] =
   // A feed book has no file to move: every transfer action would fail, and the
   // share dialog uploads before it can hand out a link (issue #5307).
   // A book shared with this account is neither ours to upload nor to hand on.
-  if (!isFeedBook(book) && !book.grant) {
+  if (!isFilelessBook(book) && !book.grant) {
     if (book.uploadedAt && !book.downloadedAt) ids.push('download');
     if (!book.uploadedAt && book.downloadedAt) ids.push('upload');
     // Share is offered for any local-or-uploaded book; the dialog uploads first

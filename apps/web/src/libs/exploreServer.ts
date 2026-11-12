@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { isWish } from './loansServer';
 
 /**
  * Whether `viewerId` may browse `ownerId`'s library: an accepted follow and the
@@ -28,7 +29,10 @@ export const canBrowseLibrary = async (
   return profile?.library_shared === true;
 };
 
-/** The subset of `hashes` that are live, not hidden books of `ownerId`. */
+/**
+ * The subset of `hashes` that are live, not hidden books of `ownerId`. The
+ * wishlist (printed books not owned yet) is private and never among them.
+ */
 export const visibleBookHashes = async (
   supabase: SupabaseClient,
   ownerId: string,
@@ -37,7 +41,7 @@ export const visibleBookHashes = async (
   if (hashes.length === 0) return [];
   const { data: books, error: booksError } = await supabase
     .from('books')
-    .select('book_hash')
+    .select('book_hash, format, metadata')
     .eq('user_id', ownerId)
     .in('book_hash', hashes)
     .is('deleted_at', null);
@@ -49,5 +53,8 @@ export const visibleBookHashes = async (
     .in('book_hash', hashes);
   if (hiddenError) throw hiddenError;
   const hiddenSet = new Set((hidden ?? []).map((h) => h.book_hash as string));
-  return (books ?? []).map((b) => b.book_hash as string).filter((h) => !hiddenSet.has(h));
+  return (books ?? [])
+    .filter((b) => !isWish(b.format, b.metadata))
+    .map((b) => b.book_hash as string)
+    .filter((h) => !hiddenSet.has(h));
 };

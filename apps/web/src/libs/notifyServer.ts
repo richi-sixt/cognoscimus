@@ -27,6 +27,8 @@ export const borrowRequestMail = (input: {
   requesterHandle: string;
   bookTitle: string;
   message: string | null;
+  /** A printed book: it changes hands in person. */
+  printed?: boolean;
 }): Mail => {
   const who = `@${clean(input.requesterHandle, 40)}`;
   const title = clean(input.bookTitle);
@@ -35,11 +37,15 @@ export const borrowRequestMail = (input: {
   return {
     subject: `${who} would like to borrow "${title}"`,
     text: [
-      `${who} asks to borrow "${title}".`,
+      input.printed
+        ? `${who} asks to borrow your printed copy of "${title}".`
+        : `${who} asks to borrow "${title}".`,
       note ? `Message: ${note}` : null,
       link ? `Answer it here: ${link}` : 'Answer it under "People" in the app.',
       '',
-      `${who} möchte «${title}» ausleihen.`,
+      input.printed
+        ? `${who} möchte dein gedrucktes Exemplar von «${title}» ausleihen.`
+        : `${who} möchte «${title}» ausleihen.`,
       note ? `Nachricht: ${note}` : null,
       link ? `Hier beantworten: ${link}` : 'Beantworte die Anfrage in der App unter «Personen».',
       '',
@@ -55,6 +61,8 @@ export const borrowAnswerMail = (input: {
   ownerHandle: string;
   bookTitle: string;
   accepted: boolean;
+  /** A printed book: nothing appears in the app, the owner hands it over. */
+  printed?: boolean;
 }): Mail => {
   const who = `@${clean(input.ownerHandle, 40)}`;
   const title = clean(input.bookTitle);
@@ -63,23 +71,29 @@ export const borrowAnswerMail = (input: {
     subject: input.accepted
       ? `${who} lent you "${title}"`
       : `${who} declined your request for "${title}"`,
-    text: input.accepted
+    text: !input.accepted
       ? [
-          `${who} lent you "${title}".`,
-          link
-            ? `Open it under "Shared with me": ${link}`
-            : 'Open it under "Shared with me" in the app.',
-          '',
-          `${who} hat dir «${title}» geliehen.`,
-          link
-            ? `Öffne es unter «Mit mir geteilt»: ${link}`
-            : 'Öffne es in der App unter «Mit mir geteilt».',
-        ].join('\n')
-      : [
           `${who} declined your request for "${title}".`,
           '',
           `${who} hat deine Anfrage für «${title}» abgelehnt.`,
-        ].join('\n'),
+        ].join('\n')
+      : input.printed
+        ? [
+            `${who} will lend you the printed copy of "${title}" and hand it to you in person.`,
+            '',
+            `${who} leiht dir das gedruckte Exemplar von «${title}» und übergibt es dir persönlich.`,
+          ].join('\n')
+        : [
+            `${who} lent you "${title}".`,
+            link
+              ? `Open it under "Shared with me": ${link}`
+              : 'Open it under "Shared with me" in the app.',
+            '',
+            `${who} hat dir «${title}» geliehen.`,
+            link
+              ? `Öffne es unter «Mit mir geteilt»: ${link}`
+              : 'Öffne es in der App unter «Mit mir geteilt».',
+          ].join('\n'),
   };
 };
 

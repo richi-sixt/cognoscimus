@@ -1,9 +1,16 @@
 import clsx from 'clsx';
-import { MdContentPaste, MdLanguage, MdMenuBook, MdRssFeed } from 'react-icons/md';
+import {
+  MdContentPaste,
+  MdLanguage,
+  MdMenuBook,
+  MdOutlineAutoStories,
+  MdRssFeed,
+} from 'react-icons/md';
 import { IoFileTray } from 'react-icons/io5';
 import { useTranslation } from '@/hooks/useTranslation';
 import MenuItem from '@/components/MenuItem';
 import Menu from '@/components/Menu';
+import { eventDispatcher } from '@/utils/event';
 
 export interface ImportMenuProps {
   menuClassName?: string;
@@ -58,6 +65,12 @@ const ImportMenu: React.FC<ImportMenuProps> = ({
     setIsDropdownOpen?.(false);
   };
 
+  // The dialog lives on the library page; both places this menu is shown reach it.
+  const handleAddPhysicalBook = () => {
+    eventDispatcher.dispatch('add-physical-book');
+    setIsDropdownOpen?.(false);
+  };
+
   return (
     <Menu
       className={clsx(
@@ -104,6 +117,12 @@ const ImportMenu: React.FC<ImportMenuProps> = ({
         label={_('From Feed URL')}
         Icon={<MdRssFeed className='h-5 w-5' />}
         onClick={handleOpenFeeds}
+      />
+      <hr aria-hidden='true' className='border-base-200 my-1' />
+      <MenuItem
+        label={_('Printed Book')}
+        Icon={<MdOutlineAutoStories className='h-5 w-5' />}
+        onClick={handleAddPhysicalBook}
       />
     </Menu>
   );

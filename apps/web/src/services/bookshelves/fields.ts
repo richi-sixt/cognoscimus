@@ -1,6 +1,7 @@
 import type { Book } from '@/types/book';
 import type { BookshelfFieldKind, BookshelfOperator } from '@/types/bookshelf';
 import { getBookPageCount } from '@/utils/book';
+import { ownershipOf } from '@/utils/physicalBook';
 import { stubTranslation as _ } from '@/utils/misc';
 
 type FieldValue = string | number | boolean | string[] | undefined;
@@ -90,6 +91,31 @@ export const BOOKSHELF_FIELDS: BookshelfField[] = [
     read: (b) => textList(b.metadata?.language || b.primaryLanguage),
   },
   { id: 'format', label: _('Format'), kind: 'text', suggest: true, read: (b) => b.format },
+  {
+    id: 'ownership',
+    label: _('Ownership'),
+    kind: 'text',
+    choices: [
+      { value: 'digital', label: _('File only') },
+      { value: 'physical', label: _('Printed only') },
+      { value: 'both', label: _('File and printed') },
+      { value: 'wishlist', label: _('Wishlist') },
+    ],
+    read: (b) => ownershipOf(b),
+  },
+  {
+    id: 'printed',
+    label: _('Printed copy'),
+    kind: 'boolean',
+    read: (b) => ['physical', 'both'].includes(ownershipOf(b)),
+  },
+  {
+    id: 'location',
+    label: _('Location'),
+    kind: 'text',
+    suggest: true,
+    read: (b) => b.metadata?.physical?.location,
+  },
   {
     id: 'status',
     choices: [

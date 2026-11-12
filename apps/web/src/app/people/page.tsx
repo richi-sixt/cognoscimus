@@ -245,6 +245,11 @@ const PeoplePage = () => {
                         <span className='text-base-content/50 block text-xs'>
                           {_('from @{{handle}}', { handle: r.other_handle })}
                         </span>
+                        {r.book_format === 'physical' && (
+                          <span className='text-base-content/50 block text-xs'>
+                            {_('A printed book. It changes hands in person.')}
+                          </span>
+                        )}
                         {r.message && (
                           <span className='text-base-content/70 mt-1 block text-xs italic'>
                             {r.message}
@@ -257,7 +262,12 @@ const PeoplePage = () => {
                           className='btn btn-primary btn-xs'
                           onClick={() =>
                             void run(() =>
-                              answerBookRequest(r.id, { accept: true, expirationDays: days }),
+                              answerBookRequest(
+                                r.id,
+                                r.book_format === 'physical'
+                                  ? { accept: true }
+                                  : { accept: true, expirationDays: days },
+                              ),
                             )
                           }
                         >

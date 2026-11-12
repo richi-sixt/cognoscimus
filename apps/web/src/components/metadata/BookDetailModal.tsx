@@ -5,6 +5,7 @@ import { Book } from '@/types/book';
 import { getBookWithUpdatedMetadata } from '@/utils/book';
 import { BookMetadata } from '@/libs/document';
 import { useEnv } from '@/context/EnvContext';
+import { isPhysicalBook } from '@/utils/physicalBook';
 import { useAuth } from '@/context/AuthContext';
 import { useThemeStore } from '@/store/themeStore';
 import { useSettingsStore } from '@/store/settingsStore';
@@ -146,6 +147,15 @@ const BookDetailModal: React.FC<BookDetailModalProps> = ({
     setEditMode(false);
   };
 
+  // Ownership is saved on its own, outside the edit form.
+  const handleOwnershipChange = (physical: BookMetadata['physical']) => {
+    if (!bookMeta || !handleBookMetadataUpdate) return;
+    const next: BookMetadata = { ...bookMeta, physical };
+    setBookMeta(next);
+    setDisplayBook(getBookWithUpdatedMetadata(book, next, bookTags));
+    handleBookMetadataUpdate(book, { ...next }, bookTags);
+  };
+
   const handleSaveMetadata = () => {
     if (editedMeta && handleBookMetadataUpdate) {
       // The edit field keeps empty segments while typing; drop them and
@@ -231,6 +241,7 @@ const BookDetailModal: React.FC<BookDetailModalProps> = ({
   const inCloudStorage = !!book.uploadedAt && isCognoscimusCloudStorageActive(settings);
   const shareEnabled = !!user && (fileSize !== null || inCloudStorage);
 
+  const printed = isPhysicalBook(book);
   const currentDeleteConfig = activeDeleteAction ? deleteConfigs[activeDeleteAction] : null;
 
   return (
@@ -271,15 +282,23 @@ const BookDetailModal: React.FC<BookDetailModalProps> = ({
                 shareEnabled={shareEnabled}
                 onEdit={handleBookMetadataUpdate && !book.grant ? handleEditMetadata : undefined}
                 onDelete={handleBookDelete ? handleDelete : undefined}
+                // A printed book has no file: nothing to move, share or export.
                 onDeleteCloudBackup={
-                  handleBookDeleteCloudBackup ? handleDeleteCloudBackup : undefined
+                  handleBookDeleteCloudBackup && !printed ? handleDeleteCloudBackup : undefined
                 }
-                onDeleteLocalCopy={handleBookDeleteLocalCopy ? handleDeleteLocalCopy : undefined}
+                onDeleteLocalCopy={
+                  handleBookDeleteLocalCopy && !printed ? handleDeleteLocalCopy : undefined
+                }
                 // A book shared with this account can be neither moved nor handed on.
-                onDownload={handleBookDownload && !book.grant ? handleRedownload : undefined}
-                onUpload={handleBookUpload && !book.grant ? handleReupload : undefined}
-                onShare={book.grant ? undefined : handleShare}
-                onExport={book.grant ? undefined : handleBookExport}
+                onDownload={
+                  handleBookDownload && !book.grant && !printed ? handleRedownload : undefined
+                }
+                onUpload={handleBookUpload && !book.grant && !printed ? handleReupload : undefined}
+                onShare={book.grant || printed ? undefined : handleShare}
+                onExport={book.grant || printed ? undefined : handleBookExport}
+                onOwnershipChange={
+                  handleBookMetadataUpdate && !book.grant ? handleOwnershipChange : undefined
+                }
                 onMetadataValueClick={onMetadataValueClick}
               />
             )}

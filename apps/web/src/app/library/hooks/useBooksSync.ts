@@ -12,6 +12,7 @@ import { eventDispatcher } from '@/utils/event';
 import { useSettingsStore } from '@/store/settingsStore';
 import { isCognoscimusCloudEnabled } from '@/services/sync/cloudSyncProvider';
 import { isFeedBook } from '@/services/rss/feedBookUrl';
+import { isFilelessBook } from '@/utils/physicalBook';
 import { ensureFeedBookCover } from '@/services/rss/feedBook';
 import {
   pickFresherReadingStatus,
@@ -262,10 +263,11 @@ export const useBooksSync = () => {
     // cannot fetch. A feed book has no file to fetch — it is rebuilt from
     // `metadata.feedUrl` — so it would never pass that gate and the
     // subscription stayed stuck on the device that added it (issue #5307).
+    // A printed book has no file either; its cover is fetched like any other.
     const newBooks = cloudBooks.filter(
       (newBook) =>
         !bookHashesInLibrary.has(newBook.hash) &&
-        (newBook.uploadedAt || isFeedBook(newBook)) &&
+        (newBook.uploadedAt || isFilelessBook(newBook)) &&
         !newBook.deletedAt,
     );
 

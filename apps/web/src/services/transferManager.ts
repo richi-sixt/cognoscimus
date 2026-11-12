@@ -1,3 +1,4 @@
+import { isPhysicalBook } from '@/utils/physicalBook';
 import { Book } from '@/types/book';
 import { AppService, BaseDir } from '@/types/system';
 import { useTransferStore, TransferItem, ReplicaTransferFile } from '@/store/transferStore';
@@ -155,6 +156,8 @@ class TransferManager {
   queueUpload(book: Book, priority: number = 10): string | null {
     // A book shared with this account belongs to its owner; it is not ours to upload.
     if (book.grant) return null;
+    // A printed book has no file to upload.
+    if (isPhysicalBook(book)) return null;
     if (!this.isReady()) {
       console.warn('TransferManager not initialized');
       return null;

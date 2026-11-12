@@ -86,6 +86,7 @@ import DropIndicator from '@/components/DropIndicator';
 import SettingsDialog from '@/components/settings/SettingsDialog';
 import ModalPortal from '@/components/ModalPortal';
 import TransferQueuePanel from './components/TransferQueuePanel';
+import AddPhysicalBookDialog from './components/AddPhysicalBookDialog';
 
 const IMPORT_CONCURRENCY = 4;
 // How often the library index is persisted during a long import (#5601). A
@@ -204,6 +205,7 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
   const librarySearchTargetRef = useRef(librarySearchTarget);
   const librarySearchConfigRef = useRef(librarySearchConfig);
   const [showDetailsBook, setShowDetailsBook] = useState<Book | null>(null);
+  const [showAddPhysicalBook, setShowAddPhysicalBook] = useState(false);
   const [failedImportsModal, setFailedImportsModal] = useState<FailedImport[] | null>(null);
   const [currentGroupPath, setCurrentGroupPath] = useState<string | undefined>(undefined);
   const [currentVirtualGroup, setCurrentVirtualGroup] = useState<{
@@ -408,6 +410,39 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [libraryBooks]);
+
+  // A printed book opens its details instead of the reader (useOpenBook), and
+  // the import menu asks for the dialog from wherever it is shown.
+  useEffect(() => {
+    const showDetails = (event: CustomEvent) => setShowDetailsBook(event.detail.book as Book);
+    const addPhysicalBook = () => setShowAddPhysicalBook(true);
+    eventDispatcher.on('show-book-details', showDetails);
+    eventDispatcher.on('add-physical-book', addPhysicalBook);
+    return () => {
+      eventDispatcher.off('show-book-details', showDetails);
+      eventDispatcher.off('add-physical-book', addPhysicalBook);
+    };
+  }, []);
+
+  const handleAddPhysicalBook = async (book: Book, coverBlobUrl?: string) => {
+    setIsSelectMode(false);
+    await useLibraryStore.getState().updateBooks(envConfig, [book]);
+    if (coverBlobUrl && book.metadata) {
+      await saveBookMetadataEdit(
+        envConfig,
+        book,
+        { ...book.metadata, coverImageBlobUrl: coverBlobUrl },
+        book.tags ?? [],
+        !!user,
+      );
+    }
+    pushLibrary();
+    eventDispatcher.dispatch('toast', {
+      type: 'success',
+      message: _('Added "{{title}}"', { title: book.title }),
+      timeout: 3000,
+    });
+  };
 
   const handleShowFeeds = () => {
     setShowAddFeed(true);
@@ -1232,6 +1267,11 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
           onClose={() => setFailedImportsModal(null)}
         />
       )}
+      <AddPhysicalBookDialog
+        isOpen={showAddPhysicalBook}
+        onClose={() => setShowAddPhysicalBook(false)}
+        onAdd={handleAddPhysicalBook}
+      />
       <ImportPastedTextDialog
         isOpen={showImportPastedText}
         onClose={() => setShowImportPastedText(false)}

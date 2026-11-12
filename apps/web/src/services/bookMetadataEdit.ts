@@ -4,6 +4,7 @@ import { EnvConfigType, isWebAppPlatform } from '@/services/environment';
 import { useLibraryStore } from '@/store/libraryStore';
 import { useBookDataStore } from '@/store/bookDataStore';
 import { getBookWithUpdatedMetadata } from '@/utils/book';
+import { isPhysicalBook } from '@/utils/physicalBook';
 
 /**
  * Saves a Book Details metadata edit, from the library or from inside the
@@ -47,7 +48,8 @@ export const saveBookMetadataEdit = async (
         // try to fetch a cover that isn't there. A not-yet-uploaded book
         // carries the new cover on its first full upload, so the bump is safe.
         let coverUploaded = true;
-        if (isLoggedIn && updatedBook.uploadedAt) {
+        // A printed book never has a file upload; its cover goes up on its own.
+        if (isLoggedIn && (updatedBook.uploadedAt || isPhysicalBook(updatedBook))) {
           try {
             await appService.uploadBookCover(updatedBook);
           } catch (uploadError) {

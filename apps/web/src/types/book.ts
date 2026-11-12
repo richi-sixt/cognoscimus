@@ -18,7 +18,9 @@ export type BookFormat =
   | 'FBZ'
   | 'TXT'
   | 'MD'
-  | 'HTML';
+  | 'HTML'
+  // A printed book: a library entry without a file (see utils/physicalBook.ts).
+  | 'PHYSICAL';
 export type BookNoteType = 'bookmark' | 'annotation' | 'excerpt' | 'notebook' | 'ink';
 export type ReadingStatus = 'unread' | 'reading' | 'finished' | 'abandoned';
 export type HighlightStyle = 'highlight' | 'underline' | 'squiggly';

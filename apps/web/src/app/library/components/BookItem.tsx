@@ -1,7 +1,12 @@
 import { IoPeopleOutline } from 'react-icons/io5';
 import clsx from 'clsx';
 import { useState } from 'react';
-import { MdCheckCircle, MdCheckCircleOutline } from 'react-icons/md';
+import {
+  MdCheckCircle,
+  MdCheckCircleOutline,
+  MdFavoriteBorder,
+  MdOutlineAutoStories,
+} from 'react-icons/md';
 import {
   LiaCloudUploadAltSolid,
   LiaCloudDownloadAltSolid,
@@ -19,7 +24,7 @@ import { useResponsiveSize } from '@/hooks/useResponsiveSize';
 import { LibraryCoverFitType, LibraryViewModeType } from '@/types/settings';
 import { navigateToLogin } from '@/utils/nav';
 import { isCognoscimusCloudStorageActive } from '@/services/sync/cloudSyncProvider';
-import { isFeedBook } from '@/services/rss/feedBookUrl';
+import { isFilelessBook, ownershipOf } from '@/utils/physicalBook';
 import { formatAuthors, formatDescription, formatSeries } from '@/utils/book';
 import { INDETERMINATE_PROGRESS } from '@/utils/transfer';
 import { getBookTags } from '../utils/libraryUtils';
@@ -63,6 +68,7 @@ const BookItem: React.FC<BookItemProps> = ({
   const { settings } = useSettingsStore();
   const showSpine = skeuomorphicCovers ?? settings.librarySkeuomorphicCovers;
   const iconSize15 = useResponsiveSize(15);
+  const ownership = ownershipOf(book);
 
   // Reset during render, not in an effect: a cached cover reports its size
   // before a mount effect runs, and the effect would then drop it, leaving the
@@ -251,6 +257,21 @@ const BookItem: React.FC<BookItemProps> = ({
                 </div>
               </button>
             )}
+            {/* A printed copy on the shelf, or a book that is still a wish. */}
+            {(ownership === 'physical' || ownership === 'both') && (
+              <div
+                className='pt-0.5 sm:pt-px'
+                title={ownership === 'both' ? _('File and printed') : _('Printed book')}
+                aria-label={ownership === 'both' ? _('File and printed') : _('Printed book')}
+              >
+                <MdOutlineAutoStories size={iconSize15} />
+              </div>
+            )}
+            {ownership === 'wishlist' && (
+              <div className='pt-0.5 sm:pt-px' title={_('Wishlist')} aria-label={_('Wishlist')}>
+                <MdFavoriteBorder size={iconSize15} />
+              </div>
+            )}
             {book.hasNarration && (
               <div
                 className='pt-0.5 sm:pt-px'
@@ -270,7 +291,7 @@ const BookItem: React.FC<BookItemProps> = ({
                 // Same for an ABS book: it streams from the server and never has
                 // uploadedAt/downloadedAt set, so without this check the badge
                 // would render forever and Upload would always fail.
-                !isFeedBook(book) &&
+                !isFilelessBook(book) &&
                 !book.grant &&
                 (!book.uploadedAt || (book.uploadedAt && !book.downloadedAt)) && (
                   <button

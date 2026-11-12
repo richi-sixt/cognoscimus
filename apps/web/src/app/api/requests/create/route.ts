@@ -3,6 +3,7 @@ import { createSupabaseAdminClient } from '@/utils/supabase';
 import { validateUserAndToken } from '@/utils/access';
 import { canBrowseLibrary, visibleBookHashes } from '@/libs/exploreServer';
 import { findBookFile, isUuid } from '@/libs/grantsServer';
+import { isLent, isPhysicalFormat } from '@/libs/loansServer';
 import { borrowRequestMail, notifyUser } from '@/libs/notifyServer';
 import { mayAskAgain, REQUEST_COLUMNS, type BookRequestRow } from '@/libs/requestsServer';
 import {
@@ -48,10 +49,6 @@ export async function POST(request: Request) {
     ) {
       return fail(404, 'book_not_found', 'Book not found');
     }
-    if (!(await findBookFile(supabase, ownerId, bookHash))) {
-      return fail(409, 'book_not_uploaded', 'Book is not available for borrowing');
-    }
-
     const { data: book, error: bookError } = await supabase
       .from('books')
       .select('title, author, format')
@@ -60,6 +57,16 @@ export async function POST(request: Request) {
       .maybeSingle();
     if (bookError) throw bookError;
     if (!book) return fail(404, 'book_not_found', 'Book not found');
+
+    // A printed book is handed over in person: it needs no file, but it must
+    // not be with someone else already.
+    if (isPhysicalFormat(book.format)) {
+      if (await isLent(supabase, ownerId, bookHash)) {
+        return fail(409, 'book_lent', 'This book is lent to someone right now');
+      }
+    } else if (!(await findBookFile(supabase, ownerId, bookHash))) {
+      return fail(409, 'book_not_uploaded', 'Book is not available for borrowing');
+    }
 
     const { data: existing, error: existingError } = await supabase
       .from('book_requests')
@@ -124,6 +131,7 @@ export async function POST(request: Request) {
         requesterHandle: me?.handle ?? '',
         bookTitle: book.title || 'Untitled',
         message: message || null,
+        printed: isPhysicalFormat(book.format),
       }),
     );
     return NextResponse.json({ request: saved });

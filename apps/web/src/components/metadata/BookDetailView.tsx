@@ -31,7 +31,9 @@ import {
   getContributorNames,
   getSeriesIndex,
 } from '@/utils/book';
-import { isFeedBook } from '@/services/rss/feedBookUrl';
+import { isFilelessBook, isPhysicalBook } from '@/utils/physicalBook';
+import LoanStatus from './LoanStatus';
+import OwnershipSection from './OwnershipSection';
 import { saveSysSettings } from '@/helpers/settings';
 import BookCover from '@/components/BookCover';
 import BookCoverViewer, { useBookCoverViewer } from '@/components/BookCoverViewer';
@@ -51,6 +53,8 @@ interface BookDetailViewProps {
   onUpload?: () => void;
   onShare?: () => void;
   onExport?: () => void;
+  /** Saves how the book is owned; missing when the book cannot be edited. */
+  onOwnershipChange?: (physical: BookMetadata['physical']) => void;
   /** Download an Audiobookshelf book for offline use (#6256). */
   /** Set when the offline download needs an upgrade; shown as a badge. */
   onMetadataValueClick?: (type: 'tag' | 'subject', value: string) => void;
@@ -69,6 +73,7 @@ const BookDetailView: React.FC<BookDetailViewProps> = ({
   onUpload,
   onShare,
   onExport,
+  onOwnershipChange,
   onMetadataValueClick,
 }) => {
   const _ = useTranslation();
@@ -155,7 +160,7 @@ const BookDetailView: React.FC<BookDetailViewProps> = ({
               </button>
             )}
             {/* A feed book is fileless — there is nothing to push (#5307). */}
-            {book.downloadedAt && !isFeedBook(book) && onUpload && (
+            {book.downloadedAt && !isFilelessBook(book) && onUpload && (
               <button onClick={onUpload} title={_('Upload to Cloud')}>
                 <MdOutlineCloudUpload className='fill-base-content' />
               </button>
@@ -251,6 +256,12 @@ const BookDetailView: React.FC<BookDetailViewProps> = ({
         </div>
       </div>
 
+      {metadata && (
+        <OwnershipSection book={book} metadata={metadata} onChange={onOwnershipChange}>
+          {onOwnershipChange && <LoanStatus bookHash={book.hash} />}
+        </OwnershipSection>
+      )}
+
       <div className='text-base-content my-4'>
         <div className='metadata-others'>
           <button
@@ -300,14 +311,18 @@ const BookDetailView: React.FC<BookDetailViewProps> = ({
                 </div>
                 <div className='overflow-hidden pe-1 text-end sm:text-start'>
                   <span className='font-bold'>{_('Format')}</span>
-                  <p className='text-neutral-content text-sm'>{book.format || _('Unknown')}</p>
-                </div>
-                <div className='overflow-hidden'>
-                  <span className='font-bold'>{_('File Size')}</span>
                   <p className='text-neutral-content text-sm'>
-                    {formatBytes(fileSize) || _('Unknown')}
+                    {isPhysicalBook(book) ? _('Printed book') : book.format || _('Unknown')}
                   </p>
                 </div>
+                {!isPhysicalBook(book) && (
+                  <div className='overflow-hidden'>
+                    <span className='font-bold'>{_('File Size')}</span>
+                    <p className='text-neutral-content text-sm'>
+                      {formatBytes(fileSize) || _('Unknown')}
+                    </p>
+                  </div>
+                )}
                 {/*
                   The same total the footer bar counts against: foliate's
                   SectionProgress derives it from the spine's byte sizes

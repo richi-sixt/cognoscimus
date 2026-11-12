@@ -110,6 +110,14 @@ const ExplorePage = () => {
   const statusOf = (book: SharedBook) =>
     sent.find((r) => r.owner_id === owner?.user_id && r.book_hash === book.book_hash)?.status;
 
+  // A file is borrowed once and then sits under "Shared with me". A printed
+  // book can be asked for again after an earlier loan came back.
+  const mayRequest = (book: SharedBook) => {
+    const status = statusOf(book);
+    if (book.is_physical) return !book.lent && (!status || status === 'accepted');
+    return book.has_file && !status;
+  };
+
   const ask = async () => {
     if (!owner || !asking || busy) return;
     setBusy(true);
@@ -219,7 +227,11 @@ const ExplorePage = () => {
 
             <ul className='grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4'>
               {books.map((book) => {
-                const label = statusLabel(statusOf(book));
+                // "Lent to you" holds for a printed book only while it is out.
+                const label =
+                  book.is_physical && !book.lent && statusOf(book) === 'accepted'
+                    ? null
+                    : statusLabel(statusOf(book));
                 return (
                   <li key={book.book_hash}>
                     <button
@@ -248,6 +260,11 @@ const ExplorePage = () => {
                         {label && (
                           <span className='badge badge-neutral badge-sm absolute bottom-1 left-1'>
                             {label}
+                          </span>
+                        )}
+                        {book.is_physical && (
+                          <span className='badge badge-ghost badge-sm absolute right-1 top-1'>
+                            {book.lent ? _('Lent') : _('Printed')}
                           </span>
                         )}
                       </span>
@@ -282,11 +299,22 @@ const ExplorePage = () => {
           <div className='modal-box flex flex-col gap-3'>
             <h2 className='font-semibold'>{asking.title}</h2>
             {asking.author && <p className='text-base-content/70 text-sm'>{asking.author}</p>}
-            {!asking.has_file ? (
-              <p className='text-sm'>{_('This book is not available for borrowing.')}</p>
-            ) : statusOf(asking) === 'pending' ? (
+            {asking.is_physical && (
+              <p className='text-base-content/70 text-xs'>
+                {_('A printed book. It changes hands in person.')}
+              </p>
+            )}
+            {statusOf(asking) === 'pending' ? (
               <p className='text-sm'>{_('You already asked for this book.')}</p>
-            ) : statusOf(asking) === 'accepted' ? (
+            ) : asking.is_physical && asking.lent ? (
+              <p className='text-sm'>
+                {statusOf(asking) === 'accepted'
+                  ? _('It is lent to you.')
+                  : _('This book is lent to someone right now.')}
+              </p>
+            ) : !asking.is_physical && !asking.has_file ? (
+              <p className='text-sm'>{_('This book is not available for borrowing.')}</p>
+            ) : !asking.is_physical && statusOf(asking) === 'accepted' ? (
               <p className='text-sm'>
                 {_('It was lent to you.')}{' '}
                 <a href='/shared' className='link'>
@@ -296,9 +324,11 @@ const ExplorePage = () => {
             ) : (
               <>
                 <p className='text-sm'>
-                  {_('Ask {{name}} to lend you this book for a limited time.', {
-                    name: nameOf(owner),
-                  })}
+                  {asking.is_physical
+                    ? _('Ask {{name}} to lend you the printed book.', { name: nameOf(owner) })
+                    : _('Ask {{name}} to lend you this book for a limited time.', {
+                        name: nameOf(owner),
+                      })}
                 </p>
                 <textarea
                   value={message}
@@ -318,7 +348,7 @@ const ExplorePage = () => {
               >
                 {_('Close')}
               </button>
-              {asking.has_file && !statusOf(asking) && (
+              {mayRequest(asking) && (
                 <button
                   type='button'
                   className='btn btn-primary btn-sm'
