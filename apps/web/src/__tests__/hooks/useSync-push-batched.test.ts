@@ -41,7 +41,10 @@ describe('pushBooksBatched', () => {
 
   it('does nothing for an empty list', async () => {
     let calls = 0;
-    const unpushed = await pushBooksBatched([], async () => (calls++, true));
+    const unpushed = await pushBooksBatched([], async () => {
+      calls++;
+      return true;
+    });
     expect(unpushed).toEqual([]);
     expect(calls).toBe(0);
   });
