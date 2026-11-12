@@ -4,10 +4,10 @@
 
 A private, self-hosted reading place for the web, with two parts under one account:
 
-- **Library** (`/library`): read EPUB, PDF, MOBI, FB2 and comic archives (CBZ) in the browser, keep your place and your notes across devices, and share single books with other users for a limited time.
+- **Library** (`/library`): read EPUB, PDF, MOBI, FB2 and comic archives (CBZ) in the browser, keep your place and your notes across devices, share single books with other users for a limited time, and keep track of the printed books on your shelf.
 - **Later** (`/later`): save web articles and links, read them later in peace, highlight, organise and search them, follow a few people to see what they share, and subscribe to RSS feeds.
 
-Access is by invitation only.
+Access is by invitation only. Each account chooses which part opens first.
 
 The library is a modified version of [Readest](https://github.com/readest/readest) (© Bilingify LLC, AGPL-3.0). The reading engine, the library, the annotation model and the sync model come from Readest. Native apps, payments, analytics and all third-party integrations were removed; sign-in, storage, sharing and the start page are new. Later is written from scratch. [Omnivore](https://github.com/omnivore-app/omnivore) and Raindrop.io inspired its concepts; no code was taken from either.
 
@@ -17,13 +17,15 @@ The library is a modified version of [Readest](https://github.com/readest/reades
 
 - **Reading:** paginated and scrolled layout, themes, fonts, highlights, notes and bookmarks (exportable as Markdown), dictionary lookup and translation of selected text, reading progress and statistics.
 - **Library:** import by drag and drop, groups, tags, search, reading status. A book is on the device after its first download; the cloud copy can be fetched again at any time.
+- **Printed books:** an entry without a file, added by ISBN or title (Open Library), by scanning the barcode, from a bookshop link or by hand. Each book is owned as a file, in print, both, or sits on a wishlist; printed copies have a location and can be marked as lent, also to people without an account.
+- **Shared library:** followers may browse a library its owner opened (title, author and cover only) and ask to borrow a book. A file is lent for a limited time; a printed book changes hands in person and shows as lent until it is back. The wishlist stays private.
 - **Accounts:** invitation only (sign-ups are disabled), email and password or magic link, row-level security in the database.
 - **Storage:** book files live in a private S3-compatible bucket. The browser uploads and downloads them directly through short-lived signed links, checked on the server. Every user has a storage quota.
 - **Sharing for a limited time:** share a book with another registered user for 1, 7 or 30 days, and revoke it at any moment. The recipient reads it in the browser; a shared book is never synced, uploaded, exported or shared on, and it is removed from the recipient's device when the grant ends.
 
 ### Later
 
-- **Saving and reading:** save an address and the readable text is cut out (`linkedom` and Mozilla Readability), sanitised and shown in a calm reader with full-text search, reading progress, archive and a trash (30 days to restore). Save from the share menu on a phone or with a bookmarklet.
+- **Saving and reading:** save an address and the readable text is cut out (`linkedom` and Mozilla Readability), sanitised and shown in a calm reader with full-text search, reading progress, archive and a trash (30 days to restore). Save from the share menu on a phone, with a bookmarklet, by e-mail, or with the browser extension for Chrome and Firefox, which also saves pages behind a login and sets note, collection and labels from its popup. It connects with its own token that can only save to Later.
 - **Kinds:** every item is an article, link, video or document. The kind comes from the address, then the page's `og:type`, then the amount of readable text. Documents are not downloaded.
 - **Organising:** nested collections, labels, saved views, bulk actions, a note on every item, and highlights with notes inside articles. Import from a Raindrop export turns folders into collections and tags into labels.
 - **People:** one username for the whole app, private by default and found only by its exact name. Following is a request that is accepted, declined or blocked. Articles or whole collections can be shared with followers, who see only what was shared (title, text, source, kind and note, never labels or private collections). An article can also be sent to a person, who opens it and decides whether to save it. "Explore" shows everything the people you follow share.
@@ -42,6 +44,7 @@ The library is a modified version of [Readest](https://github.com/readest/reades
 
 ```
 apps/web         the Next.js web app
+apps/extension   the browser extension for Later (Manifest V3, no build step)
 packages/        vendored libraries (foliate-js, js-mdict, simplecc-wasm)
 patches/         pnpm patches
 supabase/        SQL migrations (run in order)
@@ -80,6 +83,8 @@ Later's feeds are fetched by a scheduled job: set a random `CRON_SECRET` and hav
 
 The mail inbox needs `INBOX_SECRET` (shared by the app and the receiver `apps/web/scripts/mail-inbox.mjs`) and, to show the address in the profile, `NEXT_PUBLIC_LATER_INBOX_ADDRESS`. The receiver accepts mail, the app checks SPF/DKIM and files links and newsletters in the sender's library.
 
+Looking up printed books uses Open Library and needs no key. An optional `GOOGLE_BOOKS_API_KEY` adds Google Books when Open Library finds nothing.
+
 `NEXT_PUBLIC_*` variables are baked in at build time, so changing them needs a new build. Keep secrets only in `.env.local`, never in the repository. A small server can skip the second type check of `next build` with `SKIP_TYPECHECK=true` (`pnpm lint` already type-checks before every push).
 
 ## Comics
@@ -89,9 +94,9 @@ CBZ opens directly. RAR archives (CBR) are not read by the browser; convert them
 ## Changes compared with Readest
 
 - Removed: desktop and mobile apps, payments and plans, analytics, the hosted backend defaults, and the integrations with Pagebound, LocalSend, WebDAV, Google Drive, OneDrive, iCloud, S3 file sync, Readwise, Hardcover and KOSync.
-- Added: invitation-only sign-in, a start page, an S3-only storage layer with a quota, time-limited sharing between accounts, and a per-browser library owner check so a second account never inherits the first one's books.
-- Added: Later (read-later articles and links, collections, following people, RSS feeds), which has no counterpart in Readest.
+- Added: invitation-only sign-in, a start page, an S3-only storage layer with a quota, time-limited sharing between accounts, a library that followers can browse and borrow from, printed books with ownership, wishlist and lending, and a per-browser library owner check so a second account never inherits the first one's books.
+- Added: Later (read-later articles and links, collections, following people, RSS feeds, saving by e-mail and from a browser extension), which has no counterpart in Readest.
 
 ## License
 
-AGPL-3.0, see [LICENSE](LICENSE). Because this is a modified version of Readest that is served over a network, its source is available to its users under the same license, from this repository.
+© 2026 Rüchan Sixt for the parts added here; Readest is © Bilingify LLC. AGPL-3.0, see [LICENSE](LICENSE). Because this is a modified version of Readest that is served over a network, its source is available to its users under the same license, from this repository.

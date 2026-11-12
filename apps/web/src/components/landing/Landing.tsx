@@ -100,9 +100,12 @@ const Landing = () => {
       </main>
 
       <footer className='border-base-300 border-t'>
-        <div className='text-base-content/60 mx-auto flex w-full max-w-5xl flex-col gap-2 px-6 py-6 text-xs sm:flex-row sm:items-center sm:justify-between'>
-          <p>{c.license}</p>
-          <nav className='flex gap-4'>
+        <div className='text-base-content/60 mx-auto flex w-full max-w-5xl flex-col gap-2 px-6 py-6 text-xs sm:flex-row sm:items-start sm:justify-between sm:gap-6'>
+          <div className='flex flex-col gap-1'>
+            <p>{c.copyright}</p>
+            <p>{c.license}</p>
+          </div>
+          <nav className='flex shrink-0 flex-wrap gap-x-4 gap-y-1 whitespace-nowrap'>
             <a href='/help' className='underline'>
               {c.help}
             </a>

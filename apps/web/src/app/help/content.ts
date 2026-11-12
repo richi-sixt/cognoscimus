@@ -72,7 +72,7 @@ export const HELP_CONTENT: Record<LandingLang, HelpContent> = {
           },
           {
             title: 'Lend a printed book',
-            text: 'In the details of a printed book, "Lend it to someone" notes who has it and, if you like, when it should be back; the person needs no account. "It is back" ends the loan. Followers who browse your library see printed books marked as such and can ask for them. If you lend one under "People", nothing is shared in the app: you hand the book over yourself, and it shows as lent until you mark it as back. The wishlist is never shown to followers.',
+            text: 'In the details of a printed book, "Lend it to someone" notes who has it and, if you like, when it should be back; the person needs no account. "It is back" ends the loan. Followers who browse your library see printed books marked as such and can ask for them. If you lend one under "People", where you can also set a return date, nothing is shared in the app: you hand the book over yourself, and it shows as lent until you mark it as back. The wishlist is never shown to followers.',
           },
           {
             title: 'Storage',
@@ -258,7 +258,7 @@ export const HELP_CONTENT: Record<LandingLang, HelpContent> = {
           },
           {
             title: 'Gedrucktes Buch verleihen',
-            text: 'In den Details eines gedruckten Buchs hält «Jemandem leihen» fest, wer es hat und, wenn du willst, bis wann es zurück sein soll; die Person braucht kein Konto. «Ist zurück» beendet den Verleih. Follower, die deine Bibliothek durchstöbern, sehen gedruckte Bücher gekennzeichnet und können sie anfragen. Verleihst du eines unter «Personen», wird in der App nichts geteilt: Du übergibst das Buch selbst, und es gilt als verliehen, bis du es als zurück markierst. Die Wunschliste sehen Follower nie.',
+            text: 'In den Details eines gedruckten Buchs hält «Jemandem leihen» fest, wer es hat und, wenn du willst, bis wann es zurück sein soll; die Person braucht kein Konto. «Ist zurück» beendet den Verleih. Follower, die deine Bibliothek durchstöbern, sehen gedruckte Bücher gekennzeichnet und können sie anfragen. Verleihst du eines unter «Personen», wo du auch ein Rückgabedatum setzen kannst, wird in der App nichts geteilt: Du übergibst das Buch selbst, und es gilt als verliehen, bis du es als zurück markierst. Die Wunschliste sehen Follower nie.',
           },
           {
             title: 'Speicher',

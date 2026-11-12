@@ -42,6 +42,8 @@ const PeoplePage = () => {
   const [incoming, setIncoming] = useState<IncomingShare[]>([]);
   const [borrow, setBorrow] = useState<BookRequest[]>([]);
   const [days, setDays] = useState<number>(GRANT_DEFAULT_EXPIRATION_DAYS);
+  // Optional return date per request for a printed book (YYYY-MM-DD).
+  const [dueDates, setDueDates] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -246,9 +248,22 @@ const PeoplePage = () => {
                           {_('from @{{handle}}', { handle: r.other_handle })}
                         </span>
                         {r.book_format === 'physical' && (
-                          <span className='text-base-content/50 block text-xs'>
-                            {_('A printed book. It changes hands in person.')}
-                          </span>
+                          <>
+                            <span className='text-base-content/50 block text-xs'>
+                              {_('A printed book. It changes hands in person.')}
+                            </span>
+                            <label className='mt-1 flex items-center gap-2 text-xs'>
+                              {_('Back by (optional)')}
+                              <input
+                                type='date'
+                                className='input input-bordered input-xs'
+                                value={dueDates[r.id] ?? ''}
+                                onChange={(e) =>
+                                  setDueDates((current) => ({ ...current, [r.id]: e.target.value }))
+                                }
+                              />
+                            </label>
+                          </>
                         )}
                         {r.message && (
                           <span className='text-base-content/70 mt-1 block text-xs italic'>
@@ -265,7 +280,10 @@ const PeoplePage = () => {
                               answerBookRequest(
                                 r.id,
                                 r.book_format === 'physical'
-                                  ? { accept: true }
+                                  ? {
+                                      accept: true,
+                                      ...(dueDates[r.id] ? { dueDate: dueDates[r.id] } : {}),
+                                    }
                                   : { accept: true, expirationDays: days },
                               ),
                             )
