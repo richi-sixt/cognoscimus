@@ -16,7 +16,14 @@ const getJson = async (url: string): Promise<unknown> => {
     signal: AbortSignal.timeout(TIMEOUT_MS),
     headers: { Accept: 'application/json', 'User-Agent': 'Cognoscimus/1.0 (book lookup)' },
   });
-  if (!response.ok) throw new Error(`lookup answered ${response.status}`);
+  if (!response.ok) {
+    // The catalogue's own reason, when it gives one; it never holds the key.
+    const body = (await response.json().catch(() => null)) as {
+      error?: { message?: unknown };
+    } | null;
+    const reason = typeof body?.error?.message === 'string' ? `: ${body.error.message}` : '';
+    throw new Error(`lookup answered ${response.status}${reason}`.slice(0, 300));
+  }
   return response.json();
 };
 
@@ -29,7 +36,8 @@ const getJson = async (url: string): Promise<unknown> => {
 export const searchBookCatalogues = async (query: string): Promise<BookCandidate[]> => {
   const isbn = isbnOfQuery(query);
   const googleKey = process.env['GOOGLE_BOOKS_API_KEY'];
-  let failure: unknown = null;
+  // Whether a catalogue replied at all, even with "nothing found".
+  let answered = false;
 
   const openLibrary = new URL('https://openlibrary.org/search.json');
   openLibrary.searchParams.set('q', isbn ? `isbn:${isbn}` : query);
@@ -40,10 +48,10 @@ export const searchBookCatalogues = async (query: string): Promise<BookCandidate
   openLibrary.searchParams.set('limit', '10');
   try {
     const found = fromOpenLibrary(await getJson(openLibrary.toString()), isbn);
+    answered = true;
     if (found.length > 0) return found;
   } catch (error) {
     console.error('Open Library lookup failed:', error);
-    failure = error;
   }
 
   if (googleKey) {
@@ -55,13 +63,15 @@ export const searchBookCatalogues = async (query: string): Promise<BookCandidate
     try {
       return fromGoogleBooks(await getJson(google.toString()), isbn);
     } catch (error) {
-      // The key is part of the address: log the status only, never the error.
-      console.error('Google Books lookup failed');
-      failure = failure ?? error;
+      // The key is part of the address: log status and reason, never the request.
+      console.error(
+        'Google Books lookup failed:',
+        error instanceof Error && error.name !== 'TypeError' ? error.message : 'no answer',
+      );
     }
   }
   // "Nothing found" is an answer; an error is one only when no catalogue replied.
-  if (failure) throw new Error('No catalogue answered');
+  if (!answered) throw new Error('No catalogue answered');
   return [];
 };
 
