@@ -2056,5 +2056,6 @@
   "The image could not be loaded": "Das Bild konnte nicht geladen werden",
   "The page could not be loaded": "Die Seite konnte nicht geladen werden",
   "This is not a valid link": "Das ist kein gültiger Link",
-  "This link is not a web page": "Dieser Link ist keine Webseite"
+  "This link is not a web page": "Dieser Link ist keine Webseite",
+  "This picture could not be read": "Dieses Bild konnte nicht gelesen werden"
 }

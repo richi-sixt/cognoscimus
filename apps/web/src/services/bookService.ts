@@ -27,7 +27,7 @@ import {
   getBookDocPageCount,
 } from '@/utils/book';
 import type { BookNav } from '@/services/nav';
-import { partialMD5, md5 } from '@/utils/md5';
+import { fullMD5, partialMD5, md5 } from '@/utils/md5';
 import { getBaseFilename, getFilename, stripDuplicateMarker } from '@/utils/path';
 import { BookDoc, DocumentLoader } from '@/libs/document';
 import { hasMediaOverlays } from '@/services/tts/mediaOverlay';
@@ -485,6 +485,14 @@ export interface ImportBookInternalOptions extends ImportBookOptions {
 }
 
 /**
+ * Size and metaHash of each PDF hash an import is working on right now. A
+ * folder import runs several importBook calls at once, and two colliding files
+ * in flight together are not in the library yet, so this is all that tells them
+ * apart.
+ */
+const importingFiles = new Map<string, { size: number; metaHash: string | undefined }>();
+
+/**
  * Import a book file (path, remote URL, content URI or in-memory File) into
  * the library, deduplicating against existing entries.
  *
@@ -538,6 +546,8 @@ export async function importBook(
   // past the rollback point below, so the deletion carries the commit's clock
   // — a peer touching the book mid-import must still lose LWW to it.
   let retiredTombstone: Book | undefined;
+  // Hash this call registered in `importingFiles`, released in `finally`.
+  let claimedHash: string | undefined;
   const rememberBookState = (book: Book) => {
     if (rollbackBook) return;
     rollbackBook = book;
@@ -601,8 +611,6 @@ export async function importBook(
       throw new Error(`Failed to open the book file: ${(error as Error).message || error}`);
     }
 
-    const hash = await partialMD5(fileobj!);
-
     // PDF metadata is often generic boilerplate (e.g. every PowerPoint export
     // is titled "PowerPoint Presentation" by the same author), so metadata
     // alone wrongly collapses distinct files into one book (issue #5411).
@@ -611,6 +619,42 @@ export async function importBook(
       loadedBook.metadata,
       format === 'PDF' ? getBaseFilename(filename) : undefined,
     );
+    let hash = await partialMD5(fileobj!);
+    // partialMD5 only samples ~12 KB of the file, so two different PDFs can share
+    // it: PDFs printed from one template are byte-identical up to the last
+    // sample (the embedded fonts and header image come first). The importer
+    // would then take the second for a re-import of the first and overwrite it.
+    // A re-import is the same document when the holder was imported under this
+    // filename (its metaHash is salted with it), even if its metadata or bytes
+    // changed. Another filename with a different byte size is another file: key
+    // it by its full MD5 instead. In-flight imports are not in the library yet,
+    // so they are told apart by the metaHash they registered.
+    if (format === 'PDF') {
+      const inflight = importingFiles.get(hash);
+      const holder = lookupIndex
+        ? lookupIndex.byHash.get(hash)
+        : books.find((b) => b.hash === hash);
+      let differentFile = false;
+      if (inflight) {
+        differentFile = inflight.size !== fileobj!.size && inflight.metaHash !== metaHash;
+      } else if (
+        holder?.metaHash &&
+        holder.metadata &&
+        getMetadataHash(holder.metadata, getBaseFilename(filename)) !== holder.metaHash
+      ) {
+        try {
+          const heldSize = await getBookFileSize(fs, holder);
+          differentFile = heldSize !== null && heldSize !== fileobj!.size;
+        } catch {
+          // The holder's file is unreadable: keep the old behaviour (same file).
+        }
+      }
+      if (differentFile) hash = await fullMD5(fileobj!);
+      if (!importingFiles.has(hash)) {
+        importingFiles.set(hash, { size: fileobj!.size, metaHash });
+        claimedHash = hash;
+      }
+    }
     const stableHash = format === 'PDF' ? undefined : getStableMetadataHash(loadedBook.metadata);
     let existingBook = lookupIndex
       ? lookupIndex.byHash.get(hash)
@@ -998,6 +1042,7 @@ export async function importBook(
     console.error('Error importing book:', error);
     throw error;
   } finally {
+    if (claimedHash !== undefined) importingFiles.delete(claimedHash);
     // Release the parsed document (a PDF leaks its pdf.js worker otherwise,
     // ~60 MB per imported file — #5387) and the opened file handle.
     try {

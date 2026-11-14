@@ -34,6 +34,29 @@ const detectorClass = (): DetectorClass | undefined =>
     ? undefined
     : (window as unknown as { BarcodeDetector?: DetectorClass }).BarcodeDetector;
 
+const COVER_MAX_EDGE = 1200;
+
+/**
+ * Decodes a picture and draws it anew as a PNG. Only real images get through,
+ * the preview never shows bytes that came straight from a file or the network,
+ * and a phone photo shrinks to a size fit for a cover.
+ */
+const redrawAsCover = async (source: Blob): Promise<string> => {
+  const bitmap = await createImageBitmap(source);
+  try {
+    const scale = Math.min(1, COVER_MAX_EDGE / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    canvas.getContext('2d')?.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    const png = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+    if (!png) throw new Error('This picture could not be read');
+    return URL.createObjectURL(png);
+  } finally {
+    bitmap.close();
+  }
+};
+
 const emptyForm = {
   title: '',
   author: '',
@@ -92,8 +115,8 @@ const AddPhysicalBookDialog: React.FC<AddPhysicalBookDialogProps> = ({
     if (!url) return;
     const opening = openingRef.current;
     try {
-      const blob = await fetchCover(url);
-      if (opening === openingRef.current) setCoverBlobUrl(URL.createObjectURL(blob));
+      const cover = await redrawAsCover(await fetchCover(url));
+      if (opening === openingRef.current) setCoverBlobUrl(cover);
     } catch {
       // A book without a cover is still a book; the user can add a photo.
     }
@@ -205,10 +228,17 @@ const AddPhysicalBookDialog: React.FC<AddPhysicalBookDialogProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scanning]);
 
-  const chooseImage = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const chooseImage = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = '';
-    if (file?.type.startsWith('image/')) setCoverBlobUrl(URL.createObjectURL(file));
+    if (!file) return;
+    const opening = openingRef.current;
+    try {
+      const cover = await redrawAsCover(file);
+      if (opening === openingRef.current) setCoverBlobUrl(cover);
+    } catch {
+      if (opening === openingRef.current) setError(_('This picture could not be read'));
+    }
   };
 
   const close = () => {
@@ -389,7 +419,7 @@ const AddPhysicalBookDialog: React.FC<AddPhysicalBookDialogProps> = ({
               type='file'
               accept='image/*'
               className='hidden'
-              onChange={chooseImage}
+              onChange={(event) => void chooseImage(event)}
             />
             <button
               type='button'
