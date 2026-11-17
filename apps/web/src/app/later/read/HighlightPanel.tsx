@@ -46,10 +46,12 @@ const HighlightPanel = ({
   api,
   listOpen,
   onCloseList,
+  onSaveQuote,
 }: {
   api: HighlightsApi;
   listOpen: boolean;
   onCloseList: () => void;
+  onSaveQuote?: (highlight: { quote: string; prefix: string; suffix: string }) => void;
 }) => {
   const _ = useTranslation();
   const active = api.highlights.find((h) => h.id === api.activeId) ?? null;
@@ -124,6 +126,15 @@ const HighlightPanel = ({
                 onPick={(c) => void api.update(active.id, { color: c })}
                 label={colorLabel}
               />
+              {onSaveQuote && (
+                <button
+                  type='button'
+                  onClick={() => onSaveQuote(active)}
+                  className='btn btn-ghost btn-sm gap-1'
+                >
+                  {_('Save as quote')}
+                </button>
+              )}
               <button
                 type='button'
                 onClick={() => void api.remove(active.id)}

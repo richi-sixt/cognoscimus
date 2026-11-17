@@ -2,19 +2,22 @@
 
 import clsx from 'clsx';
 import { usePathname } from 'next/navigation';
-import { IoBookOutline, IoBookmarkOutline } from 'react-icons/io5';
+import { IoBookOutline, IoBookmarkOutline, IoBulbOutline } from 'react-icons/io5';
 import { useTranslation } from '@/hooks/useTranslation';
 
-// Switches between the two apps. These are plain links on purpose: /later is
+// Switches between the apps. These are plain links on purpose: /later is
 // served without cross-origin isolation and the rest of the app with it, and
 // isolation is fixed per document, so crossing the border needs a full page load.
 const AppSwitcher = ({ className }: { className?: string }) => {
   const _ = useTranslation();
-  const inLater = (usePathname() ?? '').startsWith('/later');
+  const pathname = usePathname() ?? '';
+  const inLater = pathname.startsWith('/later');
+  const inErinnern = pathname.startsWith('/erinnern');
 
   const apps = [
-    { href: '/library', label: _('Library'), Icon: IoBookOutline, active: !inLater },
+    { href: '/library', label: _('Library'), Icon: IoBookOutline, active: !inLater && !inErinnern },
     { href: '/later', label: _('Later'), Icon: IoBookmarkOutline, active: inLater },
+    { href: '/erinnern', label: _('Remember'), Icon: IoBulbOutline, active: inErinnern },
   ];
 
   return (

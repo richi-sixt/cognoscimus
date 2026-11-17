@@ -44,6 +44,7 @@ import {
   flattenCollectionTree,
   type LaterCollection,
 } from '@/libs/later/collections';
+import { sendQuote } from '@/libs/erinnern/send';
 import HighlightPanel from './HighlightPanel';
 import { useHighlights } from './useHighlights';
 
@@ -65,11 +66,47 @@ const Reader = () => {
   const restored = useRef(false);
   const articleRef = useRef<HTMLDivElement>(null);
   const [listOpen, setListOpen] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const [loadingText, setLoadingText] = useState(false);
 
   useEffect(() => {
     if (!user) window.location.assign('/auth?redirect=%2Flater');
   }, [user]);
+
+  const saveAsQuote = async (h: { quote: string; prefix: string; suffix: string }) => {
+    if (!user || !item) return;
+    try {
+      const outcome = await sendQuote(
+        user.id,
+        {
+          text: h.quote,
+          source: {
+            kind: 'later',
+            later_item_id: item.id,
+            title: item.title,
+            author: item.author,
+            prefix: h.prefix,
+            suffix: h.suffix,
+            url: item.url,
+          },
+        },
+        (existing) =>
+          window.confirm(
+            `${_('A similar quote already exists:')}\n\n${existing}\n\n${_('Add this source to it?')}`,
+          ),
+      );
+      if (outcome === 'created') setNotice(_('Saved to Remember'));
+      else if (outcome === 'merged') setNotice(_('Source added to an existing quote'));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : _('Something went wrong'));
+    }
+  };
+
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(null), 3000);
+    return () => clearTimeout(timer);
+  }, [notice]);
 
   useEffect(() => {
     if (!id || !user) return;
@@ -608,7 +645,15 @@ const Reader = () => {
           api={highlights}
           listOpen={listOpen}
           onCloseList={() => setListOpen(false)}
+          onSaveQuote={(h) => void saveAsQuote(h)}
         />
+      )}
+      {notice && (
+        <div role='status' className='fixed inset-x-0 bottom-20 z-40 flex justify-center px-4'>
+          <div className='bg-neutral text-neutral-content rounded-full px-4 py-2 text-sm shadow-lg'>
+            {notice}
+          </div>
+        </div>
       )}
     </div>
   );
