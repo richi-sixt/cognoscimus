@@ -8,6 +8,7 @@ import {
   type CardGroup,
   type StudyMode,
   answerCard,
+  groupStats,
   isLearnable,
   selectForStudy,
 } from '@/libs/erinnern/cards';
@@ -54,7 +55,6 @@ const SourceLinks = ({ card }: { card: Card }) => {
 
 const StudySession = ({ userId, cards, groups, onChanged, onError, onManage }: Props) => {
   const _ = useTranslation();
-  const [groupId, setGroupId] = useState<string | null>(null);
   const [mode, setMode] = useState<StudyMode>('due');
   const [queue, setQueue] = useState<Card[] | null>(null);
   const [index, setIndex] = useState(0);
@@ -62,15 +62,12 @@ const StudySession = ({ userId, cards, groups, onChanged, onError, onManage }: P
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(0);
 
-  const dueCount = useMemo(
-    () => selectForStudy(cards, { groupId, mode: 'due', limit: 100000 }).length,
-    [cards, groupId],
-  );
+  const stats = useMemo(() => groupStats(cards, groups), [cards, groups]);
   const incomplete = cards.filter((c) => !isLearnable(c)).length;
   const current = queue?.[index] ?? null;
   const intervals = useMemo(() => (current ? previewIntervals(current) : null), [current]);
 
-  const start = () => {
+  const start = (groupId: string | null) => {
     setQueue(selectForStudy(cards, { groupId, mode }));
     setIndex(0);
     setDone(0);
@@ -100,40 +97,61 @@ const StudySession = ({ userId, cards, groups, onChanged, onError, onManage }: P
   if (queue === null) {
     return (
       <div className='space-y-4'>
-        <div className='grid gap-2 sm:grid-cols-2'>
-          <label className='form-control'>
-            <span className='mb-1 text-sm opacity-70'>{_('Group')}</span>
-            <select
-              className='select select-bordered select-sm'
-              value={groupId ?? ''}
-              onChange={(e) => setGroupId(e.target.value || null)}
-            >
-              <option value=''>{_('All cards')}</option>
-              {groups.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.kind === 'book' ? `📖 ${g.name}` : g.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className='form-control'>
-            <span className='mb-1 text-sm opacity-70'>{_('Order')}</span>
-            <select
-              className='select select-bordered select-sm'
-              value={mode}
-              onChange={(e) => setMode(e.target.value as StudyMode)}
-            >
-              <option value='due'>{_('Due cards')}</option>
-              <option value='random'>{_('Random')}</option>
-            </select>
-          </label>
+        <label className='form-control max-w-xs'>
+          <span className='mb-1 text-sm opacity-70'>{_('Order')}</span>
+          <select
+            className='select select-bordered select-sm'
+            value={mode}
+            onChange={(e) => setMode(e.target.value as StudyMode)}
+          >
+            <option value='due'>{_('Due and new cards')}</option>
+            <option value='random'>{_('Random')}</option>
+          </select>
+        </label>
+
+        <div className='overflow-x-auto'>
+          <table className='table table-sm'>
+            <thead>
+              <tr>
+                <th>{_('Group')}</th>
+                <th className='text-end text-success'>{_('Due')}</th>
+                <th className='text-end text-info'>{_('New')}</th>
+                <th className='text-end'>{_('Total')}</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {stats.map((row) => {
+                const nothing = mode === 'due' && row.due + row.fresh === 0;
+                return (
+                  <tr key={row.id ?? 'all'} className={row.kind === 'all' ? 'font-semibold' : ''}>
+                    <td>
+                      {row.kind === 'all'
+                        ? _('All cards')
+                        : row.kind === 'book'
+                          ? `📖 ${row.name}`
+                          : row.name}
+                    </td>
+                    <td className='text-end'>{row.due}</td>
+                    <td className='text-end'>{row.fresh}</td>
+                    <td className='text-end'>{row.total}</td>
+                    <td className='text-end'>
+                      <button
+                        type='button'
+                        className='btn btn-primary btn-xs'
+                        disabled={nothing || row.total === 0}
+                        onClick={() => start(row.id)}
+                      >
+                        {_('Start')}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
 
-        <p className='text-sm opacity-80'>
-          {dueCount === 0
-            ? _('Nothing is due right now.')
-            : _('{{count}} cards are due.', { count: dueCount })}
-        </p>
         {incomplete > 0 && (
           <p className='text-sm opacity-80'>
             {_('{{count}} cards still need an answer.', { count: incomplete })}{' '}
@@ -142,15 +160,6 @@ const StudySession = ({ userId, cards, groups, onChanged, onError, onManage }: P
             </button>
           </p>
         )}
-
-        <button
-          type='button'
-          className='btn btn-primary'
-          disabled={mode === 'due' && dueCount === 0 && cards.filter(isLearnable).length === 0}
-          onClick={start}
-        >
-          {_('Start')}
-        </button>
       </div>
     );
   }

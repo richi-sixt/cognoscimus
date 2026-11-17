@@ -40,8 +40,9 @@ const GroupChips = ({
         type='button'
         onClick={() => onToggle(g.id)}
         aria-pressed={selected.has(g.id)}
-        className={`badge badge-sm cursor-pointer ${selected.has(g.id) ? 'badge-neutral' : 'badge-outline'}`}
+        className={`badge badge-sm cursor-pointer ${selected.has(g.id) ? 'badge-primary' : 'badge-outline border-dashed opacity-60'}`}
       >
+        {selected.has(g.id) ? '✓ ' : ''}
         {g.kind === 'book' ? `📖 ${g.name}` : g.name}
       </button>
     ))}
@@ -136,11 +137,24 @@ const CardRow = ({
         </>
       )}
 
-      {groups.length > 0 && (
-        <div className='mt-2'>
-          <GroupChips groups={groups} selected={memberIds} onToggle={toggleGroup} />
-        </div>
-      )}
+      {groups.length > 0 &&
+        (editing ? (
+          <div className='mt-2'>
+            <GroupChips groups={groups} selected={memberIds} onToggle={toggleGroup} />
+          </div>
+        ) : (
+          memberIds.size > 0 && (
+            <div className='mt-2 flex flex-wrap gap-1'>
+              {groups
+                .filter((g) => memberIds.has(g.id))
+                .map((g) => (
+                  <span key={g.id} className='badge badge-sm badge-ghost'>
+                    {g.kind === 'book' ? `📖 ${g.name}` : g.name}
+                  </span>
+                ))}
+            </div>
+          )
+        ))}
 
       {!editing && (
         <div className='mt-2 flex items-center justify-between gap-1'>
@@ -290,6 +304,9 @@ const CardsManager = ({ userId, cards, groups, onChanged, onError }: Props) => {
             className='textarea textarea-bordered w-full'
           />
           {groups.length > 0 && (
+            <p className='text-xs opacity-70'>{_('Groups (optional, tap to choose)')}</p>
+          )}
+          {groups.length > 0 && (
             <GroupChips
               groups={groups}
               selected={newGroups}
@@ -337,7 +354,17 @@ const CardsManager = ({ userId, cards, groups, onChanged, onError }: Props) => {
         <ul className='space-y-1 text-sm'>
           {groups.map((g) => (
             <li key={g.id} className='flex items-center justify-between gap-2'>
-              <span>{g.kind === 'book' ? `📖 ${g.name}` : g.name}</span>
+              <span>
+                {g.kind === 'book' ? `📖 ${g.name}` : g.name}{' '}
+                <span className='opacity-60'>
+                  (
+                  {
+                    cards.filter((c) => c.card_group_members.some((m) => m.group_id === g.id))
+                      .length
+                  }
+                  )
+                </span>
+              </span>
               <button
                 type='button'
                 className='btn btn-ghost btn-xs'

@@ -360,3 +360,38 @@ export const selectForStudy = (
   }
   return pool.slice(0, options.limit ?? 50);
 };
+
+export interface GroupStats {
+  /** null is the row for all cards. */
+  id: string | null;
+  name: string;
+  kind: 'all' | 'book' | 'custom';
+  /** Seen before and due now. */
+  due: number;
+  /** Never learned yet (and has an answer). */
+  fresh: number;
+  total: number;
+}
+
+/** Numbers per group (and for all cards), like the deck list of an SRS app. */
+export const groupStats = (cards: Card[], groups: CardGroup[], now = new Date()): GroupStats[] => {
+  const count = (list: Card[]) => {
+    let due = 0;
+    let fresh = 0;
+    for (const c of list) {
+      if (!isLearnable(c)) continue;
+      if (c.state === 0) fresh++;
+      else if (new Date(c.due_at).getTime() <= now.getTime()) due++;
+    }
+    return { due, fresh, total: list.length };
+  };
+  return [
+    { id: null, name: '', kind: 'all', ...count(cards) },
+    ...groups.map((g) => ({
+      id: g.id,
+      name: g.name,
+      kind: g.kind,
+      ...count(cards.filter((c) => c.card_group_members.some((m) => m.group_id === g.id))),
+    })),
+  ];
+};
