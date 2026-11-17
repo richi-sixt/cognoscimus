@@ -68,6 +68,7 @@ describe('annotationToolbar helpers', () => {
       'share',
       'quotecard',
       'savequote',
+      'savecard',
     ]);
   });
 

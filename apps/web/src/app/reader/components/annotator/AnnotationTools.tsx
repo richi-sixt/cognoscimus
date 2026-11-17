@@ -5,6 +5,7 @@ import { FiLink } from 'react-icons/fi';
 import { FiShare } from 'react-icons/fi';
 import { FiImage } from 'react-icons/fi';
 import { FiBookmark } from 'react-icons/fi';
+import { FiLayers } from 'react-icons/fi';
 import { PiHighlighterFill } from 'react-icons/pi';
 import { LuBookA } from 'react-icons/lu';
 import { BsPencilSquare } from 'react-icons/bs';
@@ -117,6 +118,12 @@ export const annotationToolButtons = createAnnotationToolButtons([
     label: _('Save Quote'),
     tooltip: _('Save the selection to your quote collection'),
     Icon: FiBookmark,
+  },
+  {
+    type: 'savecard',
+    label: _('Save Flashcard'),
+    tooltip: _('Send the selection to Learn as a flashcard'),
+    Icon: FiLayers,
   },
 ]);
 

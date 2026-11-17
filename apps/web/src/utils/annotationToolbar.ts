@@ -24,6 +24,7 @@ export const ALL_ANNOTATION_TOOL_TYPES: AnnotationToolType[] = [
   'share',
   'quotecard',
   'savequote',
+  'savecard',
 ];
 
 // Default toolbar: the eight pre-existing tools in their original order.

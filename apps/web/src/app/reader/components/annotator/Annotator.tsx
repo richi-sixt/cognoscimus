@@ -3,8 +3,8 @@ import { RiDeleteBinLine } from 'react-icons/ri';
 
 import * as CFI from 'foliate-js/epubcfi.js';
 import { useEnv } from '@/context/EnvContext';
-import { useAuth } from '@/context/AuthContext';
-import { sendQuote } from '@/libs/erinnern/send';
+import { currentUserId, sendQuote } from '@/libs/erinnern/send';
+import { sendSelectionAsCard } from '@/libs/erinnern/cards';
 import {
   BookNote,
   BooknoteGroup,
@@ -138,7 +138,6 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets; gridInsets?:
 }) => {
   const _ = useTranslation();
   const { envConfig, appService } = useEnv();
-  const { user } = useAuth();
   const { settings, setSettingsDialogBookKey, setSettingsDialogOpen, setActiveSettingsItemId } =
     useSettingsStore();
   const { isDarkMode, isIPhoneDuo, themeCode } = useThemeStore();
@@ -1575,13 +1574,14 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets; gridInsets?:
         className: 'whitespace-nowrap',
         timeout: 2500,
       });
-    if (!user) {
-      toast('error', _('Sign in to save quotes'));
-      return;
-    }
     try {
+      const userId = await currentUserId();
+      if (!userId) {
+        toast('error', _('Sign in to save quotes'));
+        return;
+      }
       const outcome = await sendQuote(
-        user.id,
+        userId,
         {
           text,
           source: {
@@ -1601,6 +1601,48 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets; gridInsets?:
       else if (outcome === 'merged') toast('info', _('Source added to an existing quote'));
     } catch {
       toast('error', _('Could not save the quote'));
+    }
+  };
+
+  const handleSaveCard = async () => {
+    if (!selection?.text) return;
+    const { book } = bookData;
+    const rendered = getRenderedRunsFromRange(selection.range)
+      .map((run) => run.text)
+      .join('')
+      .trim();
+    const text = rendered || selection.text;
+    const cfi = selection.cfi;
+    handleDismissPopupAndSelection();
+    const toast = (type: 'info' | 'error', message: string) =>
+      eventDispatcher.dispatch('toast', {
+        type,
+        message,
+        className: 'whitespace-nowrap',
+        timeout: 2500,
+      });
+    try {
+      const userId = await currentUserId();
+      if (!userId) {
+        toast('error', _('Sign in to save flashcards'));
+        return;
+      }
+      const result = await sendSelectionAsCard(userId, {
+        text,
+        source: {
+          kind: 'book',
+          book_hash: book?.hash,
+          title: book?.title,
+          author: book?.author,
+          cfi,
+        },
+      });
+      toast(
+        'info',
+        result.status === 'created' ? _('Added to Learn') : _('Already a card: source added'),
+      );
+    } catch {
+      toast('error', _('Could not save the flashcard'));
     }
   };
 
@@ -2613,6 +2655,8 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets; gridInsets?:
         return { tooltipText: _(label), Icon, onClick: handleShare };
       case 'quotecard':
         return { tooltipText: _(label), Icon, onClick: () => void handleQuoteCard() };
+      case 'savecard':
+        return { tooltipText: _(label), Icon, onClick: () => void handleSaveCard() };
       case 'savequote':
         return { tooltipText: _(label), Icon, onClick: () => void handleSaveQuote() };
       default:

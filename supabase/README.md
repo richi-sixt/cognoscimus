@@ -28,6 +28,7 @@ SQL migrations for the Supabase project, derived from the Readest schema and tri
 | `0022_library_social.sql` | Library for followers: `profiles.library_shared`, `library_hidden`, `library_shared_books()`, `book_requests` |
 | `0023_notify_email.sql` | `profiles.notify_email`: e-mail about borrow requests, on by default |
 | `0026_erinnern_quotes.sql` | Erinnern: `quotes` with several sources each, duplicate search via `pg_trgm` |
+| `0027_erinnern_cards.sql` | Erinnern: flashcards (FSRS state), groups (a book is a group), sources, review log |
 
 Run them once, in numeric order, in the Supabase SQL editor (or `supabase db push`).
 

@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { useAuth } from '@/context/AuthContext';
+import { cardFromQuote } from '@/libs/erinnern/cards';
 import { useTranslation } from '@/hooks/useTranslation';
 import {
   QUOTE_NOTE_MAX,
@@ -42,6 +44,8 @@ const SourceLine = ({ source }: { source: QuoteSource }) => {
 
 const QuoteCard = ({ quote, onChanged, onError }: Props) => {
   const _ = useTranslation();
+  const { user } = useAuth();
+  const [learnNotice, setLearnNotice] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(quote.text);
   const [note, setNote] = useState(quote.note ?? '');
@@ -55,6 +59,15 @@ const QuoteCard = ({ quote, onChanged, onError }: Props) => {
       onError(e instanceof Error ? e.message : _('Something went wrong'));
     }
   };
+
+  const makeCard = () =>
+    run(async () => {
+      if (!user) return;
+      const result = await cardFromQuote(user.id, quote);
+      setLearnNotice(
+        result.status === 'created' ? _('Added to Learn') : _('This quote is already a card'),
+      );
+    });
 
   const save = () =>
     run(async () => {
@@ -131,7 +144,11 @@ const QuoteCard = ({ quote, onChanged, onError }: Props) => {
       )}
 
       {!editing && (
-        <div className='mt-3 flex justify-end gap-1'>
+        <div className='mt-3 flex items-center justify-end gap-1'>
+          {learnNotice && <span className='me-auto text-xs opacity-70'>{learnNotice}</span>}
+          <button type='button' className='btn btn-ghost btn-xs' onClick={() => void makeCard()}>
+            {_('Learn')}
+          </button>
           <button type='button' className='btn btn-ghost btn-xs' onClick={() => setEditing(true)}>
             {_('Edit')}
           </button>

@@ -10,4 +10,5 @@ export type AnnotationToolType =
   | 'proofread'
   | 'share'
   | 'quotecard'
-  | 'savequote';
+  | 'savequote'
+  | 'savecard';

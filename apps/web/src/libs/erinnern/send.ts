@@ -1,3 +1,4 @@
+import { supabase } from '@/utils/supabase';
 import { mergeInto, saveQuote, type QuoteSourceInput } from './quotes';
 
 export type SendOutcome = 'created' | 'merged' | 'cancelled';
@@ -20,4 +21,10 @@ export const sendQuote = async (
     return 'merged';
   }
   return result.status;
+};
+
+/** The signed-in user's id, read when needed so callers need no auth provider. */
+export const currentUserId = async (): Promise<string | null> => {
+  const { data } = await supabase.auth.getSession();
+  return data.session?.user.id ?? null;
 };
