@@ -1943,7 +1943,6 @@
   "This is not a valid e-mail address.": "Das ist keine gültige E-Mail-Adresse.",
   "Help": "Hilfe",
   "People who follow me can browse my library": "Personen, die mir folgen, dürfen meine Bibliothek durchstöbern",
-  "They see title, author and cover, and can ask to borrow a book. Off by default. You can hide single books.": "Sie sehen Titel, Autor und Cover und können ein Buch zum Ausleihen anfragen. Standardmässig aus. Einzelne Bücher kannst du verbergen.",
   "Hide from people who browse my library": "Vor Personen verbergen, die meine Bibliothek durchstöbern",
   "Only matters if you share your library with followers.": "Gilt nur, wenn du deine Bibliothek mit Followern teilst.",
   "Request sent. {{name}} decides whether to lend it.": "Anfrage gesendet. {{name}} entscheidet, ob das Buch verliehen wird.",
@@ -2132,5 +2131,8 @@
   "Save Quote": "Zitat speichern",
   "Save the selection to your quote collection": "Die Auswahl in der Zitatesammlung speichern",
   "Save Flashcard": "Lernkarte speichern",
-  "Send the selection to Learn as a flashcard": "Die Auswahl als Lernkarte an Lernen senden"
+  "Send the selection to Learn as a flashcard": "Die Auswahl als Lernkarte an Lernen senden",
+  "They see title, author, cover and description, and can ask to borrow a book. Off by default. You can hide single books.": "Sie sehen Titel, Autor, Cover und Beschreibung und können ein Buch zum Ausleihen anfragen. Standardmässig aus. Einzelne Bücher kannst du verbergen.",
+  "Show more": "Mehr anzeigen",
+  "Show less": "Weniger anzeigen"
 }

@@ -22,7 +22,23 @@ export interface SharedBook {
   is_physical?: boolean;
   /** That printed book is with someone right now. */
   lent?: boolean;
+  /** The publisher text of the book, maybe with HTML. Missing before migration 0028. */
+  description?: string | null;
 }
+
+/** The description as plain text: tags dropped, never rendered as HTML. */
+export const descriptionText = (html: string | null | undefined): string => {
+  if (!html) return '';
+  if (typeof DOMParser === 'undefined')
+    return html
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  // Block ends become a space, so "<p>a</p><p>b</p>" reads "a b", not "ab".
+  doc.querySelectorAll('p, br, li, div, h1, h2, h3, h4').forEach((el) => el.append(' '));
+  return (doc.body.textContent ?? '').replace(/\s+/g, ' ').trim();
+};
 
 export const listLibraryOwners = async (): Promise<LibraryOwner[]> => {
   const { data, error } = await supabase.rpc('library_following_overview');

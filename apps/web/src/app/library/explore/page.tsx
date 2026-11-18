@@ -14,6 +14,7 @@ import {
   listBookRequests,
   listLibraryOwners,
   listSharedBooks,
+  descriptionText,
   requestBook,
   type SharedBook,
 } from '@/libs/libraryExplore';
@@ -44,6 +45,7 @@ const ExplorePage = () => {
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [expandedBooks, setExpandedBooks] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   // Guards against a slow answer for an earlier person or search overwriting a newer one.
   const generation = useRef(0);
@@ -106,6 +108,14 @@ const ExplorePage = () => {
     setBooks([]);
     void loadPage(owner, query, null);
   };
+
+  const toggleExpanded = (hash: string) =>
+    setExpandedBooks((prev) => {
+      const next = new Set(prev);
+      if (next.has(hash)) next.delete(hash);
+      else next.add(hash);
+      return next;
+    });
 
   const statusOf = (book: SharedBook) =>
     sent.find((r) => r.owner_id === owner?.user_id && r.book_hash === book.book_hash)?.status;
@@ -225,56 +235,89 @@ const ExplorePage = () => {
               <p className='text-base-content/60 text-sm'>{_('No books found.')}</p>
             )}
 
-            <ul className='grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4'>
+            <ul className='divide-base-content/10 divide-y'>
               {books.map((book) => {
                 // "Lent to you" holds for a printed book only while it is out.
                 const label =
                   book.is_physical && !book.lent && statusOf(book) === 'accepted'
                     ? null
                     : statusLabel(statusOf(book));
+                const description = descriptionText(book.description);
+                const expanded = expandedBooks.has(book.book_hash);
+                // A short text fits in three lines and needs no "more".
+                const longText = description.length > 220;
                 return (
-                  <li key={book.book_hash}>
+                  <li key={book.book_hash} className='flex gap-3 py-3'>
                     <button
                       type='button'
-                      className='flex w-full flex-col gap-1 text-left'
+                      className='bg-base-200 relative flex aspect-[28/41] w-16 shrink-0 items-center justify-center self-start overflow-hidden rounded-md sm:w-20'
+                      aria-label={book.title}
                       onClick={() => {
                         setNotice(null);
                         setAsking(book);
                       }}
                     >
-                      <span className='bg-base-200 relative flex aspect-[28/41] w-full items-center justify-center overflow-hidden rounded-lg'>
-                        {covers[book.book_hash] ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={covers[book.book_hash]}
-                            alt=''
-                            loading='lazy'
-                            crossOrigin='anonymous'
-                            className='h-full w-full object-cover'
-                          />
-                        ) : (
-                          <span className='text-base-content/50 line-clamp-4 px-2 text-center text-xs'>
-                            {book.title}
-                          </span>
-                        )}
-                        {label && (
-                          <span className='badge badge-neutral badge-sm absolute bottom-1 left-1'>
-                            {label}
-                          </span>
-                        )}
-                        {book.is_physical && (
-                          <span className='badge badge-ghost badge-sm absolute right-1 top-1'>
-                            {book.lent ? _('Lent') : _('Printed')}
-                          </span>
-                        )}
-                      </span>
-                      <span className='line-clamp-2 text-sm font-medium'>{book.title}</span>
-                      {book.author && (
-                        <span className='text-base-content/60 line-clamp-1 text-xs'>
-                          {book.author}
+                      {covers[book.book_hash] ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={covers[book.book_hash]}
+                          alt=''
+                          loading='lazy'
+                          crossOrigin='anonymous'
+                          className='h-full w-full object-cover'
+                        />
+                      ) : (
+                        <span className='text-base-content/50 line-clamp-4 px-1 text-center text-[10px]'>
+                          {book.title}
                         </span>
                       )}
                     </button>
+                    <div className='flex min-w-0 flex-1 flex-col gap-1'>
+                      <button
+                        type='button'
+                        className='text-left'
+                        onClick={() => {
+                          setNotice(null);
+                          setAsking(book);
+                        }}
+                      >
+                        <span className='block text-sm font-semibold'>{book.title}</span>
+                        {book.author && (
+                          <span className='text-base-content/60 block text-xs'>{book.author}</span>
+                        )}
+                      </button>
+                      <div className='flex flex-wrap gap-1'>
+                        {label && <span className='badge badge-neutral badge-sm'>{label}</span>}
+                        {book.is_physical && (
+                          <span className='badge badge-ghost badge-sm'>
+                            {book.lent ? _('Lent') : _('Printed')}
+                          </span>
+                        )}
+                      </div>
+                      {description ? (
+                        <>
+                          <p
+                            className={`text-base-content/75 text-sm leading-snug ${expanded ? '' : 'line-clamp-3'}`}
+                          >
+                            {description}
+                          </p>
+                          {longText && (
+                            <button
+                              type='button'
+                              className='link text-xs w-fit'
+                              aria-expanded={expanded}
+                              onClick={() => toggleExpanded(book.book_hash)}
+                            >
+                              {expanded ? _('Show less') : _('Show more')}
+                            </button>
+                          )}
+                        </>
+                      ) : (
+                        <p className='text-base-content/40 text-xs'>
+                          {_('No description available')}
+                        </p>
+                      )}
+                    </div>
                   </li>
                 );
               })}
@@ -299,6 +342,11 @@ const ExplorePage = () => {
           <div className='modal-box flex flex-col gap-3'>
             <h2 className='font-semibold'>{asking.title}</h2>
             {asking.author && <p className='text-base-content/70 text-sm'>{asking.author}</p>}
+            {asking.description && (
+              <p className='text-base-content/75 max-h-40 overflow-y-auto text-sm leading-snug'>
+                {descriptionText(asking.description)}
+              </p>
+            )}
             {asking.is_physical && (
               <p className='text-base-content/70 text-xs'>
                 {_('A printed book. It changes hands in person.')}

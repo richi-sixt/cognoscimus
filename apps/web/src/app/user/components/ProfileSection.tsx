@@ -141,7 +141,7 @@ export function ProfileSection({ onSaved }: { onSaved?: (profile: Profile) => vo
           {_('People who follow me can browse my library')}
           <span className='text-base-content/60 block text-xs'>
             {_(
-              'They see title, author and cover, and can ask to borrow a book. Off by default. You can hide single books.',
+              'They see title, author, cover and description, and can ask to borrow a book. Off by default. You can hide single books.',
             )}
           </span>
         </span>
