@@ -22,7 +22,7 @@ export interface HelpContent {
 export const HELP_CONTENT: Record<LandingLang, HelpContent> = {
   en: {
     title: 'User guide',
-    lead: 'Cognoscimus has two parts: the library for your books and Later for what you find on the web. Both share one account, one sign-in and one username.',
+    lead: 'Cognoscimus has three parts: the library for your books, Later for what you find on the web, and Remember for quotes and flashcards. All share one account, one sign-in and one username.',
     toc: 'Contents',
     back: 'Back to Cognoscimus',
     languageLabel: 'Language',
@@ -33,7 +33,7 @@ export const HELP_CONTENT: Record<LandingLang, HelpContent> = {
         steps: [
           {
             title: 'Sign in',
-            text: 'Access is by invitation. After signing in you land in the library, or in Later if you chose that under "Start with" in your account. The buttons "Library" and "Later" at the top switch between the two parts.',
+            text: 'Access is by invitation. After signing in you land in the library, or in Later if you chose that under "Start with" in your account. The buttons "Library", "Later" and "Remember" at the top switch between the parts.',
           },
           {
             title: 'Choose a username',
@@ -204,11 +204,62 @@ export const HELP_CONTENT: Record<LandingLang, HelpContent> = {
           },
         ],
       },
+      {
+        id: 'remember-quotes',
+        title: 'Remember: quotes',
+        intro: 'Keep passages from books and articles in one place, with their source.',
+        steps: [
+          {
+            title: 'Turn on the buttons',
+            text: 'The buttons "Save Quote" and "Save Flashcard" are not in the selection toolbar at first. Open a book, then the reader settings, "Behavior" and "Customize Toolbar", and move them from "Available" into the toolbar.',
+          },
+          {
+            title: 'Save a quote',
+            text: 'In a book, mark a passage and tap "Save Quote". In Later, tap a highlight and choose "Save as quote". Under Remember, "Quotes" you can also add one by hand and write down where it comes from.',
+          },
+          {
+            title: 'Back to the place',
+            text: 'A quote from a book keeps the book and the position. Tap its source and the book opens at that place; a quote from Later opens the saved article. If you delete the book, the source stays as text.',
+          },
+          {
+            title: 'Duplicates',
+            text: 'Saving the same quote again only adds the new source to it. If a similar quote exists you are asked whether to add the source there. "Possible duplicates" lists pairs that look alike, and you can merge them: the sources and notes are kept.',
+          },
+          {
+            title: 'Search and edit',
+            text: 'Search finds text, notes, authors and sources. "Edit" lets you change the wording and write your own thoughts under the quote; "Delete" removes it.',
+          },
+        ],
+      },
+      {
+        id: 'remember-learn',
+        title: 'Remember: learning',
+        intro:
+          'Flashcards with spaced repetition: a card comes back after a short time at first, and after longer and longer ones the better you know it.',
+        steps: [
+          {
+            title: 'Make cards',
+            text: 'Under "Learn" and "Cards" choose "Add card" and write a question and an answer, over several lines if you like. You can also mark a word or a sentence in a book and tap "Save Flashcard", or tap "Learn" on a quote: the quote is the question and its author and title the answer.',
+          },
+          {
+            title: 'Answer missing',
+            text: 'A word or sentence sent from a book has no answer yet. It shows "Answer missing" and is not asked until you write one with "Edit". The filter "Answer missing" lists them all.',
+          },
+          {
+            title: 'Groups',
+            text: 'A book becomes a group by itself the first time you send something from it. You can add your own groups, for example languages or a course, and put a card in several groups. Deleting a group keeps its cards. The same question is never made twice: sending it again adds the new source and group.',
+          },
+          {
+            title: 'Study',
+            text: 'The tab "Study" shows each group with the cards that are due, new and in total. "Start" begins with that group. Show the answer and rate it: "Again", "Hard", "Good" or "Easy"; each button says when the card returns. Choose "Random" to go through cards in any order, whether due or not. The schedule is calculated with FSRS.',
+          },
+        ],
+      },
     ],
   },
   de: {
     title: 'Benutzerhandbuch',
-    lead: 'Cognoscimus hat zwei Teile: die Bibliothek für deine Bücher und Later für das, was du im Web findest. Beide teilen ein Konto, eine Anmeldung und einen Benutzernamen.',
+    lead: 'Cognoscimus hat drei Teile: die Bibliothek für deine Bücher, Later für das, was du im Web findest, und Erinnern für Zitate und Lernkarten. Alle teilen ein Konto, eine Anmeldung und einen Benutzernamen.',
     toc: 'Inhalt',
     back: 'Zurück zu Cognoscimus',
     languageLabel: 'Sprache',
@@ -219,7 +270,7 @@ export const HELP_CONTENT: Record<LandingLang, HelpContent> = {
         steps: [
           {
             title: 'Anmelden',
-            text: 'Der Zugang ist nur auf Einladung möglich. Nach der Anmeldung landest du in der Bibliothek, oder in Later, wenn du das im Konto unter «Starten mit» gewählt hast. Die Schaltflächen «Bibliothek» und «Later» oben wechseln zwischen den beiden Teilen.',
+            text: 'Der Zugang ist nur auf Einladung möglich. Nach der Anmeldung landest du in der Bibliothek, oder in Later, wenn du das im Konto unter «Starten mit» gewählt hast. Die Schaltflächen «Bibliothek», «Later» und «Erinnern» oben wechseln zwischen den Teilen.',
           },
           {
             title: 'Benutzernamen wählen',
@@ -387,6 +438,57 @@ export const HELP_CONTENT: Record<LandingLang, HelpContent> = {
           {
             title: 'Welcher Absender zählt',
             text: 'Eine Mail gilt als deine, wenn sie von deiner Anmeldeadresse oder von einer Zusatzadresse kommt, die du auf der Konto-Seite eingetragen hast, und die absendende Domain dafür bürgt. Alles andere wird abgewiesen.',
+          },
+        ],
+      },
+      {
+        id: 'remember-quotes',
+        title: 'Erinnern: Zitate',
+        intro: 'Passagen aus Büchern und Artikeln mit ihrer Quelle an einem Ort aufbewahren.',
+        steps: [
+          {
+            title: 'Die Schaltflächen einschalten',
+            text: 'Die Schaltflächen «Zitat speichern» und «Lernkarte speichern» sind zuerst nicht in der Auswahl-Leiste. Öffne ein Buch, dann die Reader-Einstellungen, «Verhalten» und «Werkzeugleiste anpassen», und ziehe sie aus «Verfügbar» in die Leiste.',
+          },
+          {
+            title: 'Ein Zitat speichern',
+            text: 'Markiere in einem Buch eine Passage und tippe auf «Zitat speichern». In Later tippst du auf eine Markierung und wählst «Als Zitat speichern». Unter Erinnern, «Zitate» kannst du auch eines von Hand eintragen und notieren, woher es stammt.',
+          },
+          {
+            title: 'Zurück zur Stelle',
+            text: 'Ein Zitat aus einem Buch merkt sich das Buch und die Position. Tippe auf die Quelle, und das Buch öffnet sich an dieser Stelle; ein Zitat aus Later öffnet den gespeicherten Artikel. Löschst du das Buch, bleibt die Quelle als Text erhalten.',
+          },
+          {
+            title: 'Duplikate',
+            text: 'Speicherst du dasselbe Zitat nochmals, wird nur die neue Quelle ergänzt. Gibt es ein ähnliches Zitat, wirst du gefragt, ob die Quelle dort ergänzt werden soll. «Mögliche Duplikate» zeigt Paare, die sich ähneln, und du kannst sie zusammenführen: Quellen und Notizen bleiben erhalten.',
+          },
+          {
+            title: 'Suchen und bearbeiten',
+            text: 'Die Suche findet Text, Notizen, Autoren und Quellen. Mit «Bearbeiten» änderst du den Wortlaut und schreibst eigene Gedanken unter das Zitat; «Löschen» entfernt es.',
+          },
+        ],
+      },
+      {
+        id: 'remember-learn',
+        title: 'Erinnern: Lernen',
+        intro:
+          'Lernkarten mit Spaced Repetition (verteiltes Wiederholen): Eine Karte kommt zuerst nach kurzer Zeit wieder, danach nach immer längeren Abständen, je besser du sie kennst.',
+        steps: [
+          {
+            title: 'Karten erstellen',
+            text: 'Wähle unter «Lernen» und «Karten» «Karte hinzufügen» und schreibe Frage und Antwort, auf Wunsch über mehrere Zeilen. Du kannst auch ein Wort oder einen Satz im Buch markieren und «Lernkarte speichern» tippen, oder bei einem Zitat auf «Lernen» tippen: Das Zitat ist die Frage, Autor und Titel sind die Antwort.',
+          },
+          {
+            title: 'Antwort fehlt',
+            text: 'Ein Wort oder Satz aus einem Buch hat noch keine Antwort. Er zeigt «Antwort fehlt» und wird erst abgefragt, wenn du mit «Bearbeiten» eine schreibst. Der Filter «Antwort fehlt» listet alle auf.',
+          },
+          {
+            title: 'Gruppen',
+            text: 'Ein Buch wird von selbst zur Gruppe, sobald du zum ersten Mal etwas daraus sendest. Eigene Gruppen kannst du dazu anlegen, zum Beispiel Sprachen oder einen Kurs, und eine Karte in mehrere Gruppen legen. Eine Gruppe zu löschen lässt ihre Karten bestehen. Dieselbe Frage gibt es nie doppelt: Wird sie nochmals gesendet, kommen nur die neue Quelle und Gruppe dazu.',
+          },
+          {
+            title: 'Üben',
+            text: 'Der Tab «Üben» zeigt jede Gruppe mit den fälligen, neuen und allen Karten. «Starten» beginnt mit dieser Gruppe. Zeige die Antwort und bewerte sie: «Nochmal», «Schwer», «Gut» oder «Leicht»; jede Taste sagt, wann die Karte wiederkommt. Mit «Zufällig» gehst du Karten in beliebiger Reihenfolge durch, fällig oder nicht. Der Zeitplan wird mit FSRS berechnet.',
           },
         ],
       },

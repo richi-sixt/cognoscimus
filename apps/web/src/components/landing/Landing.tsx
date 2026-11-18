@@ -97,6 +97,27 @@ const Landing = () => {
             ))}
           </div>
         </section>
+
+        <section aria-labelledby='remember' className='pb-16'>
+          <h2
+            id='remember'
+            className='mb-2 text-sm font-semibold uppercase tracking-wide opacity-60'
+          >
+            {c.rememberTitle}
+          </h2>
+          <p className='text-base-content/75 mb-6 max-w-2xl leading-relaxed'>{c.rememberIntro}</p>
+          <div className='grid gap-4 sm:grid-cols-2'>
+            {c.rememberFeatures.map((feature) => (
+              <article
+                key={feature.title}
+                className='border-base-300 bg-base-200/50 rounded-2xl border p-5'
+              >
+                <h3 className='mb-2 text-base font-semibold'>{feature.title}</h3>
+                <p className='text-base-content/70 text-sm leading-relaxed'>{feature.text}</p>
+              </article>
+            ))}
+          </div>
+        </section>
       </main>
 
       <footer className='border-base-300 border-t'>

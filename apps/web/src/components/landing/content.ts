@@ -15,6 +15,9 @@ export interface LandingContent {
   laterTitle: string;
   laterIntro: string;
   laterFeatures: { title: string; text: string }[];
+  rememberTitle: string;
+  rememberIntro: string;
+  rememberFeatures: { title: string; text: string }[];
   help: string;
   copyright: string;
   license: string;
@@ -71,6 +74,23 @@ export const LANDING_CONTENT: Record<LandingLang, LandingContent> = {
         text: 'Subscribe to RSS and Atom feeds and pick what to keep, or mail a link to your own inbox address.',
       },
     ],
+    rememberTitle: 'And Remember, for what should stay',
+    rememberIntro:
+      'Passages and words are easy to forget, and so is where they came from. Remember keeps them in one place and helps you hold on to them.',
+    rememberFeatures: [
+      {
+        title: 'A collection of quotes',
+        text: 'Send a marked passage from a book or an article to your collection, or add a quote by hand. Search by text, author or source, and add your own thoughts.',
+      },
+      {
+        title: 'Back to the source',
+        text: 'Every quote knows where it came from. One tap opens the book at the very place, or the saved article. The same quote from two books keeps both sources.',
+      },
+      {
+        title: 'Learn with flashcards',
+        text: 'Turn words, sentences and quotes into flashcards and repeat them at growing intervals (spaced repetition). Each book is a group of its own, and you can make more.',
+      },
+    ],
     help: 'Help',
     copyright: '© 2026 Rüchan Sixt',
     license:
@@ -124,6 +144,23 @@ export const LANDING_CONTENT: Record<LandingLang, LandingContent> = {
       {
         title: 'Feeds und Mail',
         text: 'RSS- und Atom-Feeds abonnieren und auswählen, was bleibt, oder einen Link an die eigene Inbox-Adresse mailen.',
+      },
+    ],
+    rememberTitle: 'Und Erinnern, für alles, was bleiben soll',
+    rememberIntro:
+      'Passagen und Wörter vergisst man leicht, und woher man sie kennt, noch eher. Erinnern bewahrt sie an einem Ort und hilft dir, sie zu behalten.',
+    rememberFeatures: [
+      {
+        title: 'Eine Zitatesammlung',
+        text: 'Eine markierte Passage aus einem Buch oder Artikel an die Sammlung senden oder ein Zitat von Hand eintragen. Nach Text, Autor oder Quelle suchen und eigene Gedanken ergänzen.',
+      },
+      {
+        title: 'Zurück zur Quelle',
+        text: 'Jedes Zitat weiss, woher es stammt. Ein Tipp öffnet das Buch an genau der Stelle oder den gespeicherten Artikel. Dasselbe Zitat aus zwei Büchern behält beide Quellen.',
+      },
+      {
+        title: 'Mit Lernkarten lernen',
+        text: 'Wörter, Sätze und Zitate zu Lernkarten machen und in wachsenden Abständen wiederholen (Spaced Repetition). Jedes Buch ist eine eigene Gruppe, weitere legst du selbst an.',
       },
     ],
     help: 'Hilfe',

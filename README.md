@@ -2,14 +2,15 @@
 
 <img src="apps/web/public/icon.png" alt="" width="72" align="right">
 
-A private, self-hosted reading place for the web, with two parts under one account:
+A private, self-hosted reading place for the web, with three parts under one account:
 
 - **Library** (`/library`): read EPUB, PDF, MOBI, FB2 and comic archives (CBZ) in the browser, keep your place and your notes across devices, share single books with other users for a limited time, and keep track of the printed books on your shelf.
 - **Later** (`/later`): save web articles and links, read them later in peace, highlight, organise and search them, follow a few people to see what they share, and subscribe to RSS feeds.
+- **Remember** (`/erinnern`): a collection of quotes from your books and articles, with their sources, and flashcards learned with spaced repetition.
 
 Access is by invitation only. Each account chooses which part opens first.
 
-The library is a modified version of [Readest](https://github.com/readest/readest) (© Bilingify LLC, AGPL-3.0). The reading engine, the library, the annotation model and the sync model come from Readest. Native apps, payments, analytics and all third-party integrations were removed; sign-in, storage, sharing and the start page are new. Later is written from scratch. [Omnivore](https://github.com/omnivore-app/omnivore) and Raindrop.io inspired its concepts; no code was taken from either.
+The library is a modified version of [Readest](https://github.com/readest/readest) (© Bilingify LLC, AGPL-3.0). The reading engine, the library, the annotation model and the sync model come from Readest. Native apps, payments, analytics and all third-party integrations were removed; sign-in, storage, sharing and the start page are new. Later and Remember are written from scratch. [Omnivore](https://github.com/omnivore-app/omnivore) and Raindrop.io inspired its concepts; no code was taken from either.
 
 ## Features
 
@@ -32,6 +33,12 @@ The library is a modified version of [Readest](https://github.com/readest/reades
 - **Feeds:** follow RSS and Atom feeds (also by a website's address) and import OPML. New entries wait in their own stream until they are saved as articles or dismissed.
 - **Safety:** fetching other people's addresses checks every redirect against internal addresses. Sharing rules live in the database (grants, row-level security, functions), not in the app.
 
+### Remember
+
+- **Quotes:** send a marked passage from a book (toolbar button "Save Quote") or from a Later highlight to the collection, or add one by hand. Every quote has any number of sources; a book source keeps the position and opens the book at that place. Search covers text, notes, author and source. The same text is only stored once and gets the new source instead; similar quotes (trigram similarity in Postgres) are offered as a merge, and a "Possible duplicates" view lists pairs to merge.
+- **Learning:** flashcards with a question and an answer, scheduled with [FSRS](https://github.com/open-spaced-repetition/ts-fsrs) (`ts-fsrs`). Cards come from a book selection (button "Save Flashcard"; a word or a sentence, the answer is added later), from a quote, or by hand. A book is a group of its own; further groups are made by hand and a card may be in several. The study view lists every group with its due, new and total cards.
+- **Buttons:** "Save Quote" and "Save Flashcard" are off in the selection toolbar by default; switch them on under reader settings, Behavior, Customize Toolbar.
+
 ## Stack
 
 - Next.js (App Router and Pages API routes), React, TypeScript, Tailwind CSS with daisyUI
@@ -39,6 +46,7 @@ The library is a modified version of [Readest](https://github.com/readest/reades
 - S3-compatible object storage for book files
 - [foliate-js](https://github.com/johnfactotum/foliate-js) as reading engine, vendored in `packages/`
 - `linkedom`, `@mozilla/readability` and `fast-xml-parser` for Later (articles and feeds)
+- `ts-fsrs` for the spaced-repetition schedule of Remember
 
 ## Repository layout
 
@@ -53,7 +61,7 @@ deploy.sh        pull, install and build; restarting the server is left to the e
 
 ## Development
 
-Requires Node.js 22 and pnpm (activate with `corepack enable`).
+Requires Node.js 22 and pnpm. The exact pnpm version is pinned in `package.json` (`packageManager`); activate it with `corepack enable`. pnpm 12 needs a recent Corepack (`npm install -g corepack@latest`), the one shipped with older Node 22 releases cannot start it.
 
 ```bash
 pnpm install
@@ -95,6 +103,7 @@ CBZ opens directly. RAR archives (CBR) are not read by the browser; convert them
 
 - Removed: desktop and mobile apps, payments and plans, analytics, the hosted backend defaults, and the integrations with Pagebound, LocalSend, WebDAV, Google Drive, OneDrive, iCloud, S3 file sync, Readwise, Hardcover and KOSync.
 - Added: invitation-only sign-in, a start page, an S3-only storage layer with a quota, time-limited sharing between accounts, a library that followers can browse and borrow from, printed books with ownership, wishlist and lending, and a per-browser library owner check so a second account never inherits the first one's books.
+- Added: Remember (a quote collection with sources and duplicate detection, and flashcards with spaced repetition), which has no counterpart in Readest.
 - Added: Later (read-later articles and links, collections, following people, RSS feeds, saving by e-mail and from a browser extension), which has no counterpart in Readest.
 
 ## License
